@@ -8,6 +8,9 @@ import os
 import io
 from PIL import Image
 from reportlab.lib.utils import ImageReader
+from scipy.stats import linregress
+import matplotlib.pyplot as plt
+
 
 #Next steps, get a combined result
 #if the 5 blocks bfore it are zero it must be zero if it is on the bottom of the grid
@@ -17,6 +20,39 @@ from reportlab.lib.utils import ImageReader
 
 
 
+def findBlobs(binary_image, min_area, max_area, thickness=2):
+    # Find contours in the binary image
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Create a color image to draw on
+    result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    x_coords =[]
+    y_coords=[]
+    for contour in contours:
+        # Calculate area of the contour
+        area = cv2.contourArea(contour)
+  
+        if min_area <= area <= max_area:
+            # Calculate circularity
+            perimeter = cv2.arcLength(contour, True)
+            circularity = 4 * np.pi * area / (perimeter * perimeter)
+
+            # Check if shape is roughly square or circular
+            if circularity > 0.30:  # Adjust this threshold as needed
+                # Find the center of the contour
+                M = cv2.moments(contour)
+                if M["m00"] != 0:
+                    cX = int(M["m10"] / M["m00"])
+                    cY = int(M["m01"] / M["m00"])
+                    
+                    # Draw a red X at the center
+                    cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
+                                   cv2.MARKER_TILTED_CROSS, thickness=thickness)
+                    # print(cX)
+                    x_coords.append(cX)
+                    y_coords.append(cY)
+                    # print(x_coords)
+    return x_coords,y_coords,result_image
 
 def save_images_to_pdf(image_steps, output_path,dpi, num_images_to_save=None):
     """
@@ -134,6 +170,7 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
         cv2.imshow('gray', resize_for_display(gray_image))
     return stretched, blurred, gray_image
 
+
 def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, show_images=False):
     """Binarize the grayscale image and perform contour detection."""
    
@@ -162,17 +199,20 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
         cv2.imshow('final_binary', resize_for_display(final_binary))
 
     return binary_image, contour_img, final_binary,block_size
-
-def calculate_grid(x_coords, y_coords, width, height):
+def calculate_grid(x_coords, y_coords, width, height, debug=False):
     """Calculate grid parameters based on detected circle coordinates."""
-    def find_clusters(coords, min_count):
+    
+    def find_clusters(coords, min_count=2):
         sorted_coords = np.sort(coords)
         diffs = np.diff(sorted_coords)
+        median_diff = np.median(diffs)
+        threshold = median_diff * 2  # Adjust this factor if needed
+        
         clusters = []
-        current_cluster = [sorted_coords[0]] 
+        current_cluster = [sorted_coords[0]]
         
         for i in range(1, len(sorted_coords)):
-            if diffs[i-1] < 50:  # Adjust this threshold as needed
+            if diffs[i-1] < threshold:
                 current_cluster.append(sorted_coords[i])
             else:
                 if len(current_cluster) >= min_count:
@@ -182,165 +222,153 @@ def calculate_grid(x_coords, y_coords, width, height):
         if len(current_cluster) >= min_count:
             clusters.append(current_cluster)
         
-        return [np.mean(cluster) for cluster in clusters]
+        cluster_means = [np.mean(cluster) for cluster in clusters]
+        
+        if debug:
+            plt.figure(figsize=(10, 5))
+            plt.scatter(coords, [0] * len(coords), c='blue', label='Original points')
+            for mean in cluster_means:
+                plt.axvline(x=mean, color='red', linestyle='--')
+            plt.title(f'Clusters')
+            plt.legend()
+            plt.show()
+        
+        return cluster_means
 
-    x_clusters = find_clusters(x_coords, 2) 
-    y_clusters = find_clusters(y_coords, 3)
-
+    x_clusters = find_clusters(x_coords)
+    y_clusters = find_clusters(y_coords)
+    
     if len(x_clusters) < 2 or len(y_clusters) < 2:
         raise ValueError("Not enough valid clusters found to calculate grid")
-
+    
     x_diffs = np.diff(x_clusters)
     y_diffs = np.diff(y_clusters)
     avg_x_diff = np.mean(x_diffs)
     avg_y_diff = np.mean(y_diffs)
     cell_size = min(avg_x_diff, avg_y_diff)
-
+    
+    # Calculate horizontal slant
+    slope, _ = np.polyfit(x_coords, y_coords, 1)
+    angle = np.arctan(slope)
+    max_angle = np.radians(8)
+    slant_angle = np.clip(angle, -max_angle, max_angle)
+    
     grid_start_x = x_clusters[0] - cell_size / 2
     grid_start_y = y_clusters[0] - cell_size / 2
-
-    grid_width = cell_size * 12 
+    
+    grid_width = cell_size * 12
     grid_height = cell_size * 8
-
+    
     if grid_start_x + grid_width > width:
         grid_start_x = width - grid_width
     if grid_start_y + grid_height > height:
         grid_start_y = height - grid_height
-
-    return grid_start_x, grid_start_y, cell_size
-
-
-def findBlobs(binary_image, min_area, max_area, thickness=2):
-    # Find contours in the binary image
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
-    # Create a color image to draw on
-    result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    x_coords =[]
-    y_coords=[]
-    for contour in contours:
-        # Calculate area of the contour
-        area = cv2.contourArea(contour)
-  
-        if min_area <= area <= max_area:
-            # Calculate circularity
-            perimeter = cv2.arcLength(contour, True)
-            circularity = 4 * np.pi * area / (perimeter * perimeter)
-
-            # Check if shape is roughly square or circular
-            if circularity > 0.55:  # Adjust this threshold as needed
-                # Find the center of the contour
-                M = cv2.moments(contour)
-                if M["m00"] != 0:
-                    cX = int(M["m10"] / M["m00"])
-                    cY = int(M["m01"] / M["m00"])
-                    
-                    # Draw a red X at the center
-                    cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
-                                   cv2.MARKER_TILTED_CROSS, thickness=thickness)
-                    x_coords.append(cX)
-                    y_coords.append(cY)
-    return x_coords,y_coords,result_image
-
-
-
-
-
-def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=180, param1=50, param2=28):
+    if debug:
+        plt.figure(figsize=(10, 10))
+        plt.scatter(x_coords, y_coords, c='blue', label='Original points')
+        for i in range(13):  # Draw vertical lines
+            x = grid_start_x + i * cell_size
+            plt.plot([x, x + np.tan(slant_angle) * grid_height], 
+                     [grid_start_y, grid_start_y + grid_height], 
+                     'r-', alpha=0.5)
+        for j in range(9):  # Draw horizontal lines
+            y = grid_start_y + j * cell_size
+            plt.plot([grid_start_x, grid_start_x + grid_width],
+                     [y, y + np.tan(slant_angle) * grid_width],
+                     'r-', alpha=0.5)
+        plt.title('Grid Overlay')
+        plt.legend()
+        plt.show()
+    
+    return grid_start_x, grid_start_y, cell_size, slant_angle
+def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=160, param1 =50, param2 =28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
-    
-    # Detect circles in the image
     circles = cv2.HoughCircles(
         gray_image,
         cv2.HOUGH_GRADIENT,
-        dp=1,
-        minDist=200,
-        param1=param1,
-        param2=param2,
+        dp=0.9, #higher for stricter
+        minDist=200, #distance between circles
+        param1 = param1,
+        param2 = param2, #The smaller it is, the more false circles may be detected
         minRadius=min_radius,
         maxRadius=max_radius
     )
-    
-    # Initialize counts and marked_image
     counts = np.zeros((8, 12))
-    marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    
-    if circles is None or len(circles[0]) < 8:
-        print("Not enough circles detected. Using blob detection.")
-        x_coords, y_coords, result_image = findBlobs(binary_image, 2, 20000)
-        marked_image = result_image
-        # Recalculate grid based on blob centers if needed
-        try:
-            grid_start_x, grid_start_y, cell_size = calculate_grid(x_coords, y_coords, marked_image.shape[1], marked_image.shape[0])
-            colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-            marked_image = colored_image
-        except ValueError:
-            print("Not enough valid clusters found to calculate grid.")
-            # Use default grid if calculation fails
-            grid_start_x, grid_start_y, cell_size = 0, 0, 50
-            multi_block_mask = np.zeros_like(binary_image)
 
-        radii = []  # Initialize radii as an empty list
-    else:
+    if circles is None:
+        print("No circles detected")
+        return None, None
+    elif( len(circles[0]) <8):
+        print("would do blobs")
+        x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
+        marked_image = result_image
+    elif circles is not None:
         circles = np.round(circles[0, :]).astype(int)
+        #marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+       # height, width = gray_image.shape
+
         x_coords = circles[:, 0]
         y_coords = circles[:, 1]
-        radii = circles[:, 2]  # Extract radii from circles
         marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    height, width = gray_image.shape
+    try:
+        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, debug=True)
+
+        # Detect multi-block areas first
+        colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
         
-        # Recalculate grid based on detected circles
-        try:
-            grid_start_x, grid_start_y, cell_size = calculate_grid(x_coords, y_coords, marked_image.shape[1], marked_image.shape[0])
-            colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-            marked_image = colored_image
-        except ValueError:
-            print("Not enough valid clusters found to calculate grid.")
-            # Use default grid if calculation fails
-            grid_start_x, grid_start_y, cell_size = 0, 0, 50
-            multi_block_mask = np.zeros_like(binary_image)
+        # Combine the colored_image (with yellow areas) and the marked_image
+        marked_image = colored_image
 
-    # Draw grid lines
-    for i in range(13):
-        x = int(grid_start_x + i * cell_size)
-        cv2.line(marked_image, (x, 0), (x, marked_image.shape[0]), (255, 0, 0), 3)
+        # Draw grid lines
+        for i in range(13):
+            x = int(grid_start_x + i * cell_size)
+            cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+        
+        for i in range(9):
+            y = int(grid_start_y + i * cell_size)
+            cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
-    for i in range(9):
-        y = int(grid_start_y + i * cell_size)
-        cv2.line(marked_image, (0, y), (marked_image.shape[1], y), (255, 0, 0), 3)
+        # Quantify grid and draw counts
+        counts = np.zeros((8, 12), dtype=int)
+        for row in range(8):
+            for col in range(12):
+                x1 = int(grid_start_x + col * cell_size)
+                y1 = int(grid_start_y + row * cell_size)
+                x2 = int(x1 + cell_size)
+                y2 = int(y1 + cell_size)
+                
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(width, x2), min(height, y2)
+                
+                cell = binary_image[y1:y2, x1:x2]
+                cell_mask = multi_block_mask[y1:y2, x1:x2]
+                
+                # Count white pixels only in areas not marked as multi-block
+                white_pixels = np.sum((cell == 255) & (cell_mask == 0))
+                counts[row, col] = white_pixels
+                
+                text_x = int(x1 + cell_size / 2)
+                text_y = int(y1 + cell_size / 2)
+                
+                cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-    # Quantify grid and draw counts
-    counts = np.zeros((8, 12), dtype=int)
-    for row in range(8):
-        for col in range(12):
-            x1 = int(grid_start_x + col * cell_size)
-            y1 = int(grid_start_y + row * cell_size)
-            x2 = int(x1 + cell_size)
-            y2 = int(y1 + cell_size)
-            
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(marked_image.shape[1], x2), min(marked_image.shape[0], y2)
-            
-            cell = binary_image[y1:y2, x1:x2]
-            cell_mask = multi_block_mask[y1:y2, x1:x2]
-            
-            # Count white pixels only in areas not marked as multi-block
-            white_pixels = np.sum((cell == 255) & (cell_mask == 0))
-            counts[row, col] = white_pixels
-            
-            text_x = int(x1 + cell_size / 2)
-            text_y = int(y1 + cell_size / 2)
-            
-            cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-    # Draw circles last to ensure they're visible
-    if circles is not None:
-        for (x, y, r) in zip(x_coords, y_coords, radii):
+        # Draw circles last to ensure they're visible
+        for (x, y, r) in circles:
             cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
             cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
 
+    except ValueError:
+        print("Not enough valid clusters found to calculate grid. Circles will be detected without drawing a grid.")
+        # Draw circles if grid calculation fails
+        if len(circles[0]) >7:
+            for (x, y, r) in circles:
+                cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
+                cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
+
     return counts, marked_image
-    
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
@@ -381,8 +409,6 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
     
     return counts, marked_image
-
-
 
 def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
     """
@@ -456,6 +482,48 @@ def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask):
 
 
 
+def process_2d_array(array_2d):
+  """
+  Processes a 2D array with 12 columns and 8 rows into a 1D array according to the specified pattern.
+
+  Args:
+    array_2d: A 2D array with 12 columns and 8 rows.
+
+  Returns:
+    A 1D array containing the values from the 2D array in the specified order.
+  """
+
+  result = []
+  for i in range(4):
+    for j in range(4):
+      result.append(array_2d[j][i])
+      result.append(array_2d[j + 4][i + 4])
+  return result
+
+
+def plotScatter(counts):
+  dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+  
+  plt.figure(figsize=(10, 6))
+  
+  # Logarithmic scale for x-axis only
+  plt.semilogx( dilutionSeries,counts, 'x', color='blue', markersize=8)
+  
+  # Grid for better readability
+  plt.grid(True, which="both", linestyle='--', alpha=0.5)
+  
+  # Axis labels and title
+  plt.ylabel('Counts', fontsize=12)
+  plt.xlabel('Dilution Series', fontsize=12)
+  plt.title('Scatter Plot with Logarithmic X-Axis', fontsize=14)  # Update title
+  
+  # Adjust plot margins
+  plt.tight_layout()
+  
+  plt.show()
+
+
+
 
 image_steps = []
 print("Starting Analysis")
@@ -468,24 +536,26 @@ for i in range(7):
     binary_image, contour_img, final_binary, block_size = binarize(gray_image, original_image)
     result_grid, marked_image = detect_and_draw_circles(final_binary, gray_image)
     
-    image_steps.append({
-        "Original Image": original_image,
-        "Stretched Image": stretched,
-        "Blurred Image": blurred,
-        "Grayscale Image": gray_image,
-        "Binary Image": binary_image,
-        "Contour Image": contour_img,
-        "Final Binary Image": final_binary,
-        "Marked Image with All Elements": marked_image
-    })
+    # image_steps.append({
+    #     "Original Image": original_image,
+    #     # "Stretched Image": stretched,
+    #     # "Blurred Image": blurred,
+    #     # "Grayscale Image": gray_image,
+    #     #"Binary Image": binary_image,
+    #     "Contour Image": contour_img,
+    #     "Final Binary Image": final_binary,
+    #     "Marked Image with All Elements": marked_image
+    # })
+    cv2.imshow("marked", resize_for_display(marked_image))
+    cv2.waitKey(0)
 
     print(f"Completed image {i}")
 
 # Save images to PDF
-pdf_output_path = os.path.join(path, "SlantedGridWithBlobDetection.pdf")
-print("Saving Images")
-save_images_to_pdf(image_steps, pdf_output_path, 300, num_images_to_save=8) 
-print(f"All images saved to: {pdf_output_path}")
+# pdf_output_path = os.path.join(path, "FullDataSetSkewVaiableThreshold.pdf")
+# print("Saving Images")
+# save_images_to_pdf(image_steps, pdf_output_path, 300, num_images_to_save=4) 
+# print(f"All images saved to: {pdf_output_path}")
 
 
 
