@@ -17,20 +17,20 @@ def detect_lines(image):
 
 def classify_lines(lines, image_shape):
     vertical_lines = []
-    horizontal_lines = []
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
             angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
             length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
             
-            if abs(angle) > 70:
-                if length > image_shape[0] * 0.2:
+            if abs(angle) > 80:  # More strict angle for vertical lines
+                if length > image_shape[0] * 0.5:  # Longer lines
                     vertical_lines.append((x1, y1, x2, y2))
-            elif abs(angle) < 20:
-                if length > image_shape[1] * 0.2:
-                    horizontal_lines.append((x1, y1, x2, y2))
-    return vertical_lines, horizontal_lines
+    
+    # Sort vertical lines from left to right
+    vertical_lines.sort(key=lambda line: min(line[0], line[2]))
+    
+    return vertical_lines
 
 def find_intersection_point(line1, line2):
     x1, y1, x2, y2 = line1
@@ -42,32 +42,36 @@ def find_intersection_point(line1, line2):
     py = ((x1*y2 - y1*x2) * (y3 - y4) - (y1 - y2) * (x3*y4 - y3*x4)) / denom
     return int(px), int(py)
 
-def correct_perspective(image, vertical_lines, horizontal_lines):
+def correct_perspective(image, vertical_lines):
     h, w = image.shape[:2]
     
-    if len(vertical_lines) < 2 or len(horizontal_lines) < 2:
-        print("Not enough lines detected for perspective correction.")
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
         return image
     
-    left_line = min(vertical_lines, key=lambda l: l[0])
-    right_line = max(vertical_lines, key=lambda l: l[0])
-    top_line = min(horizontal_lines, key=lambda l: l[1])
-    bottom_line = max(horizontal_lines, key=lambda l: l[1])
+    # Use the leftmost and rightmost vertical lines
+    left_line = vertical_lines[0]
+    right_line = vertical_lines[-1]
     
-    top_left = find_intersection_point(left_line, top_line)
-    top_right = find_intersection_point(right_line, top_line)
-    bottom_left = find_intersection_point(left_line, bottom_line)
-    bottom_right = find_intersection_point(right_line, bottom_line)
+    # Calculate the angles of these lines
+    left_angle = np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])
+    right_angle = np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])
     
-    if None in [top_left, top_right, bottom_left, bottom_right]:
-        print("Failed to find all intersection points.")
-        return image
+    # Average angle for correction
+    correction_angle = (left_angle + right_angle) / 2
     
-    src_pts = np.float32([top_left, top_right, bottom_right, bottom_left])
-    dst_pts = np.float32([[0, 0], [w-1, 0], [w-1, h-1], [0, h-1]])
+    # Create rotation matrix
+    rotation_matrix = cv2.getRotationMatrix2D((w/2, h/2), np.degrees(correction_angle), 1)
     
-    matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    result = cv2.warpPerspective(image, matrix, (w, h))
+    # Apply rotation
+    rotated = cv2.warpAffine(image, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR)
+    
+    # Now correct for any remaining keystone effect
+    pts1 = np.float32([[left_line[0], 0], [right_line[0], 0], [left_line[0], h], [right_line[0], h]])
+    pts2 = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
+    
+    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    result = cv2.warpPerspective(rotated, matrix, (w, h))
     
     return result
 
@@ -82,6 +86,78 @@ def draw_lines(image, vertical_lines, horizontal_lines):
             x1, y1, x2, y2 = line
             cv2.line(marked_image, (x1, y1), (x2, y2), (255, 0, 0), 2)
     return marked_image
+def classify_lines(lines, image_shape):
+    vertical_lines = []
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
+            length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+            
+            if abs(angle) > 80:  # More strict angle for vertical lines
+                if length > image_shape[0] * 0.5:  # Longer lines
+                    vertical_lines.append((x1, y1, x2, y2))
+    
+    # Sort vertical lines from left to right
+    vertical_lines.sort(key=lambda line: min(line[0], line[2]))
+    
+    return vertical_lines
+
+def correct_perspective(image, vertical_lines):
+    h, w = image.shape[:2]
+    
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
+        return image
+    
+    # Use the leftmost and rightmost vertical lines
+    left_line = vertical_lines[0]
+    right_line = vertical_lines[-1]
+    
+    # Calculate the angles of these lines
+    left_angle = np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])
+    right_angle = np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])
+    
+    # Average angle for correction
+    correction_angle = (left_angle + right_angle) / 2
+    
+    # Create rotation matrix
+    rotation_matrix = cv2.getRotationMatrix2D((w/2, h/2), np.degrees(correction_angle), 1)
+    
+    # Apply rotation
+    rotated = cv2.warpAffine(image, rotation_matrix, (w, h), flags=cv2.INTER_LINEAR)
+    
+    # Now correct for any remaining keystone effect
+    pts1 = np.float32([[left_line[0], 0], [right_line[0], 0], [left_line[0], h], [right_line[0], h]])
+    pts2 = np.float32([[0, 0], [w, 0], [0, h], [w, h]])
+    
+    matrix = cv2.getPerspectiveTransform(pts1, pts2)
+    result = cv2.warpPerspective(rotated, matrix, (w, h))
+    
+    return result
+
+def draw_lines_and_measure(image, vertical_lines):
+    marked_image = image.copy()
+    if vertical_lines is not None:
+        for i, line in enumerate(vertical_lines):
+            x1, y1, x2, y2 = line
+            color = (0, 255, 0) if i in [1, 2] else (0, 0, 255)  # Green for inner lines, Red for outer
+            cv2.line(marked_image, (x1, y1), (x2, y2), color, 2)
+    
+    # Measure distance between inner vertical lines
+    if len(vertical_lines) >= 4:
+        left_inner = vertical_lines[1]
+        right_inner = vertical_lines[2]
+        distance = abs(left_inner[0] - right_inner[0])  # Using x-coordinate of the start point
+        
+        # Draw measurement line
+        mid_y = image.shape[0] // 2
+        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 2)
+        cv2.putText(marked_image, f"{distance} pixels", 
+                    (left_inner[0] + 10, mid_y - 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    
+    return marked_image
 
 def process_image(image_path):
     image = cv2.imread(image_path)
@@ -93,17 +169,22 @@ def process_image(image_path):
         print("No lines detected in the image.")
         return
     
-    vertical_lines, horizontal_lines = classify_lines(lines, image.shape)
+    vertical_lines = classify_lines(lines, image.shape)
     
-    if len(vertical_lines) < 2 or len(horizontal_lines) < 2:
-        print("Not enough lines detected for perspective correction.")
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
         return
     
-    marked_image = draw_lines(image, vertical_lines, horizontal_lines)
-    corrected_image = correct_perspective(image, vertical_lines, horizontal_lines)
+    corrected_image = correct_perspective(image, vertical_lines)
     
-    cv2.imshow('Original Image with Detected Lines',resize_for_display( marked_image))
-    cv2.imshow('Corrected Image', resize_for_display(corrected_image))
+    # Detect lines again on the corrected image
+    corrected_lines = detect_lines(corrected_image)
+    corrected_vertical_lines = classify_lines(corrected_lines, corrected_image.shape)
+    
+    marked_image = draw_lines_and_measure(corrected_image, corrected_vertical_lines)
+    
+    cv2.imshow('Original Image', resize_for_display(image))
+    cv2.imshow('Corrected Image with Measurements', resize_for_display(marked_image))
     
     cv2.waitKey(0)
     cv2.destroyAllWindows()
