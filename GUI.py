@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageTk, ImageDraw
 import copy
-from AAVariableThreshold import *
+from ImageProcessing import *
 DARK = "#092934"
 LIGHT = "#E4EDF5"
 OUTPUT_PATH = Path(__file__).parent

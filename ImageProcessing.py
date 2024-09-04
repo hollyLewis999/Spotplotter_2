@@ -11,48 +11,12 @@ from reportlab.lib.utils import ImageReader
 from scipy.stats import linregress
 import matplotlib.pyplot as plt
 
-
-#Next steps, get a combined result
-#if the 5 blocks bfore it are zero it must be zero if it is on the bottom of the grid
-# if there is no grid, redetect circles with a lower coeffiecient
-
-
-
-
-
-def findBlobs(binary_image, min_area, max_area, thickness=2):
-    # Find contours in the binary image
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # Create a color image to draw on
-    result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    x_coords =[]
-    y_coords=[]
-    for contour in contours:
-        # Calculate area of the contour
-        area = cv2.contourArea(contour)
-  
-        if min_area <= area <= max_area:
-            # Calculate circularity
-            perimeter = cv2.arcLength(contour, True)
-            circularity = 4 * np.pi * area / (perimeter * perimeter)
-
-            # Check if shape is roughly square or circular
-            if circularity > 0.30:  # Adjust this threshold as needed
-                # Find the center of the contour
-                M = cv2.moments(contour)
-                if M["m00"] != 0:
-                    cX = int(M["m10"] / M["m00"])
-                    cY = int(M["m01"] / M["m00"])
-                    
-                    # Draw a red X at the center
-                    cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
-                                   cv2.MARKER_TILTED_CROSS, thickness=thickness)
-                    # print(cX)
-                    x_coords.append(cX)
-                    y_coords.append(cY)
-                    # print(x_coords)
-    return x_coords,y_coords,result_image
+# d8888b. d888888b .d8888. d8888b. db       .d8b.  db    db 
+# 88  `8D   `88'   88'  YP 88  `8D 88      d8' `8b `8b  d8' 
+# 88   88    88    `8bo.   88oodD' 88      88ooo88  `8bd8'  
+# 88   88    88      `Y8b. 88~~~   88      88~~~88    88    
+# 88  .8D   .88.   db   8D 88      88booo. 88   88    88    
+# Y8888D' Y888888P `8888Y' 88      Y88888P YP   YP    YP 
 
 def save_images_to_pdf(image_steps, output_path,dpi, num_images_to_save=None):
     """
@@ -106,45 +70,6 @@ def save_images_to_pdf(image_steps, output_path,dpi, num_images_to_save=None):
 
     c.save()
 
-def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
-    """
-    Detect areas spanning multiple grid blocks and color them yellow.
-    
-    :param binary_image: Binarized image
-    :param grid_start_x: X-coordinate of grid start
-    :param grid_start_y: Y-coordinate of grid start
-    :param cell_size: Size of each grid cell
-    :return: Image with multi-block areas colored yellow, mask of multi-block areas
-    """
-    height, width = binary_image.shape
-    rows, cols = 8, 12  # 8x12 grid
-    
-    # Create a colored image from the binary image
-    colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    
-    # Create a mask for multi-block areas
-    multi_block_mask = np.zeros_like(binary_image)
-    
-    # Find contours in the binary image
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    for contour in contours:
-        # Get bounding box of the contour
-        x, y, w, h = cv2.boundingRect(contour)
-        
-        # Check if the contour spans multiple grid cells
-        start_col = max(0, int((x - grid_start_x) / cell_size))
-        end_col = min(cols - 1, int((x + w - grid_start_x) / cell_size))
-        start_row = max(0, int((y - grid_start_y) / cell_size))
-        end_row = min(rows - 1, int((y + h - grid_start_y) / cell_size))
-        
-        if end_col - start_col > 0 or end_row - start_row > 0:
-            # Color the area yellow
-            cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
-            cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
-    
-    return colored_image, multi_block_mask
-
 def resize_for_display(image, max_width=1280, max_height=720):
     """Resize image for display while maintaining aspect ratio."""
     h, w = image.shape[:2]
@@ -153,6 +78,168 @@ def resize_for_display(image, max_width=1280, max_height=720):
         new_size = (int(w*scale), int(h*scale))
         return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
     return image
+
+def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask):
+    """Combine black and white masks into a single colored image."""
+    # Convert black and white masks to color (BGR)
+    circles_mask_color = cv2.cvtColor(circles_mask, cv2.COLOR_GRAY2BGR)
+    gridlines_mask_color = cv2.cvtColor(gridlines_mask, cv2.COLOR_GRAY2BGR)
+    yellow_areas_mask_color = cv2.cvtColor(yellow_areas_mask, cv2.COLOR_GRAY2BGR)
+    counts_mask_color = cv2.cvtColor(counts_mask, cv2.COLOR_GRAY2BGR)
+    
+    # Set colors
+    circles_mask_color[:, :] = [0, 255, 0]  # Green for circles
+    gridlines_mask_color[:, :] = [255, 0, 0]  # Red for gridlines
+    yellow_areas_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
+
+    # Initialize the combined mask
+    combined_mask = np.zeros_like(circles_mask_color)
+
+    # Combine masks
+    combined_mask = cv2.addWeighted(combined_mask, 1.0, circles_mask_color, 1.0, 0)
+    combined_mask = cv2.addWeighted(combined_mask, 1.0, gridlines_mask_color, 1.0, 0)
+    combined_mask = cv2.addWeighted(combined_mask, 1.0, yellow_areas_mask_color, 1.0, 0)
+    combined_mask = cv2.addWeighted(combined_mask, 1.0, counts_mask_color, 1.0, 0)
+
+    return combined_mask
+
+
+#  .o88b. d888888b d8888b.  .o88b. db      d88888b .d8888. 
+# d8P  Y8   `88'   88  `8D d8P  Y8 88      88'     88'  YP 
+# 8P         88    88oobY' 8P      88      88ooooo `8bo.   
+# 8b         88    88`8b   8b      88      88~~~~~   `Y8b. 
+# Y8b  d8   .88.   88 `88. Y8b  d8 88booo. 88.     db   8D 
+#  `Y88P' Y888888P 88   YD  `Y88P' Y88888P Y88888P `8888Y' 
+                                                         
+
+def findBlobs(binary_image, min_area, max_area, thickness=2):
+    # Find contours in the binary image
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    # Create a color image to draw on
+    result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    x_coords =[]
+    y_coords=[]
+    for contour in contours:
+        # Calculate area of the contour
+        area = cv2.contourArea(contour)
+  
+        if min_area <= area <= max_area:
+            # Calculate circularity
+            perimeter = cv2.arcLength(contour, True)
+            circularity = 4 * np.pi * area / (perimeter * perimeter)
+
+            # Check if shape is roughly square or circular
+            if circularity > 0.30:  # Adjust this threshold as needed
+                # Find the center of the contour
+                M = cv2.moments(contour)
+                if M["m00"] != 0:
+                    cX = int(M["m10"] / M["m00"])
+                    cY = int(M["m01"] / M["m00"])
+                    
+                    # Draw a red X at the center
+                    cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
+                                   cv2.MARKER_TILTED_CROSS, thickness=thickness)
+                    # print(cX)
+                    x_coords.append(cX)
+                    y_coords.append(cY)
+                    # print(x_coords)
+    return x_coords,y_coords,result_image
+
+def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=160, param1 =50, param2 =28):
+    """Detect circles in the image and draw grid, yellow areas, and counts."""
+    circles = cv2.HoughCircles(
+        gray_image,
+        cv2.HOUGH_GRADIENT,
+        dp=0.9, #higher for stricter
+        minDist=200, #distance between circles
+        param1 = param1,
+        param2 = param2, #The smaller it is, the more false circles may be detected
+        minRadius=min_radius,
+        maxRadius=max_radius
+    )
+    counts = np.zeros((8, 12))
+
+    if circles is None:
+        print("No circles detected")
+        return None, None
+    elif( len(circles[0]) <8):
+        print("would do blobs")
+        x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
+        marked_image = result_image
+    elif circles is not None:
+        circles = np.round(circles[0, :]).astype(int)
+        #marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+       # height, width = gray_image.shape
+
+        x_coords = circles[:, 0]
+        y_coords = circles[:, 1]
+        marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    height, width = gray_image.shape
+    try:
+        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, debug=False)
+
+        # Detect multi-block areas first
+        colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
+        
+        # Combine the colored_image (with yellow areas) and the marked_image
+        marked_image = colored_image
+
+        # Draw grid lines
+        for i in range(13):
+            x = int(grid_start_x + i * cell_size)
+            cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+        
+        for i in range(9):
+            y = int(grid_start_y + i * cell_size)
+            cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+
+        # Quantify grid and draw counts
+        counts = np.zeros((8, 12), dtype=int)
+        for row in range(8):
+            for col in range(12):
+                x1 = int(grid_start_x + col * cell_size)
+                y1 = int(grid_start_y + row * cell_size)
+                x2 = int(x1 + cell_size)
+                y2 = int(y1 + cell_size)
+                
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(width, x2), min(height, y2)
+                
+                cell = binary_image[y1:y2, x1:x2]
+                cell_mask = multi_block_mask[y1:y2, x1:x2]
+                
+                # Count white pixels only in areas not marked as multi-block
+                white_pixels = np.sum((cell == 255) & (cell_mask == 0))
+                counts[row, col] = white_pixels
+                
+                text_x = int(x1 + cell_size / 2)
+                text_y = int(y1 + cell_size / 2)
+                
+                cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
+
+        # Draw circles last to ensure they're visible
+        for (x, y, r) in circles:
+            cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
+            cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
+
+    except ValueError:
+        print("Not enough valid clusters found to calculate grid. Circles will be detected without drawing a grid.")
+        # Draw circles if grid calculation fails
+        if len(circles[0]) >7:
+            for (x, y, r) in circles:
+                cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
+                cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
+
+    return counts, marked_image
+
+# d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
+# 88  `8D   `88'   888o  88 d8' `8b 88  `8D   `88'   YP  d8' 88'     
+# 88oooY'    88    88V8o 88 88ooo88 88oobY'    88       d8'  88ooooo 
+# 88~~~b.    88    88 V8o88 88~~~88 88`8b      88      d8'   88~~~~~ 
+# 88   8D   .88.   88  V888 88   88 88 `88.   .88.    d8' db 88.     
+# Y8888P' Y888888P VP   V8P YP   YP 88   YD Y888888P d88888P Y88888P 
 
 def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False):
     """Stretch image intensity and convert to grayscale.
@@ -199,6 +286,15 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
         cv2.imshow('final_binary', resize_for_display(final_binary))
 
     return binary_image, contour_img, final_binary,block_size
+
+
+
+# d888b  d8888b. d888888b d8888b. 
+# 88' Y8b 88  `8D   `88'   88  `8D 
+# 88      88oobY'    88    88   88 
+# 88  ooo 88`8b      88    88   88 
+# 88. ~8~ 88 `88.   .88.   88  .8D 
+#  Y888P  88   YD Y888888P Y8888D' 
 def calculate_grid(x_coords, y_coords, width, height, debug=False):
     """Calculate grid parameters based on detected circle coordinates."""
     
@@ -282,93 +378,6 @@ def calculate_grid(x_coords, y_coords, width, height, debug=False):
         plt.show()
     
     return grid_start_x, grid_start_y, cell_size, slant_angle
-def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=160, param1 =50, param2 =28):
-    """Detect circles in the image and draw grid, yellow areas, and counts."""
-    circles = cv2.HoughCircles(
-        gray_image,
-        cv2.HOUGH_GRADIENT,
-        dp=0.9, #higher for stricter
-        minDist=200, #distance between circles
-        param1 = param1,
-        param2 = param2, #The smaller it is, the more false circles may be detected
-        minRadius=min_radius,
-        maxRadius=max_radius
-    )
-    counts = np.zeros((8, 12))
-
-    if circles is None:
-        print("No circles detected")
-        return None, None
-    elif( len(circles[0]) <8):
-        print("would do blobs")
-        x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
-        marked_image = result_image
-    elif circles is not None:
-        circles = np.round(circles[0, :]).astype(int)
-        #marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-       # height, width = gray_image.shape
-
-        x_coords = circles[:, 0]
-        y_coords = circles[:, 1]
-        marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    height, width = gray_image.shape
-    try:
-        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, debug=True)
-
-        # Detect multi-block areas first
-        colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-        
-        # Combine the colored_image (with yellow areas) and the marked_image
-        marked_image = colored_image
-
-        # Draw grid lines
-        for i in range(13):
-            x = int(grid_start_x + i * cell_size)
-            cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
-        
-        for i in range(9):
-            y = int(grid_start_y + i * cell_size)
-            cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
-
-        # Quantify grid and draw counts
-        counts = np.zeros((8, 12), dtype=int)
-        for row in range(8):
-            for col in range(12):
-                x1 = int(grid_start_x + col * cell_size)
-                y1 = int(grid_start_y + row * cell_size)
-                x2 = int(x1 + cell_size)
-                y2 = int(y1 + cell_size)
-                
-                x1, y1 = max(0, x1), max(0, y1)
-                x2, y2 = min(width, x2), min(height, y2)
-                
-                cell = binary_image[y1:y2, x1:x2]
-                cell_mask = multi_block_mask[y1:y2, x1:x2]
-                
-                # Count white pixels only in areas not marked as multi-block
-                white_pixels = np.sum((cell == 255) & (cell_mask == 0))
-                counts[row, col] = white_pixels
-                
-                text_x = int(x1 + cell_size / 2)
-                text_y = int(y1 + cell_size / 2)
-                
-                cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
-
-        # Draw circles last to ensure they're visible
-        for (x, y, r) in circles:
-            cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
-            cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-
-    except ValueError:
-        print("Not enough valid clusters found to calculate grid. Circles will be detected without drawing a grid.")
-        # Draw circles if grid calculation fails
-        if len(circles[0]) >7:
-            for (x, y, r) in circles:
-                cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
-                cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-
-    return counts, marked_image
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
@@ -456,31 +465,26 @@ def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size
             cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
    
     return colored_image, multi_block_mask
-def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask):
-    """Combine black and white masks into a single colored image."""
-    # Convert black and white masks to color (BGR)
-    circles_mask_color = cv2.cvtColor(circles_mask, cv2.COLOR_GRAY2BGR)
-    gridlines_mask_color = cv2.cvtColor(gridlines_mask, cv2.COLOR_GRAY2BGR)
-    yellow_areas_mask_color = cv2.cvtColor(yellow_areas_mask, cv2.COLOR_GRAY2BGR)
-    counts_mask_color = cv2.cvtColor(counts_mask, cv2.COLOR_GRAY2BGR)
-    
-    # Set colors
-    circles_mask_color[:, :] = [0, 255, 0]  # Green for circles
-    gridlines_mask_color[:, :] = [255, 0, 0]  # Red for gridlines
-    yellow_areas_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
-
-    # Initialize the combined mask
-    combined_mask = np.zeros_like(circles_mask_color)
-
-    # Combine masks
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, circles_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, gridlines_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, yellow_areas_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, counts_mask_color, 1.0, 0)
-
-    return combined_mask
 
 
+# d8888b. d88888b d8888b. .d8888. d8888b. d88888b  .o88b. d888888b d888888b db    db d88888b 
+# 88  `8D 88'     88  `8D 88'  YP 88  `8D 88'     d8P  Y8 `~~88~~'   `88'   88    88 88'     
+# 88oodD' 88ooooo 88oobY' `8bo.   88oodD' 88ooooo 8P         88       88    Y8    8P 88ooooo 
+# 88~~~   88~~~~~ 88`8b     `Y8b. 88~~~   88~~~~~ 8b         88       88    `8b  d8' 88~~~~~ 
+# 88      88.     88 `88. db   8D 88      88.     Y8b  d8    88      .88.    `8bd8'  88.     
+# 88      Y88888P 88   YD `8888Y' 88      Y88888P  `Y88P'    YP    Y888888P    YP    Y88888P
+
+
+
+
+
+
+#  d888b  d8888b.  .d8b.  d8888b. db   db 
+# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 
+# 88      88oobY' 88ooo88 88oodD' 88ooo88 
+# 88  ooo 88`8b   88~~~88 88~~~   88~~~88 
+# 88. ~8~ 88 `88. 88   88 88      88   88 
+#  Y888P  88   YD YP   YP 88      YP   YP 
 
 def process_2d_array(array_2d):
   """
@@ -524,32 +528,39 @@ def plotScatter(counts):
 
 
 
+# d888888b d88888b .d8888. d888888b d888888b d8b   db  d888b  
+# `~~88~~' 88'     88'  YP `~~88~~'   `88'   888o  88 88' Y8b 
+#    88    88ooooo `8bo.      88       88    88V8o 88 88      
+#    88    88~~~~~   `Y8b.    88       88    88 V8o88 88  ooo 
+#    88    88.     db   8D    88      .88.   88  V888 88. ~8~ 
+#    YP    Y88888P `8888Y'    YP    Y888888P VP   V8P  Y888P  
 
-image_steps = []
-print("Starting Analysis")
-for i in range(7):
-    path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/"
-    image_path = path + str(i) + ".jpg"
-    original_image = cv2.imread(image_path)
 
-    stretched, blurred, gray_image = stretch_and_gray(original_image, 90, 150)
-    binary_image, contour_img, final_binary, block_size = binarize(gray_image, original_image)
-    result_grid, marked_image = detect_and_draw_circles(final_binary, gray_image)
+# image_steps = []
+# print("Starting Analysis")
+# for i in range(7):
+#     path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/"
+#     image_path = path + str(i) + ".jpg"
+#     original_image = cv2.imread(image_path)
+
+#     stretched, blurred, gray_image = stretch_and_gray(original_image, 90, 150)
+#     binary_image, contour_img, final_binary, block_size = binarize(gray_image, original_image)
+#     result_grid, marked_image = detect_and_draw_circles(final_binary, gray_image)
     
-    # image_steps.append({
-    #     "Original Image": original_image,
-    #     # "Stretched Image": stretched,
-    #     # "Blurred Image": blurred,
-    #     # "Grayscale Image": gray_image,
-    #     #"Binary Image": binary_image,
-    #     "Contour Image": contour_img,
-    #     "Final Binary Image": final_binary,
-    #     "Marked Image with All Elements": marked_image
-    # })
-    cv2.imshow("marked", resize_for_display(marked_image))
-    cv2.waitKey(0)
+#     # image_steps.append({
+#     #     "Original Image": original_image,
+#     #     # "Stretched Image": stretched,
+#     #     # "Blurred Image": blurred,
+#     #     # "Grayscale Image": gray_image,
+#     #     #"Binary Image": binary_image,
+#     #     "Contour Image": contour_img,
+#     #     "Final Binary Image": final_binary,
+#     #     "Marked Image with All Elements": marked_image
+#     # })
+#     cv2.imshow("marked", resize_for_display(marked_image))
+#     cv2.waitKey(0)
 
-    print(f"Completed image {i}")
+#     print(f"Completed image {i}")
 
 # Save images to PDF
 # pdf_output_path = os.path.join(path, "FullDataSetSkewVaiableThreshold.pdf")
