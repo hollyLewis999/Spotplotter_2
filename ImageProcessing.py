@@ -485,25 +485,56 @@ def detect_lines(image):
 
 def draw_lines_and_measure(image, vertical_lines):
     marked_image = image.copy()
-    if vertical_lines is not None:
+    if vertical_lines is not None and len(vertical_lines) >= 2:
+        # Sort lines from left to right
+        vertical_lines.sort(key=lambda line: line[0])
+        
+        # Draw all lines
         for i, line in enumerate(vertical_lines):
             x1, y1, x2, y2 = line
-            color = (0, 255, 0) if i in [1, 2] else (0, 0, 255)  # Green for inner lines, Red for outer
+            color = (0, 0, 255)  # Red for all lines
             cv2.line(marked_image, (x1, y1), (x2, y2), color, 2)
-    
-    # Measure distance between inner vertical lines
-    if len(vertical_lines) >= 4:
-        left_inner = vertical_lines[1]
-        right_inner = vertical_lines[2]
+        
+        # Identify innermost lines
+        left_inner = vertical_lines[0]
+        right_inner = vertical_lines[-1]
+        
+        for line in vertical_lines[1:]:
+            if line[0] > left_inner[0]:
+                left_inner = line
+                break
+        
+        for line in vertical_lines[-2::-1]:
+            if line[0] < right_inner[0]:
+                right_inner = line
+                break
+        
+        # Measure distance between innermost vertical lines
         distance = abs(left_inner[0] - right_inner[0])  # Using x-coordinate of the start point
         
         # Draw measurement line
         mid_y = image.shape[0] // 2
-        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 2)
-        cv2.putText(marked_image, f"{distance} pixels", 
-                    (left_inner[0] + 10, mid_y - 10), 
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 3)
+        
+        # Draw innermost lines in green
+        cv2.line(marked_image, (left_inner[0], left_inner[1]), (left_inner[2], left_inner[3]), (0, 255, 0), 3)
+        cv2.line(marked_image, (right_inner[0], right_inner[1]), (right_inner[2], right_inner[3]), (0, 255, 0), 3)
+        
+        # Add measurement text
+        text = f"{distance} pixels"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.5
+        font_thickness = 3
+        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+        
+        text_x = left_inner[0] + (right_inner[0] - left_inner[0]) // 2 - text_size[0] // 2
+        text_y = mid_y - 20
+        
+        cv2.putText(marked_image, text,
+                    (text_x, text_y),
+                    font, font_scale, (255, 255, 0), font_thickness)
     
+    cv2.imshow("MeasurementDebug", resize_for_display(marked_image))
     return marked_image
 
 
@@ -525,21 +556,16 @@ def classify_lines(lines, image_shape):
     return vertical_lines
 
 
-def draw_debug_lines(image, vertical_lines, horizontal_lines):
+def draw_debug_lines(image, vertical_lines):
     debug_image = image.copy()
     for line in vertical_lines:
         x1, y1, x2, y2 = line
         cv2.line(debug_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green for vertical
-    for line in horizontal_lines:
-        x1, y1, x2, y2 = line
-        cv2.line(debug_image, (x1, y1), (x2, y2), (255, 0, 0), 2)  # Blue for horizontal
     
-    cv2.imwrite("debug_lines.png", resize_for_display(debug_image))
-    cv2.imshow("Detected Lines", resize_for_display(debug_image))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-
-
+    # cv2.imwrite("debug_lines.png", resize_for_display(debug_image))
+    # cv2.imshow("Detected Lines", resize_for_display(debug_image))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 def correct_perspective(image, vertical_lines):
     h, w = image.shape[:2]
     
@@ -585,23 +611,25 @@ def correct_perspective(image, vertical_lines):
     result = cv2.warpPerspective(image, matrix, (w, h))
     
     return result
-def draw_debug_perspective(image, src_pts, dst_pts):
-    debug_image = image.copy()
+
+# def draw_debug_perspective(image, src_pts, dst_pts):
+#     debug_image = image.copy()
     
-    # Draw source points
-    for pt in src_pts:
-        cv2.circle(debug_image, tuple(pt.astype(int)), 5, (0, 0, 255), -1)
+#     # Draw source points
+#     for pt in src_pts:
+#         cv2.circle(debug_image, tuple(pt.astype(int)), 5, (0, 0, 255), -1)
     
-    # Draw lines connecting source points
-    cv2.line(debug_image, tuple(src_pts[0].astype(int)), tuple(src_pts[1].astype(int)), (0, 255, 0), 2)
-    cv2.line(debug_image, tuple(src_pts[1].astype(int)), tuple(src_pts[2].astype(int)), (0, 255, 0), 2)
-    cv2.line(debug_image, tuple(src_pts[2].astype(int)), tuple(src_pts[3].astype(int)), (0, 255, 0), 2)
-    cv2.line(debug_image, tuple(src_pts[3].astype(int)), tuple(src_pts[0].astype(int)), (0, 255, 0), 2)
+#     # Draw lines connecting source points 
+#     cv2.line(debug_image, tuple(src_pts[0].astype(int)), tuple(src_pts[1].astype(int)), (0, 255, 0), 2)
+#     cv2.line(debug_image, tuple(src_pts[1].astype(int)), tuple(src_pts[2].astype(int)), (0, 255, 0), 2)
+#     cv2.line(debug_image, tuple(src_pts[2].astype(int)), tuple(src_pts[3].astype(int)), (0, 255, 0), 2)
+#     cv2.line(debug_image, tuple(src_pts[3].astype(int)), tuple(src_pts[0].astype(int)), (0, 255, 0), 2)
     
-    cv2.imwrite("debug_perspective.png", resize_for_display(debug_image))
-    cv2.imshow("Perspective Correction", resize_for_display(debug_image))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+#     # cv2.imwrite("debug_perspective.png", resize_for_display(debug_image))
+#     # cv2.imshow("Perspective Correction", resize_for_display(debug_image))
+#     # cv2.waitKey(0)
+#     # cv2.destroyAllWindows()
+
 
 def correct_perspective_pipeline(original_image):
     # Process the binarized image
@@ -610,18 +638,58 @@ def correct_perspective_pipeline(original_image):
         print("No lines detected in the binarized image.")
         return original_image
     
-    vertical_lines, horizontal_lines = classify_lines(lines, original_image.shape)
+    vertical_lines = classify_lines(lines, original_image.shape)
     
     # Draw debug lines
-    draw_debug_lines(original_image, vertical_lines, horizontal_lines)
+    draw_debug_lines(original_image, vertical_lines)
     
-    if len(vertical_lines) < 2 or len(horizontal_lines) < 2:
-        print("Not enough lines detected for perspective correction.")
-        return original_image
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
+        return
     
-    corrected_original_image = correct_perspective(original_image, vertical_lines, horizontal_lines)
+    # Debug: Draw detected lines
+    debug_image = original_image.copy()
+    for line in vertical_lines:
+        x1, y1, x2, y2 = line
+        cv2.line(debug_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    # cv2.imshow('Detected Vertical Lines', resize_for_display(debug_image))
+    # cv2.waitKey(0)
+    
+    # Debug: Show perspective correction points
+    h, w = original_image.shape[:2]
+    left_line = vertical_lines[0]
+    right_line = vertical_lines[-1]
+    left_shift = int(h * np.tan(np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])))
+    right_shift = int(h * np.tan(np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])))
+    src_pts = np.float32([
+        [left_line[0] + left_shift, 0],
+        [right_line[0] + right_shift, 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    dst_pts = np.float32([
+        [left_line[2], 0],
+        [right_line[2], 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    #draw_debug_perspective(original_image, src_pts, dst_pts)
+    
+    corrected_image = correct_perspective(original_image, vertical_lines)
+    
+    # # Detect lines again on the corrected image
+    # corrected_lines = detect_lines(corrected_image)
+    # corrected_vertical_lines = classify_lines(corrected_lines, corrected_image.shape)
+    
+    marked_image = draw_lines_and_measure(corrected_image, vertical_lines)
+    
+    # cv2.imshow('Original Image', resize_for_display(image))
+    # cv2.imshow('Corrected Image with Measurements', resize_for_display(marked_image))
+    
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
-    return corrected_original_image
+    return corrected_image
 
 
 #  d888b  d8888b.  .d8b.  d8888b. db   db 

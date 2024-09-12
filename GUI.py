@@ -531,24 +531,19 @@ def upload_image(window):
     if file_path:
         window.image_path = file_path
         window.original_image = cv2.imread(window.image_path)
-        
-        # Debug: Save original image
-        cv2.imwrite("debug_original.png", window.original_image)
-        
+       
         # Apply perspective correction
         window.original_image = correct_perspective_pipeline(window.original_image)
-        
-        # Debug: Save corrected image
-        cv2.imwrite("debug_corrected.png", window.original_image)
-        
+
         stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
-        window.gray_image = gray_image  # Store the original grayscale image
-       
+        window.gray_image = gray_image
+        # Binarize the image (you may need to adjust this function call based on your binarize function)
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
+        
         window.contour_img = contour_img
-        # Store the binarized image as a NumPy array
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        
         # Initialize history with the binarized image
         window.history = [window.binarized_image.copy()]
         window.redo_stack = []
