@@ -79,19 +79,20 @@ def resize_for_display(image, max_width=1280, max_height=720):
         return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
     return image
 
-def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask):
+def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask, lines_mask):
     """Combine black and white masks into a single colored image."""
     # Convert black and white masks to color (BGR)
     circles_mask_color = cv2.cvtColor(circles_mask, cv2.COLOR_GRAY2BGR)
     gridlines_mask_color = cv2.cvtColor(gridlines_mask, cv2.COLOR_GRAY2BGR)
     yellow_areas_mask_color = cv2.cvtColor(yellow_areas_mask, cv2.COLOR_GRAY2BGR)
     counts_mask_color = cv2.cvtColor(counts_mask, cv2.COLOR_GRAY2BGR)
+    lines_mask_color = cv2.cvtColor(lines_mask, cv2.COLOR_GRAY2BGR)
     
     # Set colors
     circles_mask_color[:, :] = [0, 255, 0]  # Green for circles
     gridlines_mask_color[:, :] = [255, 0, 0]  # Red for gridlines
     yellow_areas_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
-
+    line_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
     # Initialize the combined mask
     combined_mask = np.zeros_like(circles_mask_color)
 
@@ -100,7 +101,7 @@ def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask):
     combined_mask = cv2.addWeighted(combined_mask, 1.0, gridlines_mask_color, 1.0, 0)
     combined_mask = cv2.addWeighted(combined_mask, 1.0, yellow_areas_mask_color, 1.0, 0)
     combined_mask = cv2.addWeighted(combined_mask, 1.0, counts_mask_color, 1.0, 0)
-
+    combined_mask = cv2.addWeighted(combined_mask, 1.0, line_mask_color, 1.0, 0)
     return combined_mask
 
 
@@ -459,10 +460,11 @@ def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size
         area_inside_primary = np.sum((contour_mask > 0) & (cell_mask > 0))
         
         # Check if at least 20% of the contour is outside the primary cell
-        if area_inside_primary / contour_area <= 0.8:
-            # Color the area yellow
-            cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
-            cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
+        if contour_area >0:
+            if area_inside_primary / contour_area <= 0.8:
+                # Color the area yellow
+                cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
+                cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
    
     return colored_image, multi_block_mask
 
@@ -474,8 +476,114 @@ def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size
 # 88      88.     88 `88. db   8D 88      88.     Y8b  d8    88      .88.    `8bd8'  88.     
 # 88      Y88888P 88   YD `8888Y' 88      Y88888P  `Y88P'    YP    Y888888P    YP    Y88888P
 
+def detect_lines(image):
+    stretched, blurred, gray_image = stretch_and_gray(image, 90, 150)
+    binary_image, contour_img, final_binary, block_size = binarize(gray_image, image)
+    gray_image = (binary_image * 255).astype(np.uint8) 
+    lines = cv2.HoughLinesP(gray_image, 1, np.pi/180, threshold=50, minLineLength=1000, maxLineGap=10)
+    return lines
 
+def draw_lines_and_measure(image, vertical_lines):
+    marked_image = image.copy()
+    if vertical_lines is not None:
+        for i, line in enumerate(vertical_lines):
+            x1, y1, x2, y2 = line
+            color = (0, 255, 0) if i in [1, 2] else (0, 0, 255)  # Green for inner lines, Red for outer
+            cv2.line(marked_image, (x1, y1), (x2, y2), color, 2)
+    
+    # Measure distance between inner vertical lines
+    if len(vertical_lines) >= 4:
+        left_inner = vertical_lines[1]
+        right_inner = vertical_lines[2]
+        distance = abs(left_inner[0] - right_inner[0])  # Using x-coordinate of the start point
+        
+        # Draw measurement line
+        mid_y = image.shape[0] // 2
+        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 2)
+        cv2.putText(marked_image, f"{distance} pixels", 
+                    (left_inner[0] + 10, mid_y - 10), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+    
+    return marked_image
+def classify_lines(lines, image_shape):
+    vertical_lines = []
+    if lines is not None:
+        for line in lines:
+            x1, y1, x2, y2 = line[0]
+            angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
+            length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
+            
+            if abs(angle) > 80:  # More strict angle for vertical lines
+                if length > image_shape[0] * 0.5:  # Longer lines
+                    vertical_lines.append((x1, y1, x2, y2))
+    
+    # Sort vertical lines from left to right
+    vertical_lines.sort(key=lambda line: min(line[0], line[2]))
+    
+    return vertical_lines
 
+def correct_perspective(image, vertical_lines):
+    h, w = image.shape[:2]
+    
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
+        return image
+    
+    # Use the leftmost and rightmost vertical lines for perspective correction
+    left_line = vertical_lines[0]
+    right_line = vertical_lines[-1]
+    
+    # Calculate the angles of the lines
+    left_angle = np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])
+    right_angle = np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])
+    
+    # Calculate the average angle to determine the tilt
+    avg_angle = (left_angle + right_angle) / 2
+    
+    # Calculate the shift at the top of the image
+    left_shift = int(h * np.tan(avg_angle))
+    right_shift = int(h * np.tan(avg_angle))
+    
+    # Define source points (top-left, top-right, bottom-right, bottom-left)
+    src_pts = np.float32([
+        [left_line[0] + left_shift, 0],
+        [right_line[0] + right_shift, 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    
+    # Define destination points
+    dst_pts = np.float32([
+        [left_line[2], 0],
+        [right_line[2], 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    
+    # Get the perspective transform matrix
+    matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
+    
+    # Apply the perspective transform
+    result = cv2.warpPerspective(image, matrix, (w, h))
+    
+    return result
+
+def correct_perspective_pipeline(original_image):
+    # Process the binarized image
+    lines = detect_lines(original_image)
+    if lines is None:
+        print("No lines detected in the binarized image.")
+        return original_image
+    
+    vertical_lines = classify_lines(lines, original_image.shape)
+    
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
+        return original_image
+    
+    corrected_original_image = correct_perspective(original_image, vertical_lines)
+
+    return corrected_original_image
 
 
 
@@ -536,16 +644,47 @@ def plotScatter(counts):
 #    YP    Y88888P `8888Y'    YP    Y888888P VP   V8P  Y888P  
 
 
+# #testing Prespective
+
+# path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/GroundTruth.png"
+# original_image = cv2.imread(path)
+# binary_image = cv2.threshold(original_image, 127, 255, cv2.THRESH_BINARY) 
+# origional_perspective,gray_image_perspective, binary_perspective,marked_image_1 = correct_perspective_pipeline(original_image,binary_image, binary_image)
+# result_grid, marked_image = detect_and_draw_circles(binary_perspective, gray_image_perspective)
+
+# # image_steps.append({
+# #     "Original Image": original_image,
+# #     # "Stretched Image": stretched,
+# #     # "Blurred Image": blurred,
+# #     # "Grayscale Image": gray_image,
+# #     #"Binary Image": binary_image,
+# #     "Contour Image": contour_img,
+# #     "Final Binary Image": final_binary,
+# #     "Marked Image with All Elements": marked_image
+# # })
+# cv2.imshow("original_image", resize_for_display(original_image))
+# cv2.imshow("origional_perspective", resize_for_display(origional_perspective))
+# cv2.imshow("binary_perspective", resize_for_display(binary_perspective ))
+# cv2.imshow("marked_image_1", resize_for_display(marked_image_1))
+# cv2.waitKey(0)
+# cv2.destroyAllWindows()
+# print(f"Completed image {i}")
+
+
+
+
+
 # image_steps = []
 # print("Starting Analysis")
 # for i in range(7):
 #     path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/"
 #     image_path = path + str(i) + ".jpg"
 #     original_image = cv2.imread(image_path)
-
-#     stretched, blurred, gray_image = stretch_and_gray(original_image, 90, 150)
-#     binary_image, contour_img, final_binary, block_size = binarize(gray_image, original_image)
-#     result_grid, marked_image = detect_and_draw_circles(final_binary, gray_image)
+#     origional_perspective= correct_perspective_pipeline(original_image)
+#     stretched, blurred, gray_image = stretch_and_gray(origional_perspective, 90, 150)
+#     binary_image, contour_img, final_binary, block_size = binarize(gray_image, origional_perspective)
+    
+#     result_grid, marked_image = detect_and_draw_circles(binary, gray_image)
     
 #     # image_steps.append({
 #     #     "Original Image": original_image,
@@ -557,9 +696,12 @@ def plotScatter(counts):
 #     #     "Final Binary Image": final_binary,
 #     #     "Marked Image with All Elements": marked_image
 #     # })
-#     cv2.imshow("marked", resize_for_display(marked_image))
+#     cv2.imshow("original_image", resize_for_display(original_image))
+#     cv2.imshow("origional_perspective", resize_for_display(origional_perspective))
+#     cv2.imshow("binary_perspective", resize_for_display(binary))
+#     cv2.imshow("marked_image_1", resize_for_display(marked_image_1))
 #     cv2.waitKey(0)
-
+#     cv2.destroyAllWindows()
 #     print(f"Completed image {i}")
 
 # Save images to PDF

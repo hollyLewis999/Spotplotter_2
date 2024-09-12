@@ -1,14 +1,8 @@
 import cv2
 import numpy as np
-from AAVariableThreshold import *
+from ImageProcessing import *
 
-def resize_for_display(image, max_width=1280, max_height=720):
-    h, w = image.shape[:2]
-    if h > max_height or w > max_width:
-        scale = min(max_height/h, max_width/w)
-        new_size = (int(w*scale), int(h*scale))
-        return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
-    return image
+
 
 def detect_lines(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

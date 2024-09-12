@@ -531,7 +531,7 @@ def upload_image(window):
     if file_path:
         window.image_path = file_path
         window.original_image = cv2.imread(window.image_path)
-
+        window.original_image= correct_perspective_pipeline(window.original_image)
         stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
         window.gray_image = gray_image  # Store the original grayscale image
         
