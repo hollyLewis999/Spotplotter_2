@@ -2,8 +2,6 @@ import cv2
 import numpy as np
 from ImageProcessing import *
 
-
-
 def detect_lines(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     lines = cv2.HoughLinesP(gray, 1, np.pi/180, threshold=50, minLineLength=1000, maxLineGap=10)
@@ -25,6 +23,7 @@ def classify_lines(lines, image_shape):
     vertical_lines.sort(key=lambda line: min(line[0], line[2]))
     
     return vertical_lines
+
 def correct_perspective(image, vertical_lines):
     h, w = image.shape[:2]
     
@@ -94,6 +93,23 @@ def draw_lines_and_measure(image, vertical_lines):
     
     return marked_image
 
+def draw_debug_perspective(image, src_pts, dst_pts):
+    debug_image = image.copy()
+    
+    # Draw source points
+    for pt in src_pts:
+        cv2.circle(debug_image, tuple(pt.astype(int)), 5, (0, 0, 255), -1)
+    
+    # Draw lines connecting source points
+    cv2.line(debug_image, tuple(src_pts[0].astype(int)), tuple(src_pts[1].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[1].astype(int)), tuple(src_pts[2].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[2].astype(int)), tuple(src_pts[3].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[3].astype(int)), tuple(src_pts[0].astype(int)), (0, 255, 0), 2)
+    
+    cv2.imwrite("debug_perspective.png", resize_for_display(debug_image))
+    cv2.imshow("Perspective Correction", resize_for_display(debug_image))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def process_image(image_path):
     image = cv2.imread(image_path)
@@ -112,6 +128,34 @@ def process_image(image_path):
         print("Not enough vertical lines detected for perspective correction.")
         return
     
+    # Debug: Draw detected lines
+    debug_image = image.copy()
+    for line in vertical_lines:
+        x1, y1, x2, y2 = line
+        cv2.line(debug_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+    cv2.imshow('Detected Vertical Lines', resize_for_display(debug_image))
+    cv2.waitKey(0)
+    
+    # Debug: Show perspective correction points
+    h, w = image.shape[:2]
+    left_line = vertical_lines[0]
+    right_line = vertical_lines[-1]
+    left_shift = int(h * np.tan(np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])))
+    right_shift = int(h * np.tan(np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])))
+    src_pts = np.float32([
+        [left_line[0] + left_shift, 0],
+        [right_line[0] + right_shift, 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    dst_pts = np.float32([
+        [left_line[2], 0],
+        [right_line[2], 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
+    ])
+    draw_debug_perspective(image, src_pts, dst_pts)
+    
     corrected_image = correct_perspective(image, vertical_lines)
     
     # Detect lines again on the corrected image
@@ -125,7 +169,6 @@ def process_image(image_path):
     
     cv2.waitKey(0)
     cv2.destroyAllWindows()
-
 
 # Usage
 image_path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/low_contrast_contours_filled.png"

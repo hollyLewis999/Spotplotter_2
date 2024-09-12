@@ -535,6 +535,7 @@ def upload_image(window):
         # Debug: Save original image
         cv2.imwrite("debug_original.png", window.original_image)
         
+        # Apply perspective correction
         window.original_image = correct_perspective_pipeline(window.original_image)
         
         # Debug: Save corrected image

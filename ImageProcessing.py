@@ -480,7 +480,7 @@ def detect_lines(image):
     stretched, blurred, gray_image = stretch_and_gray(image, 90, 150)
     binary_image, contour_img, final_binary, block_size = binarize(gray_image, image)
     gray_image = (binary_image * 255).astype(np.uint8) 
-    lines = cv2.HoughLinesP(gray_image, 1, np.pi/180, threshold=30, minLineLength=500, maxLineGap=20)
+    lines = cv2.HoughLinesP(gray_image, 1, np.pi/180, threshold=30, minLineLength=800, maxLineGap=20)
     return lines
 
 def draw_lines_and_measure(image, vertical_lines):
@@ -505,28 +505,25 @@ def draw_lines_and_measure(image, vertical_lines):
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
     
     return marked_image
+
+
 def classify_lines(lines, image_shape):
     vertical_lines = []
-    horizontal_lines = []
     if lines is not None:
         for line in lines:
             x1, y1, x2, y2 = line[0]
             angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
             length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
             
-            if abs(angle) > 45:  # More lenient angle for vertical lines
-                if length > image_shape[0] * 0.3:  # Longer lines
+            if abs(angle) > 80:  # More strict angle for vertical lines
+                if length > image_shape[0] * 0.5:  # Longer lines
                     vertical_lines.append((x1, y1, x2, y2))
-            elif abs(angle) < 45:  # Horizontal lines
-                if length > image_shape[1] * 0.3:  # Longer lines
-                    horizontal_lines.append((x1, y1, x2, y2))
     
     # Sort vertical lines from left to right
     vertical_lines.sort(key=lambda line: min(line[0], line[2]))
-    # Sort horizontal lines from top to bottom
-    horizontal_lines.sort(key=lambda line: min(line[1], line[3]))
     
-    return vertical_lines, horizontal_lines
+    return vertical_lines
+
 
 def draw_debug_lines(image, vertical_lines, horizontal_lines):
     debug_image = image.copy()
@@ -542,35 +539,43 @@ def draw_debug_lines(image, vertical_lines, horizontal_lines):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def correct_perspective(image, vertical_lines, horizontal_lines):
+
+def correct_perspective(image, vertical_lines):
     h, w = image.shape[:2]
     
-    if len(vertical_lines) < 2 or len(horizontal_lines) < 2:
-        print("Not enough lines detected for perspective correction.")
+    if len(vertical_lines) < 2:
+        print("Not enough vertical lines detected for perspective correction.")
         return image
     
-    # Use the leftmost and rightmost vertical lines
+    # Use the leftmost and rightmost vertical lines for perspective correction
     left_line = vertical_lines[0]
     right_line = vertical_lines[-1]
     
-    # Use the topmost and bottommost horizontal lines
-    top_line = horizontal_lines[0]
-    bottom_line = horizontal_lines[-1]
+    # Calculate the angles of the lines
+    left_angle = np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])
+    right_angle = np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])
+    
+    # Calculate the average angle to determine the tilt
+    avg_angle = (left_angle + right_angle) / 2
+    
+    # Calculate the shift at the top of the image
+    left_shift = int(h * np.tan(avg_angle))
+    right_shift = int(h * np.tan(avg_angle))
     
     # Define source points (top-left, top-right, bottom-right, bottom-left)
     src_pts = np.float32([
-        [left_line[0], top_line[1]],
-        [right_line[0], top_line[1]],
-        [right_line[2], bottom_line[3]],
-        [left_line[2], bottom_line[3]]
+        [left_line[0] + left_shift, 0],
+        [right_line[0] + right_shift, 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
     ])
     
     # Define destination points
     dst_pts = np.float32([
-        [0, 0],
-        [w - 1, 0],
-        [w - 1, h - 1],
-        [0, h - 1]
+        [left_line[2], 0],
+        [right_line[2], 0],
+        [right_line[2], h - 1],
+        [left_line[2], h - 1]
     ])
     
     # Get the perspective transform matrix
@@ -580,6 +585,23 @@ def correct_perspective(image, vertical_lines, horizontal_lines):
     result = cv2.warpPerspective(image, matrix, (w, h))
     
     return result
+def draw_debug_perspective(image, src_pts, dst_pts):
+    debug_image = image.copy()
+    
+    # Draw source points
+    for pt in src_pts:
+        cv2.circle(debug_image, tuple(pt.astype(int)), 5, (0, 0, 255), -1)
+    
+    # Draw lines connecting source points
+    cv2.line(debug_image, tuple(src_pts[0].astype(int)), tuple(src_pts[1].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[1].astype(int)), tuple(src_pts[2].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[2].astype(int)), tuple(src_pts[3].astype(int)), (0, 255, 0), 2)
+    cv2.line(debug_image, tuple(src_pts[3].astype(int)), tuple(src_pts[0].astype(int)), (0, 255, 0), 2)
+    
+    cv2.imwrite("debug_perspective.png", resize_for_display(debug_image))
+    cv2.imshow("Perspective Correction", resize_for_display(debug_image))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
 def correct_perspective_pipeline(original_image):
     # Process the binarized image
