@@ -579,7 +579,7 @@ def draw_lines_and_measure(image, vertical_lines):
         text_x = left_inner[0] + (right_inner[0] - left_inner[0]) // 2 - text_size[0] // 2
         text_y = mid_y - 20
         cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 255, 0), font_thickness)
-        cv2.imshow("marked_image", resize_for_display(marked_image))
+        #cv2.imshow("marked_image", resize_for_display(marked_image))
     #return marked_image
 
 def correct_perspective_pipeline(original_image):

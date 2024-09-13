@@ -4,6 +4,7 @@
 
 
 from pathlib import Path
+import os
 
 # from tkinter import *
 # Explicit imports to satisfy Flake8
@@ -29,7 +30,44 @@ ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\
 ##    ## ##    ##  ##       ##     ##    ##    ##          ##    ## ##    ## ##    ##  ##       ##       ##   ### ##    ## 
  ######  ##     ## ######## ##     ##    ##    ########     ######   ######  ##     ## ######## ######## ##    ##  ######  
 
+def display_results(window):
+    # Clear the window
+    for widget in window.winfo_children():
+        widget.destroy()
 
+    # Create a new canvas for results
+    canvas = Canvas(
+        window,
+        bg="#E4EDF5",
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    # Add a title
+    canvas.create_text(
+        720,
+        50,
+        text="Processing Results",
+        fill="#092934",
+        font=("Microsoft New Tai Lue", 24, "bold")
+    )
+
+
+    finish_button = Button(
+        window,
+        text="Finish",
+        command=window.quit,
+        font=("Microsoft New Tai Lue", 14),
+        bg="#092934",
+        fg="#E4EDF5",
+        padx=20,
+        pady=10
+    )
+    finish_button.place(relx=0.5, rely=0.9, anchor="center")
 def display_final_image(window):
     # Clear the window
     for widget in window.winfo_children():
@@ -56,7 +94,18 @@ def display_final_image(window):
         image=image_image_1
     )
 
-
+    next_button = Button(
+        window,
+        text= update_next_button(window),
+        command=lambda: next_image(window),
+        font=("Microsoft New Tai Lue", 14),
+        bg="#092934",
+        fg="#E4EDF5",
+        padx=20,
+        pady=10
+    )
+    next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
+    
     # Create a frame to center the image
     frame = Frame(window, bg="#E4EDF5")
     frame.place(relx=0.5, rely=0.5, anchor="center")
@@ -99,6 +148,41 @@ def display_final_image(window):
     )
     back_button.place(relx=0.5, rely=0.9, anchor="center")
 
+
+
+
+    window.progress_frame = Frame(window, bg="#E4EDF5")
+    window.progress_frame.place(x=1200, y=20, width=200, height=50)
+    
+    window.progress_bar = ttk.Progressbar(window.progress_frame, orient="horizontal", length=150, mode="determinate")
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    
+    window.progress_label = Label(window.progress_frame, text="", bg="#E4EDF5", font=("Microsoft New Tai Lue", 12))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
+
+
+def update_progress_bar(window):
+    if hasattr(window, 'progress_bar') and window.progress_bar:
+        progress = (window.current_image_index + 1) / len(window.image_paths) * 100
+        window.progress_bar['value'] = progress
+        window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
+
+def next_image(window):
+    if window.current_image_index < len(window.image_paths) - 1:
+        window.current_image_index += 1
+        load_current_image(window)
+        create_editFrame(window)
+    else:
+        display_results(window)
+    update_progress_bar(window)
+def update_next_button(window):
+    if hasattr(window, 'next_button') and window.next_button:
+        if window.current_image_index == len(window.image_paths) - 1:
+            return ("Results")
+        else:
+            return ("Next Image")
     
 def create_titleFrame(window):
     canvas = Canvas(
@@ -129,7 +213,7 @@ def create_titleFrame(window):
     button_1 = Button(
         window,
         text="Upload Assays",
-        command=lambda: upload_image(window),
+        command=lambda: upload_images(window),
         font=("Microsoft New Tai Lue", 14),
         bg="#092934",
         fg="#E4EDF5",
@@ -481,6 +565,26 @@ def create_editFrame(window):
     flood_eraser_button.config(command=lambda: set_mode(window, "flood"))
     undo_button.config(command=lambda: undo(window))
     redo_button.config(command=lambda: redo(window))
+
+
+
+
+
+
+    window.progress_frame = Frame(window, bg="#E4EDF5")
+    window.progress_frame.place(x=1200, y=20, width=200, height=50)
+    
+    window.progress_bar = ttk.Progressbar(window.progress_frame, orient="horizontal", length=150, mode="determinate")
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    
+    window.progress_label = Label(window.progress_frame, text="", bg="#E4EDF5", font=("Microsoft New Tai Lue", 12))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
+
+
+
+
     return canvas
 
 
@@ -511,6 +615,15 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
               x1, y1]
 
     return canvas.create_polygon(points, **kwargs, smooth=True)
+
+# db    db d8888b. db       .d88b.   .d8b.  d8888b. .d8888. 
+# 88    88 88  `8D 88      .8P  Y8. d8' `8b 88  `8D 88'  YP 
+# 88    88 88oodD' 88      88    88 88ooo88 88   88 `8bo.   
+# 88    88 88~~~   88      88    88 88~~~88 88   88   `Y8b. 
+# 88b  d88 88      88booo. `8b  d8' 88   88 88  .8D db   8D 
+# ~Y8888P' 88      Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
+
+
 def upload_txt_file(window):
     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
     if file_path:
@@ -526,28 +639,32 @@ def upload_txt_file(window):
             else:
                 messagebox.showerror("Error", "The uploaded file is not in the expected format. The format should be: 'A,B,C,YES/NO'.")
 
-def upload_image(window):
-    file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-    if file_path:
-        window.image_path = file_path
-        window.original_image = cv2.imread(window.image_path)
-       
-        # Apply perspective correction
-        window.original_image = correct_perspective_pipeline(window.original_image)
+def upload_images(window):
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
+    if file_paths:
+        window.image_paths = list(file_paths)
+        window.current_image_index = 0
+        load_current_image(window)
 
-        stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
-        window.gray_image = gray_image
-        # Binarize the image (you may need to adjust this function call based on your binarize function)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
-        
-        window.contour_img = contour_img
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        
-        # Initialize history with the binarized image
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
-        update_undo_redo_buttons(window)
+def load_current_image(window):
+    window.image_path = window.image_paths[window.current_image_index]
+    window.original_image = cv2.imread(window.image_path)
+    
+    # Apply perspective correction
+    window.original_image = correct_perspective_pipeline(window.original_image)
+
+    stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
+    window.gray_image = gray_image
+    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
+    
+    window.contour_img = contour_img
+    window.binarized_image = final_binary
+    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+    
+    # Initialize history with the binarized image
+    window.history = [window.binarized_image.copy()]
+    window.redo_stack = []
+    update_undo_redo_buttons(window)
         
 ##     ##  #######  ########  ########  ######  
 ###   ### ##     ## ##     ## ##       ##    ## 
@@ -749,6 +866,11 @@ def initialize_window_attributes(window):
     window.display_images = display_images
     window.excludeSmallDots = 1000
     window.contrast_value = 20
+    window.image_paths = []
+    window.current_image_index = 0
+    window.next_button = None
+    window.progress_bar = None
+    window.progress_label = None
 
 window = Tk()
 window.geometry("1440x1024")
