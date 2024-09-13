@@ -10,6 +10,7 @@ from PIL import Image
 from reportlab.lib.utils import ImageReader
 from scipy.stats import linregress
 import matplotlib.pyplot as plt
+import math
 
 # d8888b. d888888b .d8888. d8888b. db       .d8b.  db    db 
 # 88  `8D   `88'   88'  YP 88  `8D 88      d8' `8b `8b  d8' 
@@ -234,7 +235,7 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
             for (x, y, r) in circles:
                 cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
                 cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-
+    print(counts)
     return counts, marked_image
 
 # d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
@@ -342,10 +343,27 @@ def calculate_grid(x_coords, y_coords, width, height, debug=False):
     
     x_diffs = np.diff(x_clusters)
     y_diffs = np.diff(y_clusters)
-    avg_x_diff = np.median(x_diffs)
-    avg_y_diff = np.median(y_diffs)
-    cell_size = min(avg_x_diff, avg_y_diff)
-    
+    lowerBound = 200
+    upperBound = 320
+    filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
+    filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
+    print(filtered_x_diffs)
+    print(filtered_y_diffs)
+    filtered_x_diffs = np.median(filtered_x_diffs)
+    filtered_y_diffs = np.median(filtered_y_diffs)
+    print(filtered_x_diffs)
+    print(filtered_y_diffs)
+    if (math.isnan(filtered_x_diffs)):
+        if (math.isnan(filtered_y_diffs)):
+            print("everything is nan")
+        else:
+            cell_size = (filtered_y_diffs)
+    elif (math.isnan(filtered_y_diffs)):
+            cell_size = (filtered_x_diffs)
+    else:
+        cell_size = max(filtered_x_diffs, filtered_y_diffs)
+    print(cell_size)
+
     # Calculate horizontal slant
     slope, _ = np.polyfit(x_coords, y_coords, 1)
     angle = np.arctan(slope)
@@ -419,7 +437,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             
             cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-    
+    print(counts)
     return counts, marked_image
 
 def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
