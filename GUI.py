@@ -590,9 +590,9 @@ def on_excludeSmallDots(window,value):
 def set_mode(window, mode):
     window.mode = mode
     if mode == "small_brush" or mode == "small_eraser":
-        window.brush_size = 10
+        window.brush_size = 40
     elif mode == "large_brush" or mode == "large_eraser":
-        window.brush_size = 70
+        window.brush_size = 120
 
 def toggle_image(window):
     window.show_original = not window.show_original

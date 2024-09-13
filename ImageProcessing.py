@@ -147,7 +147,7 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     # print(x_coords)
     return x_coords,y_coords,result_image
 
-def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=160, param1 =50, param2 =28):
+def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=140, param1 =50, param2 =28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
     circles = cv2.HoughCircles(
         gray_image,
@@ -163,8 +163,9 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
 
     if circles is None:
         print("No circles detected")
-        return None, None
-    elif( len(circles[0]) <8):
+
+    if( len(circles[0]) <8):
+    #if (True):
         print("would do blobs")
         x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
         marked_image = result_image
@@ -229,6 +230,7 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
         print("Not enough valid clusters found to calculate grid. Circles will be detected without drawing a grid.")
         # Draw circles if grid calculation fails
         if len(circles[0]) >7:
+        #if (False):
             for (x, y, r) in circles:
                 cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
                 cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
@@ -340,8 +342,8 @@ def calculate_grid(x_coords, y_coords, width, height, debug=False):
     
     x_diffs = np.diff(x_clusters)
     y_diffs = np.diff(y_clusters)
-    avg_x_diff = np.mean(x_diffs)
-    avg_y_diff = np.mean(y_diffs)
+    avg_x_diff = np.median(x_diffs)
+    avg_y_diff = np.median(y_diffs)
     cell_size = min(avg_x_diff, avg_y_diff)
     
     # Calculate horizontal slant
@@ -477,68 +479,15 @@ def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size
 # 88      Y88888P 88   YD `8888Y' 88      Y88888P  `Y88P'    YP    Y888888P    YP    Y88888P
 
 def detect_lines(image):
+    # Process the image to detect lines
     stretched, blurred, gray_image = stretch_and_gray(image, 90, 150)
     binary_image, contour_img, final_binary, block_size = binarize(gray_image, image)
     gray_image = (binary_image * 255).astype(np.uint8) 
     lines = cv2.HoughLinesP(gray_image, 1, np.pi/180, threshold=30, minLineLength=800, maxLineGap=20)
     return lines
 
-def draw_lines_and_measure(image, vertical_lines):
-    marked_image = image.copy()
-    if vertical_lines is not None and len(vertical_lines) >= 2:
-        # Sort lines from left to right
-        vertical_lines.sort(key=lambda line: line[0])
-        
-        # Draw all lines
-        for i, line in enumerate(vertical_lines):
-            x1, y1, x2, y2 = line
-            color = (0, 0, 255)  # Red for all lines
-            cv2.line(marked_image, (x1, y1), (x2, y2), color, 2)
-        
-        # Identify innermost lines
-        left_inner = vertical_lines[0]
-        right_inner = vertical_lines[-1]
-        
-        for line in vertical_lines[1:]:
-            if line[0] > left_inner[0]:
-                left_inner = line
-                break
-        
-        for line in vertical_lines[-2::-1]:
-            if line[0] < right_inner[0]:
-                right_inner = line
-                break
-        
-        # Measure distance between innermost vertical lines
-        distance = abs(left_inner[0] - right_inner[0])  # Using x-coordinate of the start point
-        
-        # Draw measurement line
-        mid_y = image.shape[0] // 2
-        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 3)
-        
-        # Draw innermost lines in green
-        cv2.line(marked_image, (left_inner[0], left_inner[1]), (left_inner[2], left_inner[3]), (0, 255, 0), 3)
-        cv2.line(marked_image, (right_inner[0], right_inner[1]), (right_inner[2], right_inner[3]), (0, 255, 0), 3)
-        
-        # Add measurement text
-        text = f"{distance} pixels"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1.5
-        font_thickness = 3
-        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-        
-        text_x = left_inner[0] + (right_inner[0] - left_inner[0]) // 2 - text_size[0] // 2
-        text_y = mid_y - 20
-        
-        cv2.putText(marked_image, text,
-                    (text_x, text_y),
-                    font, font_scale, (255, 255, 0), font_thickness)
-    
-    cv2.imshow("MeasurementDebug", resize_for_display(marked_image))
-    return marked_image
-
-
 def classify_lines(lines, image_shape):
+    # Classify lines based on their angle as vertical
     vertical_lines = []
     if lines is not None:
         for line in lines:
@@ -546,26 +495,15 @@ def classify_lines(lines, image_shape):
             angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
             length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
             
-            if abs(angle) > 80:  # More strict angle for vertical lines
-                if length > image_shape[0] * 0.5:  # Longer lines
+            # Consider lines with steep angles to be vertical
+            if abs(angle) > 80:  
+                if length > image_shape[0] * 0.5:  # Ensure lines are long enough
                     vertical_lines.append((x1, y1, x2, y2))
     
     # Sort vertical lines from left to right
     vertical_lines.sort(key=lambda line: min(line[0], line[2]))
     
     return vertical_lines
-
-
-def draw_debug_lines(image, vertical_lines):
-    debug_image = image.copy()
-    for line in vertical_lines:
-        x1, y1, x2, y2 = line
-        cv2.line(debug_image, (x1, y1), (x2, y2), (0, 255, 0), 2)  # Green for vertical
-    
-    # cv2.imwrite("debug_lines.png", resize_for_display(debug_image))
-    # cv2.imshow("Detected Lines", resize_for_display(debug_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 def correct_perspective(image, vertical_lines):
     h, w = image.shape[:2]
     
@@ -577,31 +515,32 @@ def correct_perspective(image, vertical_lines):
     left_line = vertical_lines[0]
     right_line = vertical_lines[-1]
     
-    # Calculate the angles of the lines
-    left_angle = np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])
-    right_angle = np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])
+    # Calculate the x-coordinates at the top and bottom of the image for the perspective transformation
+    x_left_top = left_line[0]
+    x_left_bottom = left_line[2]
+    x_right_top = right_line[0]
+    x_right_bottom = right_line[2]
     
-    # Calculate the average angle to determine the tilt
-    avg_angle = (left_angle + right_angle) / 2
+    # Calculate shifts for vertical alignment
+    avg_left_x = (x_left_top + x_left_bottom) // 2
+    avg_right_x = (x_right_top + x_right_bottom) // 2
+    shift = avg_right_x - avg_left_x
     
-    # Calculate the shift at the top of the image
-    left_shift = int(h * np.tan(avg_angle))
-    right_shift = int(h * np.tan(avg_angle))
-    
-    # Define source points (top-left, top-right, bottom-right, bottom-left)
+    # Calculate destination points
+    # These points aim to keep the lines vertical without stretching
     src_pts = np.float32([
-        [left_line[0] + left_shift, 0],
-        [right_line[0] + right_shift, 0],
-        [right_line[2], h - 1],
-        [left_line[2], h - 1]
+        [x_left_top, 0],
+        [x_right_top, 0],
+        [x_right_bottom, h - 1],
+        [x_left_bottom, h - 1]
     ])
     
-    # Define destination points
+    # Destination points are shifted horizontally to straighten the vertical lines
     dst_pts = np.float32([
-        [left_line[2], 0],
-        [right_line[2], 0],
-        [right_line[2], h - 1],
-        [left_line[2], h - 1]
+        [x_left_top, 0],
+        [x_left_top + shift, 0],
+        [x_left_top + shift, h - 1],
+        [x_left_top, h - 1]
     ])
     
     # Get the perspective transform matrix
@@ -612,83 +551,55 @@ def correct_perspective(image, vertical_lines):
     
     return result
 
-# def draw_debug_perspective(image, src_pts, dst_pts):
-#     debug_image = image.copy()
-    
-#     # Draw source points
-#     for pt in src_pts:
-#         cv2.circle(debug_image, tuple(pt.astype(int)), 5, (0, 0, 255), -1)
-    
-#     # Draw lines connecting source points 
-#     cv2.line(debug_image, tuple(src_pts[0].astype(int)), tuple(src_pts[1].astype(int)), (0, 255, 0), 2)
-#     cv2.line(debug_image, tuple(src_pts[1].astype(int)), tuple(src_pts[2].astype(int)), (0, 255, 0), 2)
-#     cv2.line(debug_image, tuple(src_pts[2].astype(int)), tuple(src_pts[3].astype(int)), (0, 255, 0), 2)
-#     cv2.line(debug_image, tuple(src_pts[3].astype(int)), tuple(src_pts[0].astype(int)), (0, 255, 0), 2)
-    
-#     # cv2.imwrite("debug_perspective.png", resize_for_display(debug_image))
-#     # cv2.imshow("Perspective Correction", resize_for_display(debug_image))
-#     # cv2.waitKey(0)
-#     # cv2.destroyAllWindows()
 
+def draw_lines_and_measure(image, vertical_lines):
+    # Draw detected lines and measure the distance between innermost vertical lines
+    marked_image = image.copy()
+    if vertical_lines is not None and len(vertical_lines) >= 2:
+        # Draw all lines in red
+        for line in vertical_lines:
+            x1, y1, x2, y2 = line
+            cv2.line(marked_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+        
+        # Measure the distance between the innermost lines
+        left_inner = vertical_lines[0]
+        right_inner = vertical_lines[-1]
+        distance = abs(left_inner[0] - right_inner[0])
+        
+        # Draw a line indicating the measurement
+        mid_y = image.shape[0] // 2
+        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 3)
+        
+        # Draw measurement text
+        text = f"{distance} pixels"
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.5
+        font_thickness = 3
+        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
+        text_x = left_inner[0] + (right_inner[0] - left_inner[0]) // 2 - text_size[0] // 2
+        text_y = mid_y - 20
+        cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 255, 0), font_thickness)
+        cv2.imshow("marked_image", resize_for_display(marked_image))
+    #return marked_image
 
 def correct_perspective_pipeline(original_image):
-    # Process the binarized image
+    # Full pipeline for detecting lines, correcting perspective, and drawing the result
     lines = detect_lines(original_image)
     if lines is None:
-        print("No lines detected in the binarized image.")
+        print("No lines detected.")
         return original_image
     
     vertical_lines = classify_lines(lines, original_image.shape)
-    
-    # Draw debug lines
-    draw_debug_lines(original_image, vertical_lines)
-    
     if len(vertical_lines) < 2:
         print("Not enough vertical lines detected for perspective correction.")
-        return
+        return original_image
     
-    # Debug: Draw detected lines
-    debug_image = original_image.copy()
-    for line in vertical_lines:
-        x1, y1, x2, y2 = line
-        cv2.line(debug_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
-    # cv2.imshow('Detected Vertical Lines', resize_for_display(debug_image))
-    # cv2.waitKey(0)
-    
-    # Debug: Show perspective correction points
-    h, w = original_image.shape[:2]
-    left_line = vertical_lines[0]
-    right_line = vertical_lines[-1]
-    left_shift = int(h * np.tan(np.arctan2(left_line[3] - left_line[1], left_line[2] - left_line[0])))
-    right_shift = int(h * np.tan(np.arctan2(right_line[3] - right_line[1], right_line[2] - right_line[0])))
-    src_pts = np.float32([
-        [left_line[0] + left_shift, 0],
-        [right_line[0] + right_shift, 0],
-        [right_line[2], h - 1],
-        [left_line[2], h - 1]
-    ])
-    dst_pts = np.float32([
-        [left_line[2], 0],
-        [right_line[2], 0],
-        [right_line[2], h - 1],
-        [left_line[2], h - 1]
-    ])
-    #draw_debug_perspective(original_image, src_pts, dst_pts)
-    
+    # Apply perspective correction
     corrected_image = correct_perspective(original_image, vertical_lines)
     
-    # # Detect lines again on the corrected image
-    # corrected_lines = detect_lines(corrected_image)
-    # corrected_vertical_lines = classify_lines(corrected_lines, corrected_image.shape)
+    # Measure and display lines after correction
+    draw_lines_and_measure(corrected_image, vertical_lines)
     
-    marked_image = draw_lines_and_measure(corrected_image, vertical_lines)
-    
-    # cv2.imshow('Original Image', resize_for_display(image))
-    # cv2.imshow('Corrected Image with Measurements', resize_for_display(marked_image))
-    
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
     return corrected_image
 
 
