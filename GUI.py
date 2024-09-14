@@ -22,6 +22,7 @@ ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\
 
 
 
+
  ######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
 ##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
 ##       ##     ## ##        ##   ##     ##    ##          ##       ##       ##     ## ##       ##       ####  ## ##       
@@ -53,7 +54,8 @@ def display_results(window):
         50,
         text="Processing Results",
         fill="#092934",
-        font=("Microsoft New Tai Lue", 24, "bold")
+        font=("Microsoft New Tai Lue", 24, 
+        "bold")
     )
 
 
@@ -168,16 +170,21 @@ def display_final_image(window):
 
 
 
-    window.progress_frame = Frame(window, bg="#E4EDF5")
+    # Create a frame for the progress bar
+    window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=1200, y=20, width=200, height=50)
-    
-    window.progress_bar = ttk.Progressbar(window.progress_frame, orient="horizontal", length=150, mode="determinate")
+
+    # Create and pack the progress bar with the custom style
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
-    
-    window.progress_label = Label(window.progress_frame, text="", bg="#E4EDF5", font=("Microsoft New Tai Lue", 12))
+
+    # Label next to the progress bar
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=("Microsoft New Tai Lue", 12, 'bold'))
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
+    
 
 
 def update_progress_bar(window):
@@ -190,7 +197,7 @@ def next_image(window):
     if window.current_image_index < len(window.image_paths) - 1:
         window.current_image_index += 1
         load_current_image(window)
-        create_editFrame(window)
+        create_cropFrame(window)
     else:
         display_results(window)
     update_progress_bar(window)
@@ -268,79 +275,6 @@ def create_titleFrame(window):
     return canvas, image_image_10, button_1, button_2, button_image_3, button_3
 
 
-#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
-# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
-# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
-# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
-# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
-#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
-
-def resize_for_display_crop(image, max_width=1280, max_height=720):
-    """Resize image for display while maintaining aspect ratio."""
-    h, w = image.shape[:2]
-    scale = min(max_width/w, max_height/h)
-    new_size = (int(w*scale), int(h*scale))
-    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
-
-def start_crop(event, window):
-    window.cropping = True
-    window.x_start, window.y_start = event.x, event.y
-
-def crop(event, window, canvas):
-    if window.cropping:
-        window.x_end, window.y_end = event.x, event.y
-        canvas.delete("crop_rectangle")
-        canvas.create_rectangle(window.x_start, window.y_start, window.x_end, window.y_end,
-                                outline="green", tags="crop_rectangle")
-
-def end_crop(event, window, canvas):
-    window.cropping = False
-
-def apply_crop(window):
-    if window.x_start != window.x_end and window.y_start != window.y_end:
-        # Calculate the dimensions of the original image
-        original_height, original_width = window.original_image.shape[:2]
-        
-        # Calculate the scaling factors
-        scale_x = original_width / window.display_width
-        scale_y = original_height / window.display_height
-        
-        # Calculate the offset of the image on the canvas
-        canvas_width = 1440  # From your create_cropFrame function
-        canvas_height = 1024  # From your create_cropFrame function
-        offset_x = (canvas_width - window.display_width) // 2
-        offset_y = (canvas_height - window.display_height) // 2
-        
-        # Apply scaling to crop coordinates, accounting for the offset
-        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
-        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
-        
-        # Ensure coordinates are within image bounds
-        x_start = max(0, x_start)
-        y_start = max(0, y_start)
-        x_end = min(x_end, original_width)
-        y_end = min(y_end, original_height)
-        
-        # Crop the image
-        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        
-        # Debug: Save the cropped image and print dimensions
-        cv2.imwrite('debug_cropped.png', window.current_image)
-        print(f"Original image dimensions: {original_width}x{original_height}")
-        print(f"Display dimensions: {window.display_width}x{window.display_height}")
-        print(f"Canvas dimensions: {canvas_width}x{canvas_height}")
-        print(f"Image offset on canvas: x={offset_x}, y={offset_y}")
-        print(f"Scaling factors: x={scale_x:.2f}, y={scale_y:.2f}")
-        print(f"Crop coordinates (canvas): ({window.x_start}, {window.y_start}) to ({window.x_end}, {window.y_end})")
-        print(f"Crop coordinates (display): ({window.x_start-offset_x}, {window.y_start-offset_y}) to ({window.x_end-offset_x}, {window.y_end-offset_y})")
-        print(f"Crop coordinates (original): ({x_start}, {y_start}) to ({x_end}, {y_end})")
-        print(f"Cropped image dimensions: {x_end-x_start}x{y_end-y_start}")
-        
-        process_image(window)
-    else:
-        messagebox.showwarning("Warning", "Please select an area to crop.")
 def process_image(window):
     # Apply your image processing steps here
     stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 150)
@@ -359,62 +293,6 @@ def process_image(window):
     update_undo_redo_buttons(window)
     create_editFrame(window)
 
-
-def create_cropFrame(window):
-    # Clear the window
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    # Create a new canvas
-    canvas = Canvas(
-        window,
-        bg="#E4EDF5",
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
- # Resize image for display
-    display_image, scale_factor = resize_for_display_crop(window.original_image)
-    window.scale_factor = scale_factor
-
-    # Convert OpenCV image to PhotoImage
-    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(image)
-    photo = ImageTk.PhotoImage(image=image)
-
-    # Create image on canvas
-    canvas.create_image(720, 512, image=photo, anchor=CENTER)
-    canvas.image = photo
-
-    # Store the display dimensions
-    window.display_width = photo.width()
-    window.display_height = photo.height()
-
-    # Cropping variables
-    window.cropping = False
-    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
-
-    # Bind mouse events
-    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
-    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
-    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
-
-    # Create crop button
-    crop_button = Button(
-        window,
-        text="Next",
-        command=lambda: apply_crop(window),
-        font=("Microsoft New Tai Lue", 14),
-        bg="#092934",
-        fg="#E4EDF5",
-        padx=20,
-        pady=10
-    )
-    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
 
 
 
@@ -734,13 +612,17 @@ def create_editFrame(window):
 
 
 
-    window.progress_frame = Frame(window, bg="#E4EDF5")
+    # Create a frame for the progress bar
+    window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=1200, y=20, width=200, height=50)
-    
-    window.progress_bar = ttk.Progressbar(window.progress_frame, orient="horizontal", length=150, mode="determinate")
+
+    # Create and pack the progress bar with the custom style
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
-    
-    window.progress_label = Label(window.progress_frame, text="", bg="#E4EDF5", font=("Microsoft New Tai Lue", 12))
+
+    # Label next to the progress bar
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=("Microsoft New Tai Lue", 12, 'bold'))
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
@@ -749,6 +631,140 @@ def create_editFrame(window):
 
 
     return canvas
+
+    
+#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
+# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
+# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
+# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
+# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
+#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
+
+def resize_for_display_crop(image, max_width=1280, max_height=720):
+    """Resize image for display while maintaining aspect ratio."""
+    h, w = image.shape[:2]
+    scale = min(max_width/w, max_height/h)
+    new_size = (int(w*scale), int(h*scale))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
+
+def start_crop(event, window):
+    window.cropping = True
+    window.x_start, window.y_start = event.x, event.y
+
+def crop(event, window, canvas):
+    if window.cropping:
+        window.x_end, window.y_end = event.x, event.y
+        canvas.delete("crop_rectangle")
+        canvas.create_rectangle(window.x_start, window.y_start, window.x_end, window.y_end,
+                                outline="green", tags="crop_rectangle")
+
+def end_crop(event, window, canvas):
+    window.cropping = False
+
+def apply_crop(window):
+    if window.x_start != window.x_end and window.y_start != window.y_end:
+        # Calculate the dimensions of the original image
+        original_height, original_width = window.original_image.shape[:2]
+        
+        # Calculate the scaling factors
+        scale_x = original_width / window.display_width
+        scale_y = original_height / window.display_height
+        
+        # Calculate the offset of the image on the canvas
+        canvas_width = 1440  # From your create_cropFrame function
+        canvas_height = 1024  # From your create_cropFrame function
+        offset_x = (canvas_width - window.display_width) // 2
+        offset_y = (canvas_height - window.display_height) // 2
+        
+        # Apply scaling to crop coordinates, accounting for the offset
+        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
+        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
+        
+        # Ensure coordinates are within image bounds
+        x_start = max(0, x_start)
+        y_start = max(0, y_start)
+        x_end = min(x_end, original_width)
+        y_end = min(y_end, original_height)
+        
+        # Crop the image
+        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
+        
+        # # Debug: Save the cropped image and print dimensions
+        # cv2.imwrite('debug_cropped.png', window.current_image)
+        # print(f"Original image dimensions: {original_width}x{original_height}")
+        # print(f"Display dimensions: {window.display_width}x{window.display_height}")
+        # print(f"Canvas dimensions: {canvas_width}x{canvas_height}")
+        # print(f"Image offset on canvas: x={offset_x}, y={offset_y}")
+        # print(f"Scaling factors: x={scale_x:.2f}, y={scale_y:.2f}")
+        # print(f"Crop coordinates (canvas): ({window.x_start}, {window.y_start}) to ({window.x_end}, {window.y_end})")
+        # print(f"Crop coordinates (display): ({window.x_start-offset_x}, {window.y_start-offset_y}) to ({window.x_end-offset_x}, {window.y_end-offset_y})")
+        # print(f"Crop coordinates (original): ({x_start}, {y_start}) to ({x_end}, {y_end})")
+        # print(f"Cropped image dimensions: {x_end-x_start}x{y_end-y_start}")
+        
+        process_image(window)
+    else:
+        messagebox.showwarning("Warning", "Please select an area to crop.")
+
+
+def create_cropFrame(window):
+    # Clear the window
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    # Create a new canvas
+    canvas = Canvas(
+        window,
+        bg="#E4EDF5",
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+ # Resize image for display
+    display_image, scale_factor = resize_for_display_crop(window.original_image)
+    window.scale_factor = scale_factor
+
+    # Convert OpenCV image to PhotoImage
+    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
+    photo = ImageTk.PhotoImage(image=image)
+
+    # Create image on canvas
+    canvas.create_image(720, 512, image=photo, anchor=CENTER)
+    canvas.image = photo
+
+    # Store the display dimensions
+    window.display_width = photo.width()
+    window.display_height = photo.height()
+
+    # Cropping variables
+    window.cropping = False
+    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
+
+    # Bind mouse events
+    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
+    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
+    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
+
+    # Create crop button
+    crop_button = Button(
+        window,
+        text="Next",
+        command=lambda: apply_crop(window),
+        font=("Microsoft New Tai Lue", 14),
+        bg="#092934",
+        fg="#E4EDF5",
+        padx=20,
+        pady=10
+    )
+    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
+
+
 
 
 def relative_to_assets(path: str) -> Path:
@@ -1010,6 +1026,12 @@ def brush_draw(window, x1, y1, x2, y2):
     cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
 def initialize_window_attributes(window):
+    # Style for the progress bar
+    s = ttk.Style()
+    s.theme_use('clam')
+    s.configure("styled.Horizontal.TProgressbar", troughcolor=LIGHT,bordercolor=DARK, background=DARK, lightcolor=DARK, 
+                darkcolor=DARK)
+
     window.window_width = 1440
     window.window_height = 1024
     window.history = []
