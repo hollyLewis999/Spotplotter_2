@@ -8,7 +8,7 @@ import os
 
 # from tkinter import *
 # Explicit imports to satisfy Flake8
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton
 from tkinter import ttk
 import cv2
 import numpy as np
@@ -68,24 +68,7 @@ def display_results(window):
         pady=10
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
-
-def upload_images(window):
-    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-    if file_paths:
-        window.image_paths = list(file_paths)
-        window.current_image_index = 0
-        load_current_image(window)
-        create_cropFrame(window)  # Go to the cropping screen instead of the edit screen
-
-def load_current_image(window):
-    window.image_path = window.image_paths[window.current_image_index]
-    window.original_image = cv2.imread(window.image_path)
-    window.current_image = window.original_image.copy()
-
-
-
 def display_final_image(window):
-    add_to_history(window)
     # Clear the window
     for widget in window.winfo_children():
         widget.destroy()
@@ -259,172 +242,26 @@ def create_titleFrame(window):
         image=button_image_3,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: create_cropFrame(window),
+        command=lambda: process_image(window),
         relief="flat"
     )
     button_3.place(x=616.0, y=861.0, width=207.0, height=61.0)
    
     #return canvas, image_image_10, button_image_1, button_1, button_image_2, button_2, button_image_3, button_3
     return canvas, image_image_10, button_1, button_2, button_image_3, button_3
-
-
-#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
-# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
-# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
-# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
-# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
-#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
-
-def resize_for_display_crop(image, max_width=1280, max_height=720):
-    """Resize image for display while maintaining aspect ratio."""
-    h, w = image.shape[:2]
-    scale = min(max_width/w, max_height/h)
-    new_size = (int(w*scale), int(h*scale))
-    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
-
-def start_crop(event, window):
-    window.cropping = True
-    window.x_start, window.y_start = event.x, event.y
-
-def crop(event, window, canvas):
-    if window.cropping:
-        window.x_end, window.y_end = event.x, event.y
-        canvas.delete("crop_rectangle")
-        canvas.create_rectangle(window.x_start, window.y_start, window.x_end, window.y_end,
-                                outline="green", tags="crop_rectangle")
-
-def end_crop(event, window, canvas):
-    window.cropping = False
-
-def apply_crop(window):
-    if window.x_start != window.x_end and window.y_start != window.y_end:
-        # Calculate the dimensions of the original image
-        original_height, original_width = window.original_image.shape[:2]
-        
-        # Calculate the scaling factors
-        scale_x = original_width / window.display_width
-        scale_y = original_height / window.display_height
-        
-        # Calculate the offset of the image on the canvas
-        canvas_width = 1440  # From your create_cropFrame function
-        canvas_height = 1024  # From your create_cropFrame function
-        offset_x = (canvas_width - window.display_width) // 2
-        offset_y = (canvas_height - window.display_height) // 2
-        
-        # Apply scaling to crop coordinates, accounting for the offset
-        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
-        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
-        
-        # Ensure coordinates are within image bounds
-        x_start = max(0, x_start)
-        y_start = max(0, y_start)
-        x_end = min(x_end, original_width)
-        y_end = min(y_end, original_height)
-        
-        # Crop the image
-        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        
-        # Debug: Save the cropped image and print dimensions
-        cv2.imwrite('debug_cropped.png', window.current_image)
-        print(f"Original image dimensions: {original_width}x{original_height}")
-        print(f"Display dimensions: {window.display_width}x{window.display_height}")
-        print(f"Canvas dimensions: {canvas_width}x{canvas_height}")
-        print(f"Image offset on canvas: x={offset_x}, y={offset_y}")
-        print(f"Scaling factors: x={scale_x:.2f}, y={scale_y:.2f}")
-        print(f"Crop coordinates (canvas): ({window.x_start}, {window.y_start}) to ({window.x_end}, {window.y_end})")
-        print(f"Crop coordinates (display): ({window.x_start-offset_x}, {window.y_start-offset_y}) to ({window.x_end-offset_x}, {window.y_end-offset_y})")
-        print(f"Crop coordinates (original): ({x_start}, {y_start}) to ({x_end}, {y_end})")
-        print(f"Cropped image dimensions: {x_end-x_start}x{y_end-y_start}")
-        
-        process_image(window)
-    else:
-        messagebox.showwarning("Warning", "Please select an area to crop.")
-def process_image(window):
-    # Apply your image processing steps here
-    stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 150)
-    window.gray_image = gray_image
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
-    
-    window.contour_img = contour_img
-    window.binarized_image = final_binary
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-    
-    # Only initialize history if it's empty
-    if not window.history:
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
-    
-    update_undo_redo_buttons(window)
-    create_editFrame(window)
-
-
-def create_cropFrame(window):
-    # Clear the window
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    # Create a new canvas
-    canvas = Canvas(
-        window,
-        bg="#E4EDF5",
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
- # Resize image for display
-    display_image, scale_factor = resize_for_display_crop(window.original_image)
-    window.scale_factor = scale_factor
-
-    # Convert OpenCV image to PhotoImage
-    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(image)
-    photo = ImageTk.PhotoImage(image=image)
-
-    # Create image on canvas
-    canvas.create_image(720, 512, image=photo, anchor=CENTER)
-    canvas.image = photo
-
-    # Store the display dimensions
-    window.display_width = photo.width()
-    window.display_height = photo.height()
-
-    # Cropping variables
-    window.cropping = False
-    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
-
-    # Bind mouse events
-    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
-    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
-    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
-
-    # Create crop button
-    crop_button = Button(
-        window,
-        text="Next",
-        command=lambda: apply_crop(window),
-        font=("Microsoft New Tai Lue", 14),
-        bg="#092934",
-        fg="#E4EDF5",
-        padx=20,
-        pady=10
-    )
-    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
-
-
-
-
 def update_button_appearance(window, button, active_mode, active_image, inactive_image):
     if window.mode == active_mode:
         button.config(image=active_image)
     else:
         button.config(image=inactive_image)
 
+def process_image(window):
+    # Destroy all widgets in the window
+    for widget in window.winfo_children():
+        widget.destroy()
+    
+    # Create the edit frame
+    create_editFrame(window)
 
 def create_editFrame(window):
 
@@ -449,7 +286,7 @@ def create_editFrame(window):
         image=image_image_1
     )
 
-    window.show_original = False  # Initialize with showing the original image
+    window.show_original = True  # Initialize with showing the original image
     toggle_button = Button(
         window,
         text="Toggle Image",
@@ -802,27 +639,32 @@ def upload_txt_file(window):
             else:
                 messagebox.showerror("Error", "The uploaded file is not in the expected format. The format should be: 'A,B,C,YES/NO'.")
 
+def upload_images(window):
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
+    if file_paths:
+        window.image_paths = list(file_paths)
+        window.current_image_index = 0
+        load_current_image(window)
 
+def load_current_image(window):
+    window.image_path = window.image_paths[window.current_image_index]
+    window.original_image = cv2.imread(window.image_path)
+    
+    # Apply perspective correction
+   # window.original_image = correct_perspective_pipeline(window.original_image)
 
-# def load_current_image(window):
-#     window.image_path = window.image_paths[window.current_image_index]
-#     window.original_image = cv2.imread(window.image_path)
+    stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
+    window.gray_image = gray_image
+    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
     
-#     # Apply perspective correction
-#    # window.original_image = correct_perspective_pipeline(window.original_image)
-
-#     stretched, blurred, gray_image = stretch_and_gray(window.original_image, 90, 150)
-#     window.gray_image = gray_image
-#     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
+    window.contour_img = contour_img
+    window.binarized_image = final_binary
+    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
     
-#     window.contour_img = contour_img
-#     window.binarized_image = final_binary
-#     window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-    
-#     # Initialize history with the binarized image
-#     window.history = [window.binarized_image.copy()]
-#     window.redo_stack = []
-#     update_undo_redo_buttons(window)
+    # Initialize history with the binarized image
+    window.history = [window.binarized_image.copy()]
+    window.redo_stack = []
+    update_undo_redo_buttons(window)
 
 
 
@@ -890,16 +732,17 @@ def display_images(window):
 
         # Left image (toggleable)
         if window.show_original:
-            img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
+            img_left = Image.open(window.image_path)
+            img_left = img_left.convert("RGB")
         else:
-            img_np = window.current_image
+            img_np = np.array(window.original_image)
             img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
             img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contour_img = img_np.copy()
             for cntr in contours:
                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 2)
-            img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
+            img_left = Image.fromarray(contour_img)
 
         img_left.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
         window.photo_left = ImageTk.PhotoImage(img_left)
@@ -908,6 +751,7 @@ def display_images(window):
 
     except Exception as e:
         print(f"Error in display_images: {e}")
+
 
 def start_draw(window, event):
     window.is_drawing = True
@@ -1030,7 +874,6 @@ def initialize_window_attributes(window):
     window.next_button = None
     window.progress_bar = None
     window.progress_label = None
-    window.current_image = None 
 
 window = Tk()
 window.geometry("1440x1024")
