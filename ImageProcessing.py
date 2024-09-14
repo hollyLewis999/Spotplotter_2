@@ -11,6 +11,7 @@ from reportlab.lib.utils import ImageReader
 from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import math
+from scipy import ndimage
 
 # d8888b. d888888b .d8888. d8888b. db       .d8b.  db    db 
 # 88  `8D   `88'   88'  YP 88  `8D 88      d8' `8b `8b  d8' 
@@ -148,7 +149,7 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     # print(x_coords)
     return x_coords,y_coords,result_image
 
-def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=140, param1 =50, param2 =28):
+def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1 =50, param2 =28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
     circles = cv2.HoughCircles(
         gray_image,
@@ -165,9 +166,9 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
     if circles is None:
         print("No circles detected")
 
-    if( len(circles[0]) <8):
+    if( len(circles[0]) <8 or noClusters):
     #if (True):
-        print("would do blobs")
+        print("doing Blobs")
         x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
         marked_image = result_image
     elif circles is not None:
@@ -180,13 +181,13 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
         marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     height, width = gray_image.shape
     try:
-        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, debug=False)
+        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height,binary_image, gray_image, debug=False)
 
-        # Detect multi-block areas first
-        colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
+        # # Detect multi-block areas first
+        # colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
         
-        # Combine the colored_image (with yellow areas) and the marked_image
-        marked_image = colored_image
+        # # Combine the colored_image (with yellow areas) and the marked_image
+        # marked_image = colored_image
 
         # Draw grid lines
         for i in range(13):
@@ -197,32 +198,9 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
             y = int(grid_start_y + i * cell_size)
             cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
-        # Quantify grid and draw counts
-        counts = np.zeros((8, 12), dtype=int)
-        for row in range(8):
-            for col in range(12):
-                x1 = int(grid_start_x + col * cell_size)
-                y1 = int(grid_start_y + row * cell_size)
-                x2 = int(x1 + cell_size)
-                y2 = int(y1 + cell_size)
-                
-                x1, y1 = max(0, x1), max(0, y1)
-                x2, y2 = min(width, x2), min(height, y2)
-                
-                cell = binary_image[y1:y2, x1:x2]
-                cell_mask = multi_block_mask[y1:y2, x1:x2]
-                
-                # Count white pixels only in areas not marked as multi-block
-                white_pixels = np.sum((cell == 255) & (cell_mask == 0))
-                counts[row, col] = white_pixels
-                
-                text_x = int(x1 + cell_size / 2)
-                text_y = int(y1 + cell_size / 2)
-                
-                cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 
-        # Draw circles last to ensure they're visible
+        # # Draw circles last to ensure they're visible
+        counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
         for (x, y, r) in circles:
             cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
             cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
@@ -235,7 +213,7 @@ def detect_and_draw_circles(binary_image, gray_image, min_radius=50, max_radius=
             for (x, y, r) in circles:
                 cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
                 cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-    print(counts)
+    
     return counts, marked_image
 
 # d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
@@ -299,7 +277,7 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
 # 88  ooo 88`8b      88    88   88 
 # 88. ~8~ 88 `88.   .88.   88  .8D 
 #  Y888P  88   YD Y888888P Y8888D' 
-def calculate_grid(x_coords, y_coords, width, height, debug=False):
+def calculate_grid(x_coords, y_coords, width, height, binarized_image,gray_image, debug=False):
     """Calculate grid parameters based on detected circle coordinates."""
     
     def find_clusters(coords, min_count=2):
@@ -355,14 +333,15 @@ def calculate_grid(x_coords, y_coords, width, height, debug=False):
     print(filtered_y_diffs)
     if (math.isnan(filtered_x_diffs)):
         if (math.isnan(filtered_y_diffs)):
-            print("everything is nan")
+           detect_and_draw_circles(binarized_image, gray_image, True)
+           print("doing blobs, becuse of lack of clusters")
         else:
             cell_size = (filtered_y_diffs)
     elif (math.isnan(filtered_y_diffs)):
             cell_size = (filtered_x_diffs)
     else:
         cell_size = max(filtered_x_diffs, filtered_y_diffs)
-    print(cell_size)
+
 
     # Calculate horizontal slant
     slope, _ = np.polyfit(x_coords, y_coords, 1)
@@ -400,21 +379,155 @@ def calculate_grid(x_coords, y_coords, width, height, debug=False):
     
     return grid_start_x, grid_start_y, cell_size, slant_angle
 
+# def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
+#     """
+#     Quantify the grid by counting white pixels in each cell, excluding multi-block areas.
+#     """
+#     height, width = binary_image.shape
+#     rows, cols = 8, 12  # 8x12 grid
+    
+#     # Detect multi-block areas
+#     colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
+    
+#     # Combine the colored_image (with yellow areas) and the marked_image
+#     marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
+    
+#     counts = np.zeros((rows, cols), dtype=int)
+    
+#     for row in range(rows):
+#         for col in range(cols):
+#             x1 = int(grid_start_x + col * cell_size)
+#             y1 = int(grid_start_y + row * cell_size)
+#             x2 = int(x1 + cell_size)
+#             y2 = int(y1 + cell_size)
+            
+#             x1, y1 = max(0, x1), max(0, y1)
+#             x2, y2 = min(width, x2), min(height, y2)
+            
+#             cell = binary_image[y1:y2, x1:x2]
+#             cell_mask = multi_block_mask[y1:y2, x1:x2]
+            
+#             # Count white pixels only in areas not marked as multi-block
+#             white_pixels = np.sum((cell == 255) & (cell_mask == 0))
+#             counts[row, col] = white_pixels
+            
+#             text_x = int(x1 + cell_size / 2)
+#             text_y = int(y1 + cell_size / 2)
+            
+#             cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+#     print(counts)
+#     return counts, marked_image
+
+# def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
+#     """
+#     Detect areas spanning multiple grid blocks and color them yellow if at least 20% is outside the primary block.
+#     """
+#     height, width = binary_image.shape
+#     rows, cols = 8, 12  # 8x12 grid
+   
+#     # Create a colored image from the binary image
+#     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+   
+#     # Create a mask for multi-block areas
+#     multi_block_mask = np.zeros_like(binary_image)
+   
+#     # Find contours in the binary image
+#     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+   
+#     for contour in contours:
+#         # Get bounding box of the contour
+#         x, y, w, h = cv2.boundingRect(contour)
+#         contour_area = cv2.contourArea(contour)
+       
+#         # Determine the primary grid cell
+#         primary_col = int((x + w/2 - grid_start_x) / cell_size)
+#         primary_row = int((y + h/2 - grid_start_y) / cell_size)
+       
+#         # Calculate area of contour inside primary cell
+#         cell_x1 = int(grid_start_x + primary_col * cell_size)
+#         cell_y1 = int(grid_start_y + primary_row * cell_size)
+#         cell_x2 = int(cell_x1 + cell_size)
+#         cell_y2 = int(cell_y1 + cell_size)
+       
+#         cell_mask = np.zeros_like(binary_image)
+#         cv2.rectangle(cell_mask, (cell_x1, cell_y1), (cell_x2, cell_y2), 255, -1)
+        
+#         contour_mask = np.zeros_like(binary_image)
+#         cv2.drawContours(contour_mask, [contour], 0, 255, -1)
+        
+#         area_inside_primary = np.sum((contour_mask > 0) & (cell_mask > 0))
+        
+#         # Check if at least 20% of the contour is outside the primary cell
+#         if contour_area >0:
+#             if area_inside_primary / contour_area <= 0.8:
+#                 # Color the area yellow
+#                 cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
+#                 cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
+   
+#     return colored_image, multi_block_mask
+
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
-    Quantify the grid by counting white pixels in each cell, excluding multi-block areas.
+    Quantify the grid by counting white pixels in each cell, including blobs
+    slightly overlapping (up to 20%) with neighboring blocks.
     """
     height, width = binary_image.shape
     rows, cols = 8, 12  # 8x12 grid
     
-    # Detect multi-block areas
-    colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-    
-    # Combine the colored_image (with yellow areas) and the marked_image
-    marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
+    # Label connected components
+    labeled_image, num_features = ndimage.label(binary_image)
     
     counts = np.zeros((rows, cols), dtype=int)
+    colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
+    for label in range(1, num_features + 1):
+        component = (labeled_image == label)
+        coords = np.column_stack(np.where(component))
+        
+        min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
+        max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
+        min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
+        max_col = min(cols - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+        
+        main_cell = None
+        max_overlap = 0
+        total_area = np.sum(component)
+        
+        for row in range(min_row, max_row + 1):
+            for col in range(min_col, max_col + 1):
+                x1 = int(grid_start_x + col * cell_size)
+                y1 = int(grid_start_y + row * cell_size)
+                x2 = int(x1 + cell_size)
+                y2 = int(y1 + cell_size)
+                
+                x1, y1 = max(0, x1), max(0, y1)
+                x2, y2 = min(width, x2), min(height, y2)
+                
+                cell = component[y1:y2, x1:x2]
+                overlap = np.sum(cell)
+                
+                if overlap > max_overlap:
+                    max_overlap = overlap
+                    main_cell = (row, col)
+        
+        if main_cell is not None:
+            main_row, main_col = main_cell
+            main_area = max_overlap
+            outside_area = total_area - main_area
+            
+            if outside_area <= 0.2 * total_area:
+                # Count the entire blob in the main cell and color it blue
+                counts[main_row, main_col] += total_area
+                colored_image[component] = [255, 0, 0]  # Blue
+            else:
+                # Color it dark grey and don't count it
+                colored_image[component] = [64, 64, 64]  # Dark grey
+    
+    # Combine the colored_image with the marked_image
+    marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
+    
+    # Draw grid and add count text
     for row in range(rows):
         for col in range(cols):
             x1 = int(grid_start_x + col * cell_size)
@@ -422,71 +535,27 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             x2 = int(x1 + cell_size)
             y2 = int(y1 + cell_size)
             
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(width, x2), min(height, y2)
-            
-            cell = binary_image[y1:y2, x1:x2]
-            cell_mask = multi_block_mask[y1:y2, x1:x2]
-            
-            # Count white pixels only in areas not marked as multi-block
-            white_pixels = np.sum((cell == 255) & (cell_mask == 0))
-            counts[row, col] = white_pixels
+            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
             
             text_x = int(x1 + cell_size / 2)
             text_y = int(y1 + cell_size / 2)
-            
-            cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
+            cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    
     print(counts)
     return counts, marked_image
 
-def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
-    """
-    Detect areas spanning multiple grid blocks and color them yellow if at least 20% is outside the primary block.
-    """
-    height, width = binary_image.shape
-    rows, cols = 8, 12  # 8x12 grid
-   
-    # Create a colored image from the binary image
-    colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-   
-    # Create a mask for multi-block areas
-    multi_block_mask = np.zeros_like(binary_image)
-   
-    # Find contours in the binary image
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-   
-    for contour in contours:
-        # Get bounding box of the contour
-        x, y, w, h = cv2.boundingRect(contour)
-        contour_area = cv2.contourArea(contour)
-       
-        # Determine the primary grid cell
-        primary_col = int((x + w/2 - grid_start_x) / cell_size)
-        primary_row = int((y + h/2 - grid_start_y) / cell_size)
-       
-        # Calculate area of contour inside primary cell
-        cell_x1 = int(grid_start_x + primary_col * cell_size)
-        cell_y1 = int(grid_start_y + primary_row * cell_size)
-        cell_x2 = int(cell_x1 + cell_size)
-        cell_y2 = int(cell_y1 + cell_size)
-       
-        cell_mask = np.zeros_like(binary_image)
-        cv2.rectangle(cell_mask, (cell_x1, cell_y1), (cell_x2, cell_y2), 255, -1)
-        
-        contour_mask = np.zeros_like(binary_image)
-        cv2.drawContours(contour_mask, [contour], 0, 255, -1)
-        
-        area_inside_primary = np.sum((contour_mask > 0) & (cell_mask > 0))
-        
-        # Check if at least 20% of the contour is outside the primary cell
-        if contour_area >0:
-            if area_inside_primary / contour_area <= 0.8:
-                # Color the area yellow
-                cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
-                cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
-   
-    return colored_image, multi_block_mask
+# def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
+#     """
+#     This function is now integrated into the quantify_grid function.
+#     It's kept here for compatibility, but it doesn't perform any operations.
+#     """
+#     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+#     multi_block_mask = np.zeros_like(binary_image)
+#     return colored_image, multi_block_mask
+
+
+    
 
 
 # d8888b. d88888b d8888b. .d8888. d8888b. d88888b  .o88b. d888888b d888888b db    db d88888b 

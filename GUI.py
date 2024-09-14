@@ -17,6 +17,7 @@ import copy
 from ImageProcessing import *
 DARK = "#092934"
 LIGHT = "#E4EDF5"
+TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 
@@ -48,13 +49,22 @@ def display_results(window):
     )
     canvas.place(x=0, y=0)
 
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
     # Add a title
     canvas.create_text(
         720,
-        50,
-        text="Processing Results",
+        TITLEHEIGHT,
+        text="Downloading Reults",
         fill="#092934",
-        font=("Microsoft New Tai Lue", 24, 
+        font=("Microsoft New Tai Lue", 12, 
         "bold")
     )
 
@@ -77,7 +87,7 @@ def upload_images(window):
         window.image_paths = list(file_paths)
         window.current_image_index = 0
         load_current_image(window)
-        create_cropFrame(window)  # Go to the cropping screen instead of the edit screen
+        # Go to the cropping screen instead of the edit screen
 
 def load_current_image(window):
     window.image_path = window.image_paths[window.current_image_index]
@@ -131,7 +141,7 @@ def display_final_image(window):
 
     # Convert the NumPy array to PIL Image
     gray_image = window.gray_image  # Make sure this is set earlier in the process
-    result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image)
+    result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False)
 
     # Ensure marked_image is a PIL Image
     if isinstance(marked_image, np.ndarray):
@@ -316,7 +326,7 @@ def create_editFrame(window):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
-    window.edit_images = []
+    
 
     image_image_1 = PhotoImage(
         file=relative_to_assets("image_1.png"))
@@ -426,21 +436,6 @@ def create_editFrame(window):
         font=("Microsoft New Tai Lue", 16 * -1,'bold')
     )
 
-    # round_rectangle(canvas,
-    #     77.0,
-    #     282.0,
-    #     701.0,
-    #     862.0,
-    #     fill="#E4EDF5",
-    #     outline="")
-
-    # round_rectangle(canvas,
-    #     738.0,
-    #     282.0,
-    #     1362.0,
-    #     862.0,
-    #     fill="#E4EDF5",
-    #     outline="")
 
     image_image_2 = PhotoImage( #this is the thin pen
         file=relative_to_assets("image_2.png"))
@@ -610,8 +605,6 @@ def create_editFrame(window):
 
 
 
-
-
     # Create a frame for the progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=1200, y=20, width=200, height=50)
@@ -626,8 +619,6 @@ def create_editFrame(window):
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
-
-
 
 
     return canvas
@@ -655,8 +646,17 @@ def crop(event, window, canvas):
     if window.cropping:
         window.x_end, window.y_end = event.x, event.y
         canvas.delete("crop_rectangle")
-        canvas.create_rectangle(window.x_start, window.y_start, window.x_end, window.y_end,
-                                outline="green", tags="crop_rectangle")
+        
+        
+        # Create the rectangle
+        canvas.create_rectangle(
+            window.x_start, window.y_start, window.x_end, window.y_end,
+            outline=LIGHT,
+            width=2,
+            fill=LIGHT,
+            stipple="gray50",  # Use stipple pattern for opacity effect
+            tags="crop_rectangle"
+        )
 
 def end_crop(event, window, canvas):
     window.cropping = False
@@ -724,6 +724,25 @@ def create_cropFrame(window):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
+    window.edit_images = []
+
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+        # Add a title
+    canvas.create_text(
+        720,
+        TITLEHEIGHT,
+        text="Please crop image to exclude plate lable, line up vertical sides with inner edges of the plate",
+        fill="#092934",
+        font=("Microsoft New Tai Lue", 12, 
+        "bold")
+    )
 
  # Resize image for display
     display_image, scale_factor = resize_for_display_crop(window.original_image)
@@ -893,6 +912,7 @@ def toggle_image(window):
     display_images(window)
 
 def display_images(window):
+
     try:
         # Right image (editing image)
         img_editing = Image.fromarray(window.debug_image)
