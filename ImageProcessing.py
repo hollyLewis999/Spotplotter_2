@@ -149,126 +149,122 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     # print(x_coords)
     return x_coords,y_coords,result_image
 
+
 def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1 =50, param2 =28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
     circles = cv2.HoughCircles(
         gray_image,
         cv2.HOUGH_GRADIENT,
-        dp=0.9, #higher for stricter
-        minDist=200, #distance between circles
-        param1 = param1,
-        param2 = param2, #The smaller it is, the more false circles may be detected
+        dp=0.9,
+        minDist=200,
+        param1=param1,
+        param2=param2,
         minRadius=min_radius,
         maxRadius=max_radius
     )
     counts = np.zeros((8, 12))
+    height, width = gray_image.shape
 
     if circles is None:
         print("No circles detected")
+        noClusters = True
 
-    if( len(circles[0]) <8 or noClusters):
-    #if (True):
-        print("doing Blobs")
-        x_coords, y_coords,result_image = findBlobs(binary_image, 1500,20000)
-        marked_image = result_image
+    if noClusters:
+        print("Using blob detection")
+        x_coords, y_coords, marked_image = findBlobs(binary_image, 1500, 20000)
     elif circles is not None:
         circles = np.round(circles[0, :]).astype(int)
-        #marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-       # height, width = gray_image.shape
-
         x_coords = circles[:, 0]
         y_coords = circles[:, 1]
         marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    height, width = gray_image.shape
-    try:
-        grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height,binary_image, gray_image, debug=False)
+    
+    grid_calculated = False
+    while not grid_calculated:
+        try:
+            grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, debug=False)
+            grid_calculated = True
+        except ValueError as e:
+            print(f"Error in grid calculation: {e}")
+            print("Attempting blob detection with looser parameters")
+            x_coords, y_coords, marked_image = findBlobs(binary_image, 1000, 25000)  # Looser parameters
+            if len(x_coords) < 2 or len(y_coords) < 2:
+                raise ValueError("Unable to detect sufficient blobs for grid calculation")
 
-        # # Detect multi-block areas first
-        # colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-        
-        # # Combine the colored_image (with yellow areas) and the marked_image
-        # marked_image = colored_image
+    # Draw grid lines
+    for i in range(13):
+        x = int(grid_start_x + i * cell_size)
+        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+    
+    for i in range(9):
+        y = int(grid_start_y + i * cell_size)
+        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
-        # Draw grid lines
-        for i in range(13):
-            x = int(grid_start_x + i * cell_size)
-            cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
-        
-        for i in range(9):
-            y = int(grid_start_y + i * cell_size)
-            cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
-
-
-        # # Draw circles last to ensure they're visible
-        counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
+    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
+    
+    if not noClusters and circles is not None:
         for (x, y, r) in circles:
             cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
             cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
 
-    except ValueError:
-        print("Not enough valid clusters found to calculate grid. Circles will be detected without drawing a grid.")
-        # Draw circles if grid calculation fails
-        if len(circles[0]) >7:
-        #if (False):
-            for (x, y, r) in circles:
-                cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
-                cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-    
     return counts, marked_image
 
-# d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
-# 88  `8D   `88'   888o  88 d8' `8b 88  `8D   `88'   YP  d8' 88'     
-# 88oooY'    88    88V8o 88 88ooo88 88oobY'    88       d8'  88ooooo 
-# 88~~~b.    88    88 V8o88 88~~~88 88`8b      88      d8'   88~~~~~ 
-# 88   8D   .88.   88  V888 88   88 88 `88.   .88.    d8' db 88.     
-# Y8888P' Y888888P VP   V8P YP   YP 88   YD Y888888P d88888P Y88888P 
+def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
+    """Detect circles in the image and draw grid, yellow areas, and counts."""
+    circles = cv2.HoughCircles(
+        gray_image,
+        cv2.HOUGH_GRADIENT,
+        dp=0.9,
+        minDist=200,
+        param1=param1,
+        param2=param2,
+        minRadius=min_radius,
+        maxRadius=max_radius
+    )
+    counts = np.zeros((8, 12))
+    height, width = gray_image.shape
 
-def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False):
-    """Stretch image intensity and convert to grayscale.
+    if circles is None:
+        print("No circles detected")
+        noClusters = True
+
+    if noClusters:
+        print("Using blob detection")
+        x_coords, y_coords, marked_image = findBlobs(binary_image, 1500, 20000)
+    elif circles is not None:
+        circles = np.round(circles[0, :]).astype(int)
+        x_coords = circles[:, 0]
+        y_coords = circles[:, 1]
+        marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
-    :param lower_bound: Lower bound for intensity stretching
-    :param upper_bound: Upper bound for intensity stretching"""
-    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
-    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
-    gray_image = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-    #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
+    grid_calculated = False
+    while not grid_calculated:
+        try:
+            grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, debug=False)
+            grid_calculated = True
+        except ValueError as e:
+            print(f"Error in grid calculation: {e}")
+            print("Attempting blob detection with looser parameters")
+            x_coords, y_coords, marked_image = findBlobs(binary_image, 1000, 25000)  # Looser parameters
+            if len(x_coords) < 2 or len(y_coords) < 2:
+                raise ValueError("Unable to detect sufficient blobs for grid calculation")
 
-    if show_images:
-        cv2.imshow('stretched', resize_for_display(stretched))
-        cv2.imshow('blurred', resize_for_display(blurred))
-        cv2.imshow('gray', resize_for_display(gray_image))
-    return stretched, blurred, gray_image
-
-
-def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, show_images=False):
-    """Binarize the grayscale image and perform contour detection."""
-   
-    block_size, divisor_c = 151, 15
-    c = max(-50, min(int(-contrast), -1))
-    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)
-    contour_img = original_image.copy()
-    final_binary = np.zeros_like(binary_image)
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Draw grid lines
+    for i in range(13):
+        x = int(grid_start_x + i * cell_size)
+        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
     
-    areas = [cv2.contourArea(cntr) for cntr in contours]
-    median_area = np.median(areas) if areas else 0
+    for i in range(9):
+        y = int(grid_start_y + i * cell_size)
+        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+
+    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
-    for cntr in contours:
-        area = cv2.contourArea(cntr)
-        if area > excludeSmallDots:
-            cv2.drawContours(contour_img, [cntr], 0, (0,255,255), 2)
-            cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+    if not noClusters and circles is not None:
+        for (x, y, r) in circles:
+            cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
+            cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
 
-
-
-    if show_images:
-        cv2.imshow('threshold', resize_for_display(binary_image))
-        cv2.imshow('contours', resize_for_display(contour_img))
-        cv2.imshow('final_binary', resize_for_display(final_binary))
-
-    return binary_image, contour_img, final_binary,block_size
-
+    return counts, marked_image
 
 
 # d888b  d8888b. d888888b d8888b. 
@@ -277,8 +273,9 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
 # 88  ooo 88`8b      88    88   88 
 # 88. ~8~ 88 `88.   .88.   88  .8D 
 #  Y888P  88   YD Y888888P Y8888D' 
-def calculate_grid(x_coords, y_coords, width, height, binarized_image,gray_image, debug=False):
-    """Calculate grid parameters based on detected circle coordinates."""
+
+def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
+    """Calculate grid parameters based on detected circle or blob coordinates."""
     
     def find_clusters(coords, min_count=2):
         sorted_coords = np.sort(coords)
@@ -325,23 +322,27 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image,gray_image
     upperBound = 320
     filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
     filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
-    print(filtered_x_diffs)
-    print(filtered_y_diffs)
-    filtered_x_diffs = np.median(filtered_x_diffs)
-    filtered_y_diffs = np.median(filtered_y_diffs)
-    print(filtered_x_diffs)
-    print(filtered_y_diffs)
-    if (math.isnan(filtered_x_diffs)):
-        if (math.isnan(filtered_y_diffs)):
-           detect_and_draw_circles(binarized_image, gray_image, True)
-           print("doing blobs, becuse of lack of clusters")
-        else:
-            cell_size = (filtered_y_diffs)
-    elif (math.isnan(filtered_y_diffs)):
-            cell_size = (filtered_x_diffs)
+    if not filtered_x_diffs and not filtered_y_diffs:
+        raise ValueError("No valid differences found within bounds")
+    
+    if filtered_x_diffs:
+        median_x_diff = np.median(filtered_x_diffs)
     else:
-        cell_size = max(filtered_x_diffs, filtered_y_diffs)
+        median_x_diff = None
 
+    if filtered_y_diffs:
+        median_y_diff = np.median(filtered_y_diffs)
+    else:
+        median_y_diff = None
+
+    if median_x_diff is None and median_y_diff is None:
+        raise ValueError("Both x and y differences are invalid")
+    elif median_x_diff is None:
+        cell_size = median_y_diff
+    elif median_y_diff is None:
+        cell_size = median_x_diff
+    else:
+        cell_size = max(median_x_diff, median_y_diff)
 
     # Calculate horizontal slant
     slope, _ = np.polyfit(x_coords, y_coords, 1)
@@ -349,8 +350,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image,gray_image
     max_angle = np.radians(8)
     slant_angle = np.clip(angle, -max_angle, max_angle)
     
-    grid_start_x = x_clusters[0] - cell_size / 2
-    grid_start_y = y_clusters[0] - cell_size / 2
+    grid_start_x = min(x_clusters) - cell_size / 2
+    grid_start_y = min(y_clusters) - cell_size / 2
     
     grid_width = cell_size * 12
     grid_height = cell_size * 8
@@ -378,94 +379,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image,gray_image
         plt.show()
     
     return grid_start_x, grid_start_y, cell_size, slant_angle
-
-# def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
-#     """
-#     Quantify the grid by counting white pixels in each cell, excluding multi-block areas.
-#     """
-#     height, width = binary_image.shape
-#     rows, cols = 8, 12  # 8x12 grid
-    
-#     # Detect multi-block areas
-#     colored_image, multi_block_mask = detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size)
-    
-#     # Combine the colored_image (with yellow areas) and the marked_image
-#     marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
-    
-#     counts = np.zeros((rows, cols), dtype=int)
-    
-#     for row in range(rows):
-#         for col in range(cols):
-#             x1 = int(grid_start_x + col * cell_size)
-#             y1 = int(grid_start_y + row * cell_size)
-#             x2 = int(x1 + cell_size)
-#             y2 = int(y1 + cell_size)
-            
-#             x1, y1 = max(0, x1), max(0, y1)
-#             x2, y2 = min(width, x2), min(height, y2)
-            
-#             cell = binary_image[y1:y2, x1:x2]
-#             cell_mask = multi_block_mask[y1:y2, x1:x2]
-            
-#             # Count white pixels only in areas not marked as multi-block
-#             white_pixels = np.sum((cell == 255) & (cell_mask == 0))
-#             counts[row, col] = white_pixels
-            
-#             text_x = int(x1 + cell_size / 2)
-#             text_y = int(y1 + cell_size / 2)
-            
-#             cv2.putText(marked_image, str(white_pixels), (text_x - 20, text_y + 10),
-#                         cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 255, 0), 2)
-#     print(counts)
-#     return counts, marked_image
-
-# def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
-#     """
-#     Detect areas spanning multiple grid blocks and color them yellow if at least 20% is outside the primary block.
-#     """
-#     height, width = binary_image.shape
-#     rows, cols = 8, 12  # 8x12 grid
-   
-#     # Create a colored image from the binary image
-#     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-   
-#     # Create a mask for multi-block areas
-#     multi_block_mask = np.zeros_like(binary_image)
-   
-#     # Find contours in the binary image
-#     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-   
-#     for contour in contours:
-#         # Get bounding box of the contour
-#         x, y, w, h = cv2.boundingRect(contour)
-#         contour_area = cv2.contourArea(contour)
-       
-#         # Determine the primary grid cell
-#         primary_col = int((x + w/2 - grid_start_x) / cell_size)
-#         primary_row = int((y + h/2 - grid_start_y) / cell_size)
-       
-#         # Calculate area of contour inside primary cell
-#         cell_x1 = int(grid_start_x + primary_col * cell_size)
-#         cell_y1 = int(grid_start_y + primary_row * cell_size)
-#         cell_x2 = int(cell_x1 + cell_size)
-#         cell_y2 = int(cell_y1 + cell_size)
-       
-#         cell_mask = np.zeros_like(binary_image)
-#         cv2.rectangle(cell_mask, (cell_x1, cell_y1), (cell_x2, cell_y2), 255, -1)
-        
-#         contour_mask = np.zeros_like(binary_image)
-#         cv2.drawContours(contour_mask, [contour], 0, 255, -1)
-        
-#         area_inside_primary = np.sum((contour_mask > 0) & (cell_mask > 0))
-        
-#         # Check if at least 20% of the contour is outside the primary cell
-#         if contour_area >0:
-#             if area_inside_primary / contour_area <= 0.8:
-#                 # Color the area yellow
-#                 cv2.drawContours(colored_image, [contour], 0, (0, 255, 255), -1)
-#                 cv2.drawContours(multi_block_mask, [contour], 0, 255, -1)
-   
-#     return colored_image, multi_block_mask
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
@@ -545,14 +458,65 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     print(counts)
     return counts, marked_image
 
-# def detect_multi_block_areas(binary_image, grid_start_x, grid_start_y, cell_size):
-#     """
-#     This function is now integrated into the quantify_grid function.
-#     It's kept here for compatibility, but it doesn't perform any operations.
-#     """
-#     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-#     multi_block_mask = np.zeros_like(binary_image)
-#     return colored_image, multi_block_mask
+
+
+
+
+
+# d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
+# 88  `8D   `88'   888o  88 d8' `8b 88  `8D   `88'   YP  d8' 88'     
+# 88oooY'    88    88V8o 88 88ooo88 88oobY'    88       d8'  88ooooo 
+# 88~~~b.    88    88 V8o88 88~~~88 88`8b      88      d8'   88~~~~~ 
+# 88   8D   .88.   88  V888 88   88 88 `88.   .88.    d8' db 88.     
+# Y8888P' Y888888P VP   V8P YP   YP 88   YD Y888888P d88888P Y88888P 
+
+def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False):
+    """Stretch image intensity and convert to grayscale.
+    
+    :param lower_bound: Lower bound for intensity stretching
+    :param upper_bound: Upper bound for intensity stretching"""
+    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
+    gray_image = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+    #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
+
+    if show_images:
+        cv2.imshow('stretched', resize_for_display(stretched))
+        cv2.imshow('blurred', resize_for_display(blurred))
+        cv2.imshow('gray', resize_for_display(gray_image))
+    return stretched, blurred, gray_image
+
+
+def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, show_images=False):
+    """Binarize the grayscale image and perform contour detection."""
+   
+    block_size, divisor_c = 151, 15
+    c = max(-50, min(int(-contrast), -1))
+    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY, block_size, c)
+    contour_img = original_image.copy()
+    final_binary = np.zeros_like(binary_image)
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    areas = [cv2.contourArea(cntr) for cntr in contours]
+    median_area = np.median(areas) if areas else 0
+    
+    for cntr in contours:
+        area = cv2.contourArea(cntr)
+        if area > excludeSmallDots:
+            cv2.drawContours(contour_img, [cntr], 0, (0,255,255), 2)
+            cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+
+
+
+    if show_images:
+        cv2.imshow('threshold', resize_for_display(binary_image))
+        cv2.imshow('contours', resize_for_display(contour_img))
+        cv2.imshow('final_binary', resize_for_display(final_binary))
+
+    return binary_image, contour_img, final_binary,block_size
+
+
 
 
     
