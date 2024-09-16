@@ -15,13 +15,57 @@ import numpy as np
 from PIL import Image, ImageTk, ImageDraw
 import copy
 from ImageProcessing import *
+# from roundedButton import *
 DARK = "#092934"
 LIGHT = "#E4EDF5"
+FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None):
+    # Calculate radius
+    rad = 2 * cornerradius
 
+    # Ensure each button has a unique tag if not provided
+    if button_tag is None:
+        button_tag = f"button_{x}_{y}"  # Unique tag based on position
 
+    # Draw the rounded rectangle shape at (x, y) position and give it a tag
+    canvas.create_polygon(
+        (x + padding, y + height - cornerradius - padding,
+         x + padding, y + cornerradius + padding,
+         x + padding + cornerradius, y + padding,
+         x + width - padding - cornerradius, y + padding,
+         x + width - padding, y + cornerradius + padding,
+         x + width - padding, y + height - cornerradius - padding,
+         x + width - padding - cornerradius, y + height - padding,
+         x + padding + cornerradius, y + height - padding),
+        fill=DARK, outline=DARK, tags=button_tag
+    )
+
+    # Draw rounded corners using arcs and add the same tag
+    canvas.create_arc(
+        (x + padding, y + padding + rad, x + padding + rad, y + padding),
+        start=90, extent=90, fill=DARK, outline=DARK, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
+        start=0, extent=90, fill=DARK, outline=DARK, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
+        start=270, extent=90, fill=DARK, outline=DARK, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
+        start=180, extent=90, fill=DARK, outline=DARK, tags=button_tag
+    )
+
+    # Add text in the middle of the button and tag it
+    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=LIGHT, font=(FONT, 12, "bold"), tags=button_tag)
+
+    # Bind the click event to the entire button with the unique tag
+    canvas.tag_bind(button_tag, "<ButtonRelease-1>", lambda event: command())
 
 
  ######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
@@ -64,7 +108,7 @@ def display_results(window):
         TITLEHEIGHT,
         text="Downloading Reults",
         fill="#092934",
-        font=("Microsoft New Tai Lue", 12, 
+        font=(FONT, 12, 
         "bold")
     )
 
@@ -73,7 +117,7 @@ def display_results(window):
         window,
         text="Finish",
         command=window.quit,
-        font=("Microsoft New Tai Lue", 14),
+        font=(FONT, 14),
         bg="#092934",
         fg="#E4EDF5",
         padx=20,
@@ -87,7 +131,7 @@ def upload_images(window):
         window.image_paths = list(file_paths)
         window.current_image_index = 0
         load_current_image(window)
-        # Go to the cropping screen instead of the edit screen
+
 
 def load_current_image(window):
     window.image_path = window.image_paths[window.current_image_index]
@@ -127,7 +171,7 @@ def display_final_image(window):
         window,
         text= update_next_button(window),
         command=lambda: next_image(window),
-        font=("Microsoft New Tai Lue", 14),
+        font=(FONT, 14),
         bg="#092934",
         fg="#E4EDF5",
         padx=20,
@@ -169,7 +213,7 @@ def display_final_image(window):
         window,
         text="Back to Editing",
         command=lambda: process_image(window),
-        font=("Microsoft New Tai Lue", 14),
+        font=(FONT, 14),
         bg="#092934",
         fg="#E4EDF5",
         padx=20,
@@ -190,7 +234,7 @@ def display_final_image(window):
     window.progress_bar.pack(side="left", padx=(0, 10))
 
     # Label next to the progress bar
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=("Microsoft New Tai Lue", 12, 'bold'))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
@@ -217,8 +261,11 @@ def update_next_button(window):
             return ("Results")
         else:
             return ("Next Image")
-    
+
+
+
 def create_titleFrame(window):
+    # Create the canvas
     canvas = Canvas(
         window,
         bg="#E4EDF5",
@@ -230,59 +277,53 @@ def create_titleFrame(window):
     )
     canvas.place(x=0, y=0)
    
-    image_image_10 = PhotoImage(file=relative_to_assets("image_10.png"))
-    image_image_10 = image_image_10.subsample(2, 2)
-    image_1 = canvas.create_image(720.0, 464.0, image=image_image_10)
+    # Load the image
+    image_path = relative_to_assets("image_10.png")
+    if os.path.exists(image_path):
+        try:
+            image_image_10 = PhotoImage(file=image_path)
+            image_image_10 = image_image_10.subsample(2, 2)
+            canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
+            canvas.create_image(720.0, 470.0, image=image_image_10)
+        except tk.TclError as e:
+            print(f"Error loading image: {e}")
    
-    # button_image_1 = PhotoImage(file=relative_to_assets("button_1.png"))
-    
-    # button_1 = Button(
-    #     window,
-    #     image=button_image_1,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: upload_image(window),
-    #     relief="flat"
-    # )
-    button_1 = Button(
-        window,
+    create_rounded_button(
+        canvas=canvas,
         text="Upload Assays",
         command=lambda: upload_images(window),
-        font=("Microsoft New Tai Lue", 14),
-        bg="#092934",
-        fg="#E4EDF5",
-        padx=20,
-        pady=10
-    )
-    button_1.place(x=616.0, y=739.0, width=207.0, height=61.0)
-   
+        x=400.0,
+        y=720.0, )
 
-    button_2 = Button(
-        window,
+    create_rounded_button(
+        canvas=canvas,
         text="Upload MetaData",
-        font=("Microsoft New Tai Lue", 14),
-        bg="#092934",
-        fg="#E4EDF5",
-        padx=20,
-        pady=10,
-        command=lambda: upload_txt_file(window)
-       
-    )
-    button_2.place(x=616.0, y=800.0, width=207.0, height=61.0)
-   
-    button_image_3 = PhotoImage(file=relative_to_assets("button_1.png"))
-    button_3 = Button(
-        window,
-        image=button_image_3,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: create_cropFrame(window),
-        relief="flat"
-    )
-    button_3.place(x=616.0, y=861.0, width=207.0, height=61.0)
-   
-    #return canvas, image_image_10, button_image_1, button_1, button_image_2, button_2, button_image_3, button_3
-    return canvas, image_image_10, button_1, button_2, button_image_3, button_3
+        command=lambda: upload_txt_file(window),
+        x=620.0,
+        y=720.0,)
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Upload Plate Data",
+        command=lambda: upload_txt_file(window),
+        x=840.0,
+        y=720.0,)
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: validate_and_proceed(window),
+        x=620.0,
+        y=820.0, )
+
+    return canvas
+
+
+def validate_and_proceed(window):
+    if hasattr(window, 'image_paths') and window.image_paths:  # Check if images have been uploaded
+        create_cropFrame(window)  # Proceed to the next frame
+    else:
+         messagebox.showwarning("Warning", "Please Upload Images")   
 
 
 def process_image(window):
@@ -406,9 +447,9 @@ def create_editFrame(window):
         outline="")
 
     if hasattr(window, 'metadata'):
-        metadata_label = Label(canvas, text=window.metadata, font=("Microsoft New Tai Lue", 16 * -1, 'bold'))
+        metadata_label = Label(canvas, text=window.metadata, font=(FONT, 16 * -1, 'bold'))
     else:
-        metadata_label = Label(canvas, text="No metadata available", font=("Microsoft New Tai Lue",16 * -1,'bold'))
+        metadata_label = Label(canvas, text="No metadata available", font=(FONT,16 * -1,'bold'))
     metadata_label.place(x=50, y=50)
 
     # canvas.create_text(
@@ -417,7 +458,7 @@ def create_editFrame(window):
     #     anchor="nw",
     #     text=window.metadata,
     #     fill="#0C2934",
-    #     font=("Microsoft New Tai Lue",16 * -1,'bold')
+    #     font=(FONT,16 * -1,'bold')
     # )
 
     canvas.create_text(
@@ -425,7 +466,7 @@ def create_editFrame(window):
         325.0,
         text="Add",
         fill="#E4EDF5",
-        font=("Microsoft New Tai Lue", 16 * -1,'bold')
+        font=(FONT, 16 * -1,'bold')
     )
 
     canvas.create_text(
@@ -433,7 +474,7 @@ def create_editFrame(window):
         537.0,
         text="Delete",
         fill="#E4EDF5",
-        font=("Microsoft New Tai Lue", 16 * -1,'bold')
+        font=(FONT, 16 * -1,'bold')
     )
 
 
@@ -615,7 +656,7 @@ def create_editFrame(window):
     window.progress_bar.pack(side="left", padx=(0, 10))
 
     # Label next to the progress bar
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=("Microsoft New Tai Lue", 12, 'bold'))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
@@ -740,7 +781,7 @@ def create_cropFrame(window):
         TITLEHEIGHT,
         text="Please crop image to exclude plate lable, line up vertical sides with inner edges of the plate",
         fill="#092934",
-        font=("Microsoft New Tai Lue", 12, 
+        font=(FONT, 12, 
         "bold")
     )
 
@@ -770,21 +811,25 @@ def create_cropFrame(window):
     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
-    # Create crop button
-    crop_button = Button(
-        window,
+    # # Create crop button
+    # crop_button = Button(
+    #     window,
+    #     text="Next",
+    #     command=lambda: apply_crop(window),
+    #     font=(FONT, 14),
+    #     bg="#092934",
+    #     fg="#E4EDF5",
+    #     padx=20,
+    #     pady=10
+    # )
+    # crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
+
+    create_rounded_button(
+        canvas=canvas,
         text="Next",
         command=lambda: apply_crop(window),
-        font=("Microsoft New Tai Lue", 14),
-        bg="#092934",
-        fg="#E4EDF5",
-        padx=20,
-        pady=10
-    )
-    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
-
-
-
+        x=1120.0,
+        y=890.0, )
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -1085,5 +1130,5 @@ initialize_window_attributes(window)
 # Create the title frame
 title_frame_widgets = create_titleFrame(window)
 
-window.resizable(True, True)
+window.resizable(False, False)
 window.mainloop()
