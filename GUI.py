@@ -12,6 +12,7 @@ from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font,
 from tkinter import ttk
 import cv2
 import numpy as np
+from scipy.spatial import distance
 from PIL import Image, ImageTk, ImageDraw
 import copy
 from ImageProcessing import *
@@ -23,6 +24,8 @@ FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+buttonPosX = 1150
+buttonPosY = 850
 def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None):
     # Calculate radius
     rad = 2 * cornerradius
@@ -127,10 +130,7 @@ def display_results(window):
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
 
-
-
-
-def display_final_image(window):
+def display_final_image(window, override =False):
     add_to_history(window)
     # Clear the window
     for widget in window.winfo_children():
@@ -169,13 +169,30 @@ def display_final_image(window):
     )
     next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
     
+
+    override_button = Button(
+        window,
+        text="Override Grid",
+        command=lambda: open_grid_override(window),
+        font=(FONT, 14),
+        bg="#092934",
+        fg=LIGHT,
+        padx=20,
+        pady=10
+    )
+    override_button.place(relx=0.3, rely=0.9, anchor="center")
+
+
     # Create a frame to center the image
     frame = Frame(window, bg=LIGHT)
     frame.place(relx=0.5, rely=0.5, anchor="center")
-
-    # Convert the NumPy array to PIL Image
-    gray_image = window.gray_image  # Make sure this is set earlier in the process
-    result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False)
+    if (override):
+        marked_image = window.marked_image
+        result_grid = window.result_grid
+    else:   
+        # Convert the NumPy array to PIL Image
+        gray_image = window.gray_image  # Make sure this is set earlier in the process
+        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False)
 
     # Ensure marked_image is a PIL Image
     if isinstance(marked_image, np.ndarray):
@@ -228,8 +245,155 @@ def display_final_image(window):
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
+
+    # Display the counts
+#     display_counts(window, frame)
+
+# def display_counts(window, frame):
+#     counts_frame = Frame(frame, bg=LIGHT)
+#     counts_frame.pack(pady=10)
+    
+#     for row in range(8):
+#         for col in range(12):
+#             count = window.counts[row, col]
+#             Label(counts_frame, text=f"{count}", bg=LIGHT, font=(FONT, 10)).grid(row=row, column=col, padx=2, pady=2)
+    
+#     total_count = np.sum(window.counts)
+#     Label(frame, text=f"Total Count: {total_count}", bg=LIGHT, font=(FONT, 14, 'bold')).pack(pady=10)
+
+    
+def open_grid_override(window):
+    # Clear the window
+    for widget in window.winfo_children():
+        widget.destroy()
+    
+    # Create a new canvas for grid override
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    # Add a title
+    canvas.create_text(
+        720,
+        TITLEHEIGHT,
+        text="Please click centerpoints of dots, start from the top left and work across and down",
+        fill="#092934",
+        font=(FONT, 12, 
+        "bold")
+    )
+    # Use the binarized image (which includes all edits)
+    binary_image = window.binarized_image.copy()
+    window.binary_image = binary_image
+    # Convert to RGB for display
+    rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
+    
+    # Resize the image to fit within the canvas
+    max_width = 1200  # Adjust as needed
+    max_height = 600  # Adjust as needed
+    h, w = rgb_image.shape[:2]
+    scale = min(max_width / w, max_height / h)
+    new_size = (int(w * scale), int(h * scale))
+    resized_image = cv2.resize(rgb_image, new_size, interpolation=cv2.INTER_AREA)
+    
+    # Convert to PhotoImage
+    img = Image.fromarray(resized_image)
+    photo = ImageTk.PhotoImage(img)
+    
+    # Calculate position to center the image
+    x_position = (1440 - new_size[0]) // 2
+    y_position = (1024 - new_size[1]) // 2
+    
+    # Display the image
+    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
+    canvas.image = photo  # Keep a reference
+    
+    # Store the scale factor for later use
+    window.grid_override_scale = scale
+    window.grid_override_offset = (x_position, y_position)
+    
+    # Store clicked points
+    window.clicked_pointsx = []
+    window.clicked_pointsy = []
+    # Bind click event
+    canvas.bind("<Button-1>", lambda event: on_canvas_click(event, window, canvas))
     
 
+    create_rounded_button(
+        canvas=canvas,
+        text="Recalculate Grid",
+        command=lambda: recalculate_grid(window),
+        x=buttonPosX,
+        y=buttonPosY, 
+        button_tag ="recalculate_grid")
+
+
+def on_canvas_click(event, window, canvas):
+    x, y = event.x, event.y
+    
+    # Adjust coordinates based on image position and scaling
+    adjusted_x = (x - window.grid_override_offset[0]) / window.grid_override_scale
+    adjusted_y = (y - window.grid_override_offset[1]) / window.grid_override_scale
+    
+    window.clicked_pointsx.append(adjusted_x)
+    window.clicked_pointsy.append(adjusted_y)
+    # Draw a red X at the clicked point
+    canvas.create_line(x-5, y-5, x+5, y+5, fill=DARK, width=2)
+    canvas.create_line(x-5, y+5, x+5, y-5, fill=DARK, width=2)
+
+def recalculate_grid(window):
+    if len(window.clicked_pointsx) < 16:
+        messagebox.showerror("Error", "Please select at least 16 points")
+        return
+   
+    # Convert clicked points to numpy array
+    pointsx, pointsy = np.array(window.clicked_pointsx), np.array(window.clicked_pointsy)
+    height, width = window.gray_image.shape
+    # Calculate new grid parameters using user-provided points
+    grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
+    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+    # Create a color copy of the original image for marking
+    # Update window attributes
+    window.result_grid= counts
+    window.marked_image = marked_image
+    # Display the final image with the new grid
+    display_final_image(window, True)
+
+
+    
+def update_final_image(window):
+    # Convert the marked_image from BGR to RGB for tkinter
+    rgb_image = cv2.cvtColor(window.marked_image, cv2.COLOR_BGR2RGB)
+    
+    # Create a PhotoImage object
+    photo = ImageTk.PhotoImage(image=Image.fromarray(rgb_image))
+    
+    # # Update the image in the display_final_image window
+    # if hasattr(window, 'final_image_label'):
+    #     window.final_image_label.config(image=photo)
+    #     window.final_image_label.image = photo  # Keep a reference
+    # else:
+    #     # If the label doesn't exist, create it
+    #     window.final_image_label = Label(window.display_final_image, image=photo)
+    #     window.final_image_label.image = photo  # Keep a reference
+    #     window.final_image_label.pack()
+
+    # Refresh the display_final_image window
+    window.display_final_image.update()
 
 def update_progress_bar(window):
     if hasattr(window, 'progress_bar') and window.progress_bar:
@@ -267,7 +431,7 @@ def create_titleFrame(window):
             image_image_10 = PhotoImage(file=image_path)
             image_image_10 = image_image_10.subsample(2, 2)
             canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
-            canvas.create_image(720.0, 470.0, image=image_image_10)
+            canvas.create_image(720.0, 400.0, image=image_image_10)
         except tk.TclError as e:
             print(f"Error loading image: {e}")
    
@@ -275,29 +439,29 @@ def create_titleFrame(window):
         canvas=canvas,
         text="Upload Assays",
         command=lambda: upload_images(window),
-        x=400.0,
-        y=720.0, )
+        x=620.0,
+        y=650.0, )
 
     create_rounded_button(
         canvas=canvas,
         text="Upload MetaData",
         command=lambda: upload_txt_file(window),
-        x=620.0,
-        y=720.0,)
+        x=400.0,
+        y=650.0,)
 
     create_rounded_button(
         canvas=canvas,
         text="Upload Plate Data",
         command=lambda: upload_txt_file(window),
         x=840.0,
-        y=720.0,)
+        y=650.0,)
 
     create_rounded_button(
         canvas=canvas,
         text="Next",
         command=lambda: validate_and_proceed(window),
-        x=620.0,
-        y=820.0, )
+        x=buttonPosX,
+        y=buttonPosY )
 
     return canvas
 
@@ -394,22 +558,29 @@ def create_editFrame(window):
     contrast_slider.set(window.contrast_value)  # Set default value
     contrast_slider.place(x=100, y=130)
 
-    button_image_1 = PhotoImage( #this is the next button
-        file=relative_to_assets("button_1.png"))
-    window.edit_images.append(button_image_1)
-    button_1 = Button(
-        image=button_image_1,
-        borderwidth=0,
-        highlightthickness=0,
+    # button_image_1 = PhotoImage( #this is the next button
+    #     file=relative_to_assets("button_1.png"))
+    # window.edit_images.append(button_image_1)
+    # button_1 = Button(
+    #     image=button_image_1,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: display_final_image(window),
+    #     relief="flat"
+    # )
+    # button_1.place(
+    #     x=1192.0,
+    #     y=935.0,
+    #     width=207.0,
+    #     height=61.0
+    # )
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
         command=lambda: display_final_image(window),
-        relief="flat"
-    )
-    button_1.place(
-        x=1192.0,
-        y=935.0,
-        width=207.0,
-        height=61.0
-    )
+        x=buttonPosX,
+        y=buttonPosY )
+
 
     round_rectangle(canvas,
        1331.0,

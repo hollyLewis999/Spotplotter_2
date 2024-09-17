@@ -392,6 +392,12 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     labeled_image, num_features = ndimage.label(binary_image)
     
     counts = np.zeros((rows, cols), dtype=int)
+    
+    # Ensure marked_image is in color (3 channels)
+    if len(marked_image.shape) == 2:  # If grayscale, convert to BGR
+        marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
+    
+    # Convert binary_image to BGR for color marking
     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
     
     for label in range(1, num_features + 1):
