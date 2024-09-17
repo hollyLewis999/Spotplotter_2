@@ -26,6 +26,7 @@ OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 buttonPosX = 1150
 buttonPosY = 850
+backToEdit2 = False
 def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None):
     # Calculate radius
     rad = 2 * cornerradius
@@ -85,7 +86,10 @@ def display_results(window):
     # Clear the window
     for widget in window.winfo_children():
         widget.destroy()
-
+        # Right image (editing image)
+    # cv2.imshow("debug image", resize_for_display(window.debug_image))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     # Create a new canvas for results
     canvas = Canvas(
         window,
@@ -129,7 +133,13 @@ def display_results(window):
         pady=10
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
-
+def backToEditClicked():
+    global backToEdit2
+    backToEdit2= True
+    print("WE SHOULD SEE TRUE")
+    print(backToEdit2)
+    create_editFrame(window)
+    
 def display_final_image(window, override =False):
     add_to_history(window)
     # Clear the window
@@ -219,7 +229,7 @@ def display_final_image(window, override =False):
     back_button = Button(
         window,
         text="Back to Editing",
-        command=lambda: process_image(window),
+        command=lambda: backToEditClicked(),
         font=(FONT, 14),
         bg="#092934",
         fg=LIGHT,
@@ -245,7 +255,7 @@ def display_final_image(window, override =False):
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
-
+    
     # Display the counts
 #     display_counts(window, frame)
 
@@ -490,18 +500,13 @@ def process_image(window):
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
+    print("imagge is being reprocessed ")
 
 
-
-def update_button_appearance(window, button, active_mode, active_image, inactive_image):
-    if window.mode == active_mode:
-        button.config(image=active_image)
-    else:
-        button.config(image=inactive_image)
-
-
-def create_editFrame(window):
-
+def create_editFrame(window, backToEdit = False):
+    global backToEdit2
+    print("i am creating edit frame")
+    print(backToEdit2)
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -541,46 +546,57 @@ def create_editFrame(window):
     smallDots_label.place(x=500, y=140)
 
     smallDots_slider = Scale(window, from_=0, to=10000, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_excludeSmallDots(window, v),
+                            command=lambda v: on_excludeSmallDots(window, v, backToEdit),
                             bg=DARK, fg="white", troughcolor=LIGHT)
     smallDots_slider.set(window.excludeSmallDots)  # Set default value
+    
     smallDots_slider.place(x=500, y=130)
 
+    print("this is in edit fram on small dots:")
+    print(window.excludeSmallDots)
+    print(backToEdit2)
+    print("================================")
 
-
-
+  
     contrast_label = Label(window, text="Contrast:", bg=DARK, fg="white")
     contrast_label.place(x=34, y=140)
 
     contrast_slider = Scale(window, from_=0, to=40, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_contrast_change(window, v),
+                            command=lambda v: on_contrast_change(window, v, backToEdit),
                             bg=DARK, fg="white", troughcolor=LIGHT)
     contrast_slider.set(window.contrast_value)  # Set default value
     contrast_slider.place(x=100, y=130)
+    print("this is in edit fram on contrast:")
+    print(window.contrast_value)
+    print(backToEdit2)
+    print("================================")
 
-    # button_image_1 = PhotoImage( #this is the next button
-    #     file=relative_to_assets("button_1.png"))
-    # window.edit_images.append(button_image_1)
-    # button_1 = Button(
-    #     image=button_image_1,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: display_final_image(window),
-    #     relief="flat"
-    # )
-    # button_1.place(
-    #     x=1192.0,
-    #     y=935.0,
-    #     width=207.0,
-    #     height=61.0
-    # )
+    
+    
+    
+
+    button_image_1 = PhotoImage( #this is the next button
+        file=relative_to_assets("button_1.png"))
+    window.edit_images.append(button_image_1)
+    button_1 = Button(
+        image=button_image_1,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: display_final_image(window),
+        relief="flat"
+    )
+    button_1.place(
+        x=1192.0,
+        y=935.0,
+        width=207.0,
+        height=61.0
+    )
     create_rounded_button(
         canvas=canvas,
         text="Next",
         command=lambda: display_final_image(window),
         x=buttonPosX,
         y=buttonPosY )
-
 
     round_rectangle(canvas,
        1331.0,
@@ -813,7 +829,7 @@ def create_editFrame(window):
     
     update_progress_bar(window)
 
-
+   
     return canvas
 
     
@@ -1100,35 +1116,47 @@ def next_image(window):
 ##     ##  #######  ########  ########  ###### 
 
 
-def on_contrast_change(window, value):
-    window.contrast_value = float(value)
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
+def on_contrast_change(window, value, backToEdit = False):
+    print("on_contrast_change")
+    print(backToEdit2)
+    if (backToEdit2 == False):
+        window.contrast_value = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
 
-    # Update the binarized image and contour image
-    window.binarized_image = final_binary
-    window.contour_img = contour_img
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # Update the binarized image and contour image
+        window.binarized_image = final_binary
+        window.contour_img = contour_img
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
 
-    # Update the history
-    add_to_history(window)
+        # Update the history
+        add_to_history(window)
 
-    # Refresh the displayed images
-    display_images(window)
+        # Refresh the displayed images
+        display_images(window)
+  
 
-def on_excludeSmallDots(window,value):
-    window.excludeSmallDots =float(value)
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
+def on_excludeSmallDots(window,value,backToEdit = False): 
+    print("on_excludeSmallDots")
+    global backToEdit2
+    print(backToEdit2)
+    if (backToEdit2 == False):
+        window.excludeSmallDots =float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
 
-    # Update the binarized image
-    window.binarized_image = final_binary
-    
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-    
-    # Update the history
-    add_to_history(window)
+        # Update the binarized image
+        window.binarized_image = final_binary
+        
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        print("am i resetting here?")
+        # Update the history
+        add_to_history(window)
 
-    # Refresh the displayed images
-    display_images(window)
+        # Refresh the displayed images
+        display_images(window)
+    else:
+        
+        backToEdit2 = False
+
 def set_mode(window, mode):
     window.mode = mode
     if mode == "small_brush" or mode == "small_eraser":
@@ -1143,7 +1171,10 @@ def toggle_image(window):
 def display_images(window):
 
     try:
-        # Right image (editing image)
+        # # Right image (editing image)
+        # cv2.imshow("debug image", resize_for_display(window.debug_image))
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
         img_editing = Image.fromarray(window.debug_image)
         img_editing.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
         window.photo_editing = ImageTk.PhotoImage(img_editing)
