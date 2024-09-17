@@ -17,7 +17,8 @@ import copy
 from ImageProcessing import *
 # from roundedButton import *
 DARK = "#092934"
-LIGHT = "#E4EDF5"
+#LIGHT = "#E4EDF5"
+LIGHT = "#FFFFFF"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
@@ -68,7 +69,8 @@ def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cor
     canvas.tag_bind(button_tag, "<ButtonRelease-1>", lambda event: command())
 
 
- ######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
+
+######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
 ##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
 ##       ##     ## ##        ##   ##     ##    ##          ##       ##       ##     ## ##       ##       ####  ## ##       
 ##       ########  ######   ##     ##    ##    ######       ######  ##       ########  ######   ######   ## ## ##  ######  
@@ -84,7 +86,7 @@ def display_results(window):
     # Create a new canvas for results
     canvas = Canvas(
         window,
-        bg="#E4EDF5",
+        bg=LIGHT,
         height=1024,
         width=1440,
         bd=0,
@@ -119,24 +121,12 @@ def display_results(window):
         command=window.quit,
         font=(FONT, 14),
         bg="#092934",
-        fg="#E4EDF5",
+        fg=LIGHT,
         padx=20,
         pady=10
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
 
-def upload_images(window):
-    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-    if file_paths:
-        window.image_paths = list(file_paths)
-        window.current_image_index = 0
-        load_current_image(window)
-
-
-def load_current_image(window):
-    window.image_path = window.image_paths[window.current_image_index]
-    window.original_image = cv2.imread(window.image_path)
-    window.current_image = window.original_image.copy()
 
 
 
@@ -149,7 +139,7 @@ def display_final_image(window):
     # Create a new canvas
     canvas = Canvas(
         window,
-        bg="#E4EDF5",
+        bg=LIGHT,
         height=1024,
         width=1440,
         bd=0,
@@ -173,14 +163,14 @@ def display_final_image(window):
         command=lambda: next_image(window),
         font=(FONT, 14),
         bg="#092934",
-        fg="#E4EDF5",
+        fg=LIGHT,
         padx=20,
         pady=10
     )
     next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
     
     # Create a frame to center the image
-    frame = Frame(window, bg="#E4EDF5")
+    frame = Frame(window, bg=LIGHT)
     frame.place(relx=0.5, rely=0.5, anchor="center")
 
     # Convert the NumPy array to PIL Image
@@ -203,7 +193,7 @@ def display_final_image(window):
     photo = ImageTk.PhotoImage(marked_image)
 
     # Create a label to display the image
-    image_label = Label(frame, image=photo, bg="#E4EDF5")
+    image_label = Label(frame, image=photo, bg=LIGHT)
     image_label.image = photo  # Keep a reference
     image_label.pack()
 
@@ -215,7 +205,7 @@ def display_final_image(window):
         command=lambda: process_image(window),
         font=(FONT, 14),
         bg="#092934",
-        fg="#E4EDF5",
+        fg=LIGHT,
         padx=20,
         pady=10
     )
@@ -247,14 +237,8 @@ def update_progress_bar(window):
         window.progress_bar['value'] = progress
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
 
-def next_image(window):
-    if window.current_image_index < len(window.image_paths) - 1:
-        window.current_image_index += 1
-        load_current_image(window)
-        create_cropFrame(window)
-    else:
-        display_results(window)
-    update_progress_bar(window)
+
+    
 def update_next_button(window):
     if hasattr(window, 'next_button') and window.next_button:
         if window.current_image_index == len(window.image_paths) - 1:
@@ -263,12 +247,11 @@ def update_next_button(window):
             return ("Next Image")
 
 
-
 def create_titleFrame(window):
     # Create the canvas
     canvas = Canvas(
         window,
-        bg="#E4EDF5",
+        bg=LIGHT,
         height=1024,
         width=1440,
         bd=0,
@@ -323,7 +306,7 @@ def validate_and_proceed(window):
     if hasattr(window, 'image_paths') and window.image_paths:  # Check if images have been uploaded
         create_cropFrame(window)  # Proceed to the next frame
     else:
-         messagebox.showwarning("Warning", "Please Upload Images")   
+         messagebox.showwarning("Warning", "Please upload Image")   
 
 
 def process_image(window):
@@ -346,8 +329,6 @@ def process_image(window):
 
 
 
-
-
 def update_button_appearance(window, button, active_mode, active_image, inactive_image):
     if window.mode == active_mode:
         button.config(image=active_image)
@@ -359,7 +340,7 @@ def create_editFrame(window):
 
     canvas = Canvas(
         window,
-        bg="#E4EDF5",
+        bg=LIGHT,
         height=1024,
         width=1440,
         bd=0,
@@ -397,7 +378,7 @@ def create_editFrame(window):
 
     smallDots_slider = Scale(window, from_=0, to=10000, orient=HORIZONTAL, length=200,
                             command=lambda v: on_excludeSmallDots(window, v),
-                            bg=DARK, fg="white", troughcolor="#E4EDF5")
+                            bg=DARK, fg="white", troughcolor=LIGHT)
     smallDots_slider.set(window.excludeSmallDots)  # Set default value
     smallDots_slider.place(x=500, y=130)
 
@@ -409,7 +390,7 @@ def create_editFrame(window):
 
     contrast_slider = Scale(window, from_=0, to=40, orient=HORIZONTAL, length=200,
                             command=lambda v: on_contrast_change(window, v),
-                            bg=DARK, fg="white", troughcolor="#E4EDF5")
+                            bg=DARK, fg="white", troughcolor=LIGHT)
     contrast_slider.set(window.contrast_value)  # Set default value
     contrast_slider.place(x=100, y=130)
 
@@ -465,7 +446,7 @@ def create_editFrame(window):
         1344.0,
         325.0,
         text="Add",
-        fill="#E4EDF5",
+        fill=LIGHT,
         font=(FONT, 16 * -1,'bold')
     )
 
@@ -473,7 +454,7 @@ def create_editFrame(window):
         1338.0,
         537.0,
         text="Delete",
-        fill="#E4EDF5",
+        fill=LIGHT,
         font=(FONT, 16 * -1,'bold')
     )
 
@@ -757,7 +738,7 @@ def create_cropFrame(window):
     # Create a new canvas
     canvas = Canvas(
         window,
-        bg="#E4EDF5",
+        bg=LIGHT,
         height=1024,
         width=1440,
         bd=0,
@@ -811,25 +792,21 @@ def create_cropFrame(window):
     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
-    # # Create crop button
-    # crop_button = Button(
-    #     window,
-    #     text="Next",
-    #     command=lambda: apply_crop(window),
-    #     font=(FONT, 14),
-    #     bg="#092934",
-    #     fg="#E4EDF5",
-    #     padx=20,
-    #     pady=10
-    # )
-    # crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
-
-    create_rounded_button(
-        canvas=canvas,
+    # Create crop button
+    crop_button = Button(
+        window,
         text="Next",
         command=lambda: apply_crop(window),
-        x=1120.0,
-        y=890.0, )
+        font=(FONT, 14),
+        bg="#092934",
+        fg=LIGHT,
+        padx=20,
+        pady=10
+    )
+    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
+
+
+
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -870,17 +847,53 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
 def upload_txt_file(window):
     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
     if file_path:
+        window.image_info = []
         with open(file_path, 'r') as file:
-            content = file.read().strip()
-            parts = content.split(',')
-            if len(parts) == 4:
-                strains = [part.strip() for part in parts[:3]]
-                atp = parts[3].strip().lower()
-                strain_info = ', '.join([f'Strain {s}' for s in strains])
-                atp_info = 'ATP: YES' if atp == 'yes' else 'ATP: NO'
-                window.metadata = f"{strain_info}\n{atp_info}"
-            else:
-                messagebox.showerror("Error", "The uploaded file is not in the expected format. The format should be: 'A,B,C,YES/NO'.")
+            for line in file:
+                parts = line.strip().split(',')
+                if len(parts) == 5:
+                    window.image_info.append({
+                        'filename': parts[0],
+                        'strainA': parts[1],
+                        'QuantificationA': None,
+                        'strainB': parts[2],
+                        'QuantificationB': None,
+                        'strainC': parts[3],
+                        'QuantificationC': None,
+                        'mediaCondition': parts[4]
+                    })
+        window.current_image_index = 0
+
+def upload_images(window):
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
+    if file_paths and hasattr(window, 'image_info'):
+        window.image_paths = []
+        for info in window.image_info:
+            matching_path = next((path for path in file_paths if info['filename'] in path), None)
+            if matching_path:
+                window.image_paths.append(matching_path)
+        
+        if window.image_paths:
+            window.current_image_index = 0
+            load_current_image(window)
+
+def load_current_image(window):
+    if 0 <= window.current_image_index < len(window.image_paths):
+        window.image_path = window.image_paths[window.current_image_index]
+        window.original_image = cv2.imread(window.image_path)
+        window.current_image = window.original_image.copy()
+        
+        # Update the current image info
+        window.current_image_info = window.image_info[window.current_image_index]
+
+def next_image(window):
+    if window.current_image_index < len(window.image_paths) - 1:
+        window.current_image_index += 1
+        load_current_image(window)
+        create_cropFrame(window)
+        update_progress_bar(window)
+    else:
+        display_results(window)
 
 
 
@@ -1121,7 +1134,7 @@ def initialize_window_attributes(window):
 
 window = Tk()
 window.geometry("1440x1024")
-window.configure(bg="#E4EDF5")
+window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
 #DFAULT VALUES

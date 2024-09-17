@@ -455,7 +455,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
     
-    print(counts)
+    print(split_and_process(counts))
     return counts, marked_image
 
 
@@ -661,23 +661,29 @@ def correct_perspective_pipeline(original_image):
 # 88. ~8~ 88 `88. 88   88 88      88   88 
 #  Y888P  88   YD YP   YP 88      YP   YP 
 
-def process_2d_array(array_2d):
-  """
-  Processes a 2D array with 12 columns and 8 rows into a 1D array according to the specified pattern.
+def split_and_process(array):
+    # Split the array into three 8x4 arrays
+    strain1 = [row[:4] for row in array]
+    strain2 = [row[4:8] for row in array]
+    strain3 = [row[8:] for row in array]
 
-  Args:
-    array_2d: A 2D array with 12 columns and 8 rows.
+    # Process and print each strain
+    for i, strain in enumerate([strain1, strain2, strain3], 1):
+        print(f"Strain {i}:")
+        process_strain(strain)
+        print()
 
-  Returns:
-    A 1D array containing the values from the 2D array in the specified order.
-  """
+def process_strain(strain):
+    order = [
+        (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
+        (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
+        (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
+    ]
 
-  result = []
-  for i in range(4):
-    for j in range(4):
-      result.append(array_2d[j][i])
-      result.append(array_2d[j + 4][i + 4])
-  return result
+    for col, row in order:
+        if row <= 8 and col <= 4:
+            print(strain[row-1][col-1], end=" ")
+    print()
 
 
 def plotScatter(counts):
