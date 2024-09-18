@@ -8,7 +8,7 @@ import os
 
 # from tkinter import *
 # Explicit imports to satisfy Flake8
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND
 from tkinter import ttk
 import cv2
 import numpy as np
@@ -16,10 +16,13 @@ from scipy.spatial import distance
 from PIL import Image, ImageTk, ImageDraw
 import copy
 from ImageProcessing import *
+from functools import partial
+import time
 # from roundedButton import *
 DARK = "#092934"
 #LIGHT = "#E4EDF5"
 LIGHT = "#FFFFFF"
+GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
@@ -30,8 +33,71 @@ backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
 
+def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
+    frame = Frame(master, width=300, height=70, bg=DARK)
+    frame.place(x=position[0], y=position[1])
+    canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
+    canvas.pack()
+    
+    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
+    last_update_time = 0
+    update_interval = 100  # Update interval in milliseconds
 
-def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
+    def draw_slider(update_label=False):
+        canvas.delete("all")
+        filled_x = value_to_position(current_value.get())
+        canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
+        canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
+        
+        knob_x = value_to_position(current_value.get())
+        canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
+        
+        if update_label:
+            canvas.delete("value_text")
+            label_x = max(10, min(knob_x, 270))
+            canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
+                               font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
+
+    def value_to_position(value):
+        return (value - min_val) / (max_val - min_val) * 280 + 10
+
+    def position_to_value(x):
+        return (x - 10) / 280 * (max_val - min_val) + min_val
+
+    def on_drag(event):
+        nonlocal last_update_time
+        current_time = event.time
+        if 35 <= event.y <= 55:
+            new_value = position_to_value(event.x)
+            current_value.set(max(min_val, min(max_val, new_value)))
+            
+            if current_time - last_update_time >= update_interval:
+                draw_slider(update_label=True)
+                last_update_time = current_time
+            else:
+                draw_slider(update_label=False)
+            
+            if command:
+                command(int(current_value.get()))
+
+    def on_release(event):
+        draw_slider(update_label=True)
+        if command:
+            command(int(current_value.get()))
+
+    canvas.bind("<B1-Motion>", on_drag)
+    canvas.bind("<ButtonRelease-1>", on_release)
+
+    def set_value(value):
+        current_value.set(max(min_val, min(max_val, value)))
+        draw_slider(update_label=True)
+
+    draw_slider(update_label=True)
+    frame.set = set_value
+    frame.get = lambda: int(current_value.get())
+    return frame
+        
+def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
     # Calculate radius
     rad = 2 * cornerradius
 
@@ -512,8 +578,7 @@ def process_image(window):
 
 def create_editFrame(window, backToEdit = False):
     global backToEdit2
-    print("i am creating edit frame")
-    print(backToEdit2)
+
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -546,19 +611,19 @@ def create_editFrame(window, backToEdit = False):
         button_tag = "editNext" )
 
     round_rectangle(canvas,
-       1331.0,
+       1362.0,
         168.0,
         1422.0,
         826.0,
-        fill="#0C2934",
+        fill=DARK,
         outline="")
 
     round_rectangle(canvas,
         17.0,
         168.0,
-        1324.0,
+        1350.0,
         826.0,
-        fill="#0C2934",
+        fill=DARK,
         outline="")
 
     if hasattr(window, 'metadata'):
@@ -577,25 +642,31 @@ def create_editFrame(window, backToEdit = False):
     # )
 
     canvas.create_text(
-        1344.0,
-        325.0,
+        1391.0,
+        380.0,
         text="Add",
         fill=LIGHT,
-        font=(FONT, 16 * -1,'bold')
+        font=(FONT, 14 * -1,'bold')
     )
 
     canvas.create_text(
-        1338.0,
-        537.0,
+        1391.0,
+        580.0,
         text="Delete",
         fill=LIGHT,
-        font=(FONT, 16 * -1,'bold')
+        font=(FONT, 14* -1,'bold')
     )
 
 
-    image_image_2 = PhotoImage( #this is the thin pen
-        file=relative_to_assets("image_2.png"))
-    image_image_2 = image_image_2.subsample(11, 11) 
+
+    image_path_2 = relative_to_assets("image_2.png")
+    img_thinPen = Image.open(image_path_2)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
     window.edit_images.append(image_image_2)
     button_thin_pen = Button(
         window,
@@ -612,9 +683,14 @@ def create_editFrame(window, backToEdit = False):
 
 
 
-    image_image_3 = PhotoImage(# this is the magic adder
-        file=relative_to_assets("image_3.png"))
-    image_image_3 = image_image_3.subsample(11, 11)
+    image_path_3 = relative_to_assets("image_3.png")
+    img_adder = Image.open(image_path_3)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_adder_resized = img_adder.resize((img_adder.width // 11, img_adder.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_3 = ImageTk.PhotoImage(img_adder_resized)    
     window.edit_images.append(image_image_3)
     magic_adder_button = Button(
         window,
@@ -643,9 +719,14 @@ def create_editFrame(window, backToEdit = False):
     )
     big_eraser_button.place(x=1377.0, y=655.0)
 
-    image_image_5 = PhotoImage(#this is the bi gpen
-        file=relative_to_assets("image_5.png"))
-    image_image_5 = image_image_5.subsample(11, 11) 
+    image_path_5 = relative_to_assets("image_5.png")
+    img_thickPen = Image.open(image_path_5)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
     window.edit_images.append(image_image_5)
     big_pen_button = Button(
         window,
@@ -663,7 +744,7 @@ def create_editFrame(window, backToEdit = False):
     img_flood = Image.open(image_path_6)  # Open image using Pillow
 
     # Resize the image while keeping better quality
-    img_flood_resized = img_undo.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
+    img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
 
     # Convert to PhotoImage for Tkinter
     image_image_6 = ImageTk.PhotoImage(img_flood_resized)
@@ -683,7 +764,7 @@ def create_editFrame(window, backToEdit = False):
     img_redo = Image.open(image_path_7)  # Open image using Pillow
 
     # Resize the image while keeping better quality
-    img_redo_resized = img_redo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+    img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
 
     # Convert to PhotoImage for Tkinter
     image_image_7 = ImageTk.PhotoImage(img_redo_resized)
@@ -697,7 +778,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    redo_button.place(x=1380.0, y=251.0)
+    redo_button.place(x=1376.0, y=251.0)
 
 
     # Undo Button
@@ -720,12 +801,19 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    undo_button.place(x=1371.0, y=212.0)
+    undo_button.place(x=1376.0, y=212.0)
 
 
     # Thin eraser
-    image_image_9 = PhotoImage(file=relative_to_assets("image_9.png"))
-    image_image_9 = image_image_9.subsample(11, 11)
+
+    image_path_9 = relative_to_assets("image_9.png")
+    img_thinEraser = Image.open(image_path_9)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
     window.edit_images.append(image_image_9)
     thin_eraser_button = Button(
         window,
@@ -763,35 +851,31 @@ def create_editFrame(window, backToEdit = False):
         text="Toggle",
         command=lambda: toggle_image(window),
         x=40,
-        y=210,
+        y=215,
         button_tag = "Toggle",
         width = 110, 
         height = 40,
         fill = LIGHT,
         accent = DARK)
 
+    smallDots_label = Label(window, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    smallDots_label.place(x=645, y=223)
+    smallDots_slider = create_circular_slider(
+        window, min_val=0, max_val=10000,
+        position=(700, 190),
+        command=lambda v: on_excludeSmallDots(window, v, False),
+        initial_value=window.excludeSmallDots
+    )
 
-
-    smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg = DARK)
-    smallDots_label.place(x=550, y=220)
-
-    smallDots_slider = Scale(window, from_=0, to=10000, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_excludeSmallDots(window, v, backToEdit),
-                            bg=DARK, fg="white", troughcolor=LIGHT)
-    smallDots_slider.set(window.excludeSmallDots)  # Set default value
-    
-    smallDots_slider.place(x=610, y=210)
-
-  
-    contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg = DARK)
-    contrast_label.place(x=200, y=220)
-
-    contrast_slider = Scale(window, from_=0, to=40, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_contrast_change(window, v, backToEdit),
-                            bg=DARK, fg="white", troughcolor=LIGHT)
-    contrast_slider.set(window.contrast_value)  # Set default value
-    contrast_slider.place(x=300, y=210)
-
+    # Contrast Slider
+    contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    contrast_label.place(x=200, y=223)
+    contrast_slider = create_circular_slider(
+        window, min_val=0, max_val=40,
+        position=(300, 190),
+        command=lambda v: on_contrast_change(window, v, False),
+        initial_value=window.contrast_value
+    )
 
 
 
@@ -1111,47 +1195,38 @@ def next_image(window):
 ##     ## ##     ## ##     ## ##             ## s
 ##     ## ##     ## ##     ## ##       ##    ## 
 ##     ##  #######  ########  ########  ###### 
-
-
 def on_contrast_change(window, value, backToEdit = False):
-    print("on_contrast_change")
-    print(backToEdit2)
+    global backToEdit2
     if (backToEdit2 == False):
         window.contrast_value = float(value)
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
-
         # Update the binarized image and contour image
         window.binarized_image = final_binary
         window.contour_img = contour_img
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-
         # Update the history
         add_to_history(window)
-
         # Refresh the displayed images
         display_images(window)
-  
-
-def on_excludeSmallDots(window,value,backToEdit = False): 
+    else:
+        backToEdit2 = False   
+ 
+def on_excludeSmallDots(window, value, backToEdit = False):
     print("on_excludeSmallDots")
     global backToEdit2
-    print(backToEdit2)
-    if (backToEdit2 == False):
-        window.excludeSmallDots =float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
 
+    if (backToEdit2 == False):
+        window.excludeSmallDots = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
         # Update the binarized image
         window.binarized_image = final_binary
-        
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
         print("am i resetting here?")
         # Update the history
         add_to_history(window)
-
         # Refresh the displayed images
         display_images(window)
     else:
-        
         backToEdit2 = False
 
 def set_mode(window, mode):
@@ -1308,6 +1383,14 @@ def initialize_window_attributes(window):
     s.theme_use('clam')
     s.configure("styled.Horizontal.TProgressbar", troughcolor=LIGHT,bordercolor=DARK, background=DARK, lightcolor=DARK, 
                 darkcolor=DARK)
+    style = ttk.Style()
+
+    # Configure the scale slider appearance
+    style.configure("TScale",
+                    background=DARK,
+                    troughcolor=LIGHT,
+                    sliderthickness=15,
+                    sliderlength=25)  # Adjust size of the knob to be rounder            
 
     window.window_width = 1440
     window.window_height = 1024
