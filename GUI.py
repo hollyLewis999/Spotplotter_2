@@ -24,10 +24,14 @@ FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
-buttonPosX = 1150
-buttonPosY = 850
+buttonPosX = 1200
+buttonPosY = 910
 backToEdit2 = False
-def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None):
+PROGRESSX = 1180
+PROGRESSY = 36
+
+
+def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=10, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
     # Calculate radius
     rad = 2 * cornerradius
 
@@ -45,32 +49,32 @@ def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cor
          x + width - padding, y + height - cornerradius - padding,
          x + width - padding - cornerradius, y + height - padding,
          x + padding + cornerradius, y + height - padding),
-        fill=DARK, outline=DARK, tags=button_tag
+        fill=fill, outline=fill, tags=button_tag
     )
 
     # Draw rounded corners using arcs and add the same tag
     canvas.create_arc(
         (x + padding, y + padding + rad, x + padding + rad, y + padding),
-        start=90, extent=90, fill=DARK, outline=DARK, tags=button_tag
+        start=90, extent=90, fill=fill, outline=fill, tags=button_tag
     )
     canvas.create_arc(
         (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
-        start=0, extent=90, fill=DARK, outline=DARK, tags=button_tag
+        start=0, extent=90, fill=fill, outline=fill, tags=button_tag
     )
     canvas.create_arc(
         (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
-        start=270, extent=90, fill=DARK, outline=DARK, tags=button_tag
+        start=270, extent=90, fill=fill, outline=fill, tags=button_tag
     )
     canvas.create_arc(
         (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
-        start=180, extent=90, fill=DARK, outline=DARK, tags=button_tag
+        start=180, extent=90, fill=fill, outline=fill, tags=button_tag
     )
 
     # Add text in the middle of the button and tag it
-    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=LIGHT, font=(FONT, 12, "bold"), tags=button_tag)
+    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=accent, font=(FONT, 12, "bold"), tags=button_tag)
 
     # Bind the click event to the entire button with the unique tag
-    canvas.tag_bind(button_tag, "<ButtonRelease-1>", lambda event: command())
+    canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
 
 
 
@@ -116,7 +120,7 @@ def display_results(window):
         720,
         TITLEHEIGHT,
         text="Downloading Reults",
-        fill="#092934",
+        fill=DARK,
         font=(FONT, 12, 
         "bold")
     )
@@ -127,7 +131,7 @@ def display_results(window):
         text="Finish",
         command=window.quit,
         font=(FONT, 14),
-        bg="#092934",
+        bg=DARK,
         fg=LIGHT,
         padx=20,
         pady=10
@@ -172,7 +176,7 @@ def display_final_image(window, override =False):
         text= update_next_button(window),
         command=lambda: next_image(window),
         font=(FONT, 14),
-        bg="#092934",
+        bg=DARK,
         fg=LIGHT,
         padx=20,
         pady=10
@@ -185,7 +189,7 @@ def display_final_image(window, override =False):
         text="Override Grid",
         command=lambda: open_grid_override(window),
         font=(FONT, 14),
-        bg="#092934",
+        bg=DARK,
         fg=LIGHT,
         padx=20,
         pady=10
@@ -231,7 +235,7 @@ def display_final_image(window, override =False):
         text="Back to Editing",
         command=lambda: backToEditClicked(),
         font=(FONT, 14),
-        bg="#092934",
+        bg=DARK,
         fg=LIGHT,
         padx=20,
         pady=10
@@ -243,7 +247,7 @@ def display_final_image(window, override =False):
 
     # Create a frame for the progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=1200, y=20, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
 
     # Create and pack the progress bar with the custom style
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
@@ -302,7 +306,7 @@ def open_grid_override(window):
         720,
         TITLEHEIGHT,
         text="Please click centerpoints of dots, start from the top left and work across and down",
-        fill="#092934",
+        fill=DARK,
         font=(FONT, 12, 
         "bold")
     )
@@ -435,16 +439,19 @@ def create_titleFrame(window):
     canvas.place(x=0, y=0)
    
     # Load the image
-    image_path = relative_to_assets("image_10.png")
-    if os.path.exists(image_path):
-        try:
-            image_image_10 = PhotoImage(file=image_path)
-            image_image_10 = image_image_10.subsample(2, 2)
-            canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
-            canvas.create_image(720.0, 400.0, image=image_image_10)
-        except tk.TclError as e:
-            print(f"Error loading image: {e}")
-   
+    image_path_10 = relative_to_assets("image_10.png")
+
+    img_logobig = Image.open(image_path_10)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
+    canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
+    canvas.create_image(720.0, 400.0, image=image_image_10)
+
+
     create_rounded_button(
         canvas=canvas,
         text="Upload Assays",
@@ -529,74 +536,14 @@ def create_editFrame(window, backToEdit = False):
     )
 
     window.show_original = False  # Initialize with showing the original image
-    toggle_button = Button(
-        window,
-        text="Toggle Image",
-        command=lambda: toggle_image(window),
-        bg=DARK,
-        fg=LIGHT,
-        activebackground=DARK,
-        activeforeground=LIGHT
-    )
-    toggle_button.place(x=100, y=935)
 
-
-
-    smallDots_label = Label(window, text="Area to ignore:", bg=DARK, fg="white")
-    smallDots_label.place(x=500, y=140)
-
-    smallDots_slider = Scale(window, from_=0, to=10000, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_excludeSmallDots(window, v, backToEdit),
-                            bg=DARK, fg="white", troughcolor=LIGHT)
-    smallDots_slider.set(window.excludeSmallDots)  # Set default value
-    
-    smallDots_slider.place(x=500, y=130)
-
-    print("this is in edit fram on small dots:")
-    print(window.excludeSmallDots)
-    print(backToEdit2)
-    print("================================")
-
-  
-    contrast_label = Label(window, text="Contrast:", bg=DARK, fg="white")
-    contrast_label.place(x=34, y=140)
-
-    contrast_slider = Scale(window, from_=0, to=40, orient=HORIZONTAL, length=200,
-                            command=lambda v: on_contrast_change(window, v, backToEdit),
-                            bg=DARK, fg="white", troughcolor=LIGHT)
-    contrast_slider.set(window.contrast_value)  # Set default value
-    contrast_slider.place(x=100, y=130)
-    print("this is in edit fram on contrast:")
-    print(window.contrast_value)
-    print(backToEdit2)
-    print("================================")
-
-    
-    
-    
-
-    button_image_1 = PhotoImage( #this is the next button
-        file=relative_to_assets("button_1.png"))
-    window.edit_images.append(button_image_1)
-    button_1 = Button(
-        image=button_image_1,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: display_final_image(window),
-        relief="flat"
-    )
-    button_1.place(
-        x=1192.0,
-        y=935.0,
-        width=207.0,
-        height=61.0
-    )
     create_rounded_button(
         canvas=canvas,
         text="Next",
         command=lambda: display_final_image(window),
         x=buttonPosX,
-        y=buttonPosY )
+        y=buttonPosY,
+        button_tag = "editNext" )
 
     round_rectangle(canvas,
        1331.0,
@@ -615,10 +562,10 @@ def create_editFrame(window, backToEdit = False):
         outline="")
 
     if hasattr(window, 'metadata'):
-        metadata_label = Label(canvas, text=window.metadata, font=(FONT, 16 * -1, 'bold'))
+        metadata_label = Label(canvas, text=window.metadata, font=(FONT, 16 * -1, 'bold'), bg = LIGHT, fg= DARK)
     else:
-        metadata_label = Label(canvas, text="No metadata available", font=(FONT,16 * -1,'bold'))
-    metadata_label.place(x=50, y=50)
+        metadata_label = Label(canvas, text="No metadata available", font=(FONT,16 * -1,'bold'), bg= LIGHT, fg = DARK)
+    metadata_label.place(x=50, y=900)
 
     # canvas.create_text(
     #     34.0,
@@ -648,7 +595,7 @@ def create_editFrame(window, backToEdit = False):
 
     image_image_2 = PhotoImage( #this is the thin pen
         file=relative_to_assets("image_2.png"))
-    image_image_2 = image_image_2.subsample(8, 8) 
+    image_image_2 = image_image_2.subsample(11, 11) 
     window.edit_images.append(image_image_2)
     button_thin_pen = Button(
         window,
@@ -667,7 +614,7 @@ def create_editFrame(window, backToEdit = False):
 
     image_image_3 = PhotoImage(# this is the magic adder
         file=relative_to_assets("image_3.png"))
-    image_image_3 = image_image_3.subsample(8, 8)
+    image_image_3 = image_image_3.subsample(11, 11)
     window.edit_images.append(image_image_3)
     magic_adder_button = Button(
         window,
@@ -683,7 +630,7 @@ def create_editFrame(window, backToEdit = False):
 
     # Big eraser
     image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
-    image_image_4 = image_image_4.subsample(8, 8) 
+    image_image_4 = image_image_4.subsample(11, 11) 
     window.edit_images.append(image_image_4)
     big_eraser_button = Button(
         window,
@@ -698,7 +645,7 @@ def create_editFrame(window, backToEdit = False):
 
     image_image_5 = PhotoImage(#this is the bi gpen
         file=relative_to_assets("image_5.png"))
-    image_image_5 = image_image_5.subsample(8, 8) 
+    image_image_5 = image_image_5.subsample(11, 11) 
     window.edit_images.append(image_image_5)
     big_pen_button = Button(
         window,
@@ -712,11 +659,15 @@ def create_editFrame(window, backToEdit = False):
     big_pen_button.place(x=1377, y=441)
 
 
-    # Flood eraser (magic eraser)
-    image_image_6 = PhotoImage(file=relative_to_assets("image_6.png"))
-    image_image_6 = image_image_6.subsample(8, 8)
+    image_path_6 = relative_to_assets("image_6.png")
+    img_flood = Image.open(image_path_6)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_flood_resized = img_undo.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_6 = ImageTk.PhotoImage(img_flood_resized)
     window.edit_images.append(image_image_6)
-    
     flood_eraser_button = Button(
         window,
         image=image_image_6,
@@ -728,11 +679,15 @@ def create_editFrame(window, backToEdit = False):
     )
     flood_eraser_button.place(x=1376.0, y=616.0)
 
-    image_image_7 = PhotoImage( #this is the redo button
-        file=relative_to_assets("image_7.png"))
-    image_image_7 = image_image_7.subsample(8, 8)
-    window.edit_images.append(image_image_7)
+    image_path_7 = relative_to_assets("image_7.png")
+    img_redo = Image.open(image_path_7)  # Open image using Pillow
 
+    # Resize the image while keeping better quality
+    img_redo_resized = img_redo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_7 = ImageTk.PhotoImage(img_redo_resized)
+    window.edit_images.append(image_image_7)
     redo_button = Button(
         window,
         image=image_image_7,
@@ -745,9 +700,16 @@ def create_editFrame(window, backToEdit = False):
     redo_button.place(x=1380.0, y=251.0)
 
 
-    image_image_8 = PhotoImage( #this is the undo button 
-        file=relative_to_assets("image_8.png"))
-    image_image_8 = image_image_8.subsample(8, 8)
+    # Undo Button
+    image_path_8 = relative_to_assets("image_8.png")
+    img_undo = Image.open(image_path_8)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_8 = ImageTk.PhotoImage(img_undo_resized)
+
     window.edit_images.append(image_image_8)
     undo_button = Button(
         window,
@@ -763,7 +725,7 @@ def create_editFrame(window, backToEdit = False):
 
     # Thin eraser
     image_image_9 = PhotoImage(file=relative_to_assets("image_9.png"))
-    image_image_9 = image_image_9.subsample(8, 8)
+    image_image_9 = image_image_9.subsample(11, 11)
     window.edit_images.append(image_image_9)
     thin_eraser_button = Button(
         window,
@@ -784,17 +746,54 @@ def create_editFrame(window, backToEdit = False):
      # Calculate dimensions
     total_width = 1295 - 34
     total_height = 783 - 203
-    img_width = total_width // 2  # Half of the total width for each image
+    img_width = total_width // 2 -50 # Half of the total width for each image
     img_height = total_height
 
     window.left_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
-    window.left_canvas.place(x=34, y=203)
+    window.left_canvas.place(x=30, y=303)
 
     window.right_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
-    window.right_canvas.place(x=690, y=203)
+    window.right_canvas.place(x=690, y=303)
 
     # Display images
     display_images(window)
+    
+    create_rounded_button(
+        canvas=canvas,
+        text="Toggle",
+        command=lambda: toggle_image(window),
+        x=40,
+        y=210,
+        button_tag = "Toggle",
+        width = 110, 
+        height = 40,
+        fill = LIGHT,
+        accent = DARK)
+
+
+
+    smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg = DARK)
+    smallDots_label.place(x=550, y=220)
+
+    smallDots_slider = Scale(window, from_=0, to=10000, orient=HORIZONTAL, length=200,
+                            command=lambda v: on_excludeSmallDots(window, v, backToEdit),
+                            bg=DARK, fg="white", troughcolor=LIGHT)
+    smallDots_slider.set(window.excludeSmallDots)  # Set default value
+    
+    smallDots_slider.place(x=610, y=210)
+
+  
+    contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg = DARK)
+    contrast_label.place(x=200, y=220)
+
+    contrast_slider = Scale(window, from_=0, to=40, orient=HORIZONTAL, length=200,
+                            command=lambda v: on_contrast_change(window, v, backToEdit),
+                            bg=DARK, fg="white", troughcolor=LIGHT)
+    contrast_slider.set(window.contrast_value)  # Set default value
+    contrast_slider.place(x=300, y=210)
+
+
+
 
     # Bind events for editing on both canvases
     for canvas in [window.left_canvas, window.right_canvas]:
@@ -816,7 +815,7 @@ def create_editFrame(window, backToEdit = False):
 
     # Create a frame for the progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=1200, y=20, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
 
     # Create and pack the progress bar with the custom style
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
@@ -840,7 +839,7 @@ def create_editFrame(window, backToEdit = False):
 # Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
 #  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
 
-def resize_for_display_crop(image, max_width=1280, max_height=720):
+def resize_for_display_crop(image, max_width=1000, max_height=650):
     """Resize image for display while maintaining aspect ratio."""
     h, w = image.shape[:2]
     scale = min(max_width/w, max_height/h)
@@ -882,7 +881,7 @@ def apply_crop(window):
         # Calculate the offset of the image on the canvas
         canvas_width = 1440  # From your create_cropFrame function
         canvas_height = 1024  # From your create_cropFrame function
-        offset_x = (canvas_width - window.display_width) // 2
+        offset_x = (canvas_width - window.display_width) // 2 
         offset_y = (canvas_height - window.display_height) // 2
         
         # Apply scaling to crop coordinates, accounting for the offset
@@ -899,18 +898,7 @@ def apply_crop(window):
         
         # Crop the image
         window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        
-        # # Debug: Save the cropped image and print dimensions
-        # cv2.imwrite('debug_cropped.png', window.current_image)
-        # print(f"Original image dimensions: {original_width}x{original_height}")
-        # print(f"Display dimensions: {window.display_width}x{window.display_height}")
-        # print(f"Canvas dimensions: {canvas_width}x{canvas_height}")
-        # print(f"Image offset on canvas: x={offset_x}, y={offset_y}")
-        # print(f"Scaling factors: x={scale_x:.2f}, y={scale_y:.2f}")
-        # print(f"Crop coordinates (canvas): ({window.x_start}, {window.y_start}) to ({window.x_end}, {window.y_end})")
-        # print(f"Crop coordinates (display): ({window.x_start-offset_x}, {window.y_start-offset_y}) to ({window.x_end-offset_x}, {window.y_end-offset_y})")
-        # print(f"Crop coordinates (original): ({x_start}, {y_start}) to ({x_end}, {y_end})")
-        # print(f"Cropped image dimensions: {x_end-x_start}x{y_end-y_start}")
+    
         
         process_image(window)
     else:
@@ -948,7 +936,7 @@ def create_cropFrame(window):
         720,
         TITLEHEIGHT,
         text="Please crop image to exclude plate lable, line up vertical sides with inner edges of the plate",
-        fill="#092934",
+        fill=DARK,
         font=(FONT, 12, 
         "bold")
     )
@@ -963,12 +951,22 @@ def create_cropFrame(window):
     photo = ImageTk.PhotoImage(image=image)
 
     # Create image on canvas
-    canvas.create_image(720, 512, image=photo, anchor=CENTER)
+    canvas.create_image(720, 512, image=photo, anchor="center")
     canvas.image = photo
 
     # Store the display dimensions
     window.display_width = photo.width()
     window.display_height = photo.height()
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Crop",
+        command=lambda: apply_crop(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "cropNext" )
+
 
     # Cropping variables
     window.cropping = False
@@ -979,21 +977,20 @@ def create_cropFrame(window):
     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
-    # Create crop button
-    crop_button = Button(
-        window,
-        text="Next",
-        command=lambda: apply_crop(window),
-        font=(FONT, 14),
-        bg="#092934",
-        fg=LIGHT,
-        padx=20,
-        pady=10
-    )
-    crop_button.place(relx=0.5, rely=0.9, anchor=CENTER)
 
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
 
+    # Create and pack the progress bar with the custom style
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
 
+    # Label next to the progress bar
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
