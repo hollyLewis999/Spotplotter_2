@@ -8,12 +8,13 @@ import numpy as np
 from scipy.spatial import distance
 from PIL import Image, ImageTk, ImageDraw
 import copy
-from Processing import *
+from ProcessingTest import *
 from functools import partial
 import time
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
+LIGHT ="#DFDFDF"
 GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130

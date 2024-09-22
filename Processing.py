@@ -118,9 +118,12 @@ def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask, 
 def findBlobs(binary_image, min_area, max_area, thickness=2):
     # Find contours in the binary image
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
+
     # Create a color image to draw on
     result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    cv2.imshow('contours', resize_for_display(result_image))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     x_coords =[]
     y_coords=[]
     for contour in contours:
@@ -150,63 +153,6 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
     return x_coords,y_coords,result_image
 
 
-def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1 =50, param2 =28):
-    """Detect circles in the image and draw grid, yellow areas, and counts."""
-    circles = cv2.HoughCircles(
-        gray_image,
-        cv2.HOUGH_GRADIENT,
-        dp=0.9,
-        minDist=200,
-        param1=param1,
-        param2=param2,
-        minRadius=min_radius,
-        maxRadius=max_radius
-    )
-    counts = np.zeros((8, 12))
-    height, width = gray_image.shape
-
-    if circles is None:
-        print("No circles detected")
-        noClusters = True
-
-    if noClusters:
-        print("Using blob detection")
-        x_coords, y_coords, marked_image = findBlobs(binary_image, 1500, 20000)
-    elif circles is not None:
-        circles = np.round(circles[0, :]).astype(int)
-        x_coords = circles[:, 0]
-        y_coords = circles[:, 1]
-        marked_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    
-    grid_calculated = False
-    while not grid_calculated:
-        try:
-            grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, debug=False)
-            grid_calculated = True
-        except ValueError as e:
-            print(f"Error in grid calculation: {e}")
-            print("Attempting blob detection with looser parameters")
-            x_coords, y_coords, marked_image = findBlobs(binary_image, 1000, 25000)  # Looser parameters
-            if len(x_coords) < 2 or len(y_coords) < 2:
-                raise ValueError("Unable to detect sufficient blobs for grid calculation")
-
-    # Draw grid lines
-    for i in range(13):
-        x = int(grid_start_x + i * cell_size)
-        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
-    
-    for i in range(9):
-        y = int(grid_start_y + i * cell_size)
-        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
-
-    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
-    
-    if not noClusters and circles is not None:
-        for (x, y, r) in circles:
-            cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
-            cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
-
-    return counts, marked_image
 
 def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
@@ -459,12 +405,10 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             text_x = int(x1 + cell_size / 2)
             text_y = int(y1 + cell_size / 2)
             cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 4)
     
     print(split_and_process(counts))
     return counts, marked_image
-
-
 
 
 
@@ -500,10 +444,18 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
     c = max(-50, min(int(-contrast), -1))
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)
+                                       
     contour_img = original_image.copy()
     final_binary = np.zeros_like(binary_image)
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    
+
+
+
+
+
+
     areas = [cv2.contourArea(cntr) for cntr in contours]
     median_area = np.median(areas) if areas else 0
     
@@ -519,6 +471,9 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, 
         cv2.imshow('threshold', resize_for_display(binary_image))
         cv2.imshow('contours', resize_for_display(contour_img))
         cv2.imshow('final_binary', resize_for_display(final_binary))
+        # cv2.imshow('threshold',(binary_image))
+        # cv2.imshow('contours', (contour_img))
+        # cv2.imshow('final_binary',(final_binary))
 
     return binary_image, contour_img, final_binary,block_size
 
