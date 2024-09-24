@@ -11,6 +11,7 @@ import copy
 from Processing import *
 from functools import partial
 import time
+import math 
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
@@ -295,6 +296,7 @@ def display_results(window):
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
     
 def display_final_image(window, override =False):
+    #cv2.imshow("contours", resize_for_display(window.contour_img))
     add_to_history(window)
     # Clear the window
     for widget in window.winfo_children():
@@ -598,7 +600,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_7,
         borderwidth=0,
         highlightthickness=0,
-        command=lambda: print("redo"),
+        command=lambda: redo(window),
         relief="flat",
         bg = DARK
     )
@@ -682,7 +684,7 @@ def create_editFrame(window, backToEdit = False):
     smallDots_label = Label(window, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
     smallDots_label.place(x=645, y=223)
     smallDots_slider = create_circular_slider(
-        window, min_val=0, max_val=10000,
+        window, min_val=1, max_val=100,
         position=(700, 190),
         command=lambda v: on_excludeSmallDots(window, v, False),
         initial_value=window.excludeSmallDots
@@ -829,7 +831,7 @@ def on_canvas_click(event, window, canvas):
     canvas.create_line(x-5, y+5, x+5, y-5, fill=DARK, width=2)
 
 def recalculate_grid(window):
-    if len(window.clicked_pointsx) < 16:
+    if len(window.clicked_pointsx) < 12:
         messagebox.showerror("Error", "Please select at least 16 points")
         return
    
@@ -860,11 +862,18 @@ def validate_and_proceed(window):
 
 
 def process_image(window):
-    # Apply your image processing steps here
+
     stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 150)
     window.gray_image = gray_image
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
     
+    #############################FOR TESTING#######################
+
+
+    #################################################################
+
+
+
     window.contour_img = contour_img
     window.binarized_image = final_binary
     window.debug_image = np.stack((final_binary,) * 3, axis=-1)
@@ -946,7 +955,7 @@ def apply_crop(window):
         # Crop the image
         window.current_image = window.original_image[y_start:y_end, x_start:x_end]
     
-        
+        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
         process_image(window)
     else:
         messagebox.showwarning("Warning", "Please select an area to crop.")
@@ -1126,7 +1135,7 @@ def on_contrast_change(window, value, backToEdit = False):
         backToEdit2 = False   
  
 def on_excludeSmallDots(window, value, backToEdit = False):
-    print("on_excludeSmallDots")
+    #print("on_excludeSmallDots")
     global backToEdit2
 
     if (backToEdit2 == False):
@@ -1135,7 +1144,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         # Update the binarized image
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        print("am i resetting here?")
+        # print("am i resetting here?")
         # Update the history
         add_to_history(window)
         # Refresh the displayed images
@@ -1319,7 +1328,7 @@ def initialize_window_attributes(window):
     window.last_y = None
     window.update_undo_redo_buttons = update_undo_redo_buttons
     window.display_images = display_images
-    window.excludeSmallDots = 1000
+    window.excludeSmallDots = 15
     window.contrast_value = 20
     window.image_paths = []
     window.current_image_index = 0
