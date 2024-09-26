@@ -12,6 +12,11 @@ from Processing import *
 from functools import partial
 import time
 import math 
+import sys
+sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
+
+import openpyxl
+
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
@@ -359,10 +364,14 @@ def display_final_image(window, override =False):
         # Convert the NumPy array to PIL Image
         gray_image = window.gray_image  # Make sure this is set earlier in the processs
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
-        #SAVING INFO
-        window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-        window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-        window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+        if hasattr(window, 'current_info'):
+            window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+            window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+            window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+            # Update the window.image_info with the modified current_info
+            window.image_info[window.current_image_index] = window.current_info.copy()
+        else:
+            print("Error: current_info not initialized")
 
     # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info
@@ -477,7 +486,7 @@ def create_editFrame(window, backToEdit = False):
         metadata_text += f"StrainB: {current_info['strainB']}\n"
         metadata_text += f"StrainC: {current_info['strainC']}"
     else:
-        metadata_text = "No metadata available"
+        metadata_text = "No metadata available1"
 
     # Always recreate the metadata label
     if hasattr(window, 'metadata_label'):
@@ -860,12 +869,15 @@ def recalculate_grid(window):
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
     counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
     #SAVING INFO
-    current_info['QuantificationA'] = ordered_counts["Strain 1"]
-    current_info['QuantificationB'] = ordered_counts["Strain 2"]
-    current_info['QuantificationC'] = ordered_counts["Strain 3"]
+    if hasattr(window, 'current_info'):
+        window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+        window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+        window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+        # Update the window.image_info with the modified current_info
+        window.image_info[window.current_image_index] = window.current_info.copy()
+    else:
+        print("Error: current_info not initialized")
 
-# Update the window.image_info with the modified current_info
-    window.image_info[window.current_image_index] = current_info
     # Create a color copy of the original image for marking
     # Update window attributes
     window.result_grid= counts
@@ -1096,9 +1108,8 @@ def upload_txt_file(window):
                 print(f"Debug: Header: {header}")
                 for line in lines[1:]:
                     parts = line.strip().split(',')
-
                     if len(parts) == 8:  # Adjusted for the new format
-                        window.image_info.append({
+                        info = {
                             'filename': parts[0],
                             'type': parts[1],
                             'detergent': parts[2],
@@ -1110,25 +1121,20 @@ def upload_txt_file(window):
                             'QuantificationB': None,
                             'strainC': parts[7],
                             'QuantificationC': None
-                        })
+                        }
+                        window.image_info.append(info)
                     else:
                         print(f"Debug: Skipping line due to incorrect number of parts: {len(parts)}")
         window.current_image_index = 0
-
-    
-
-
+        if window.image_info:
+            window.current_info = window.image_info[0].copy()  # Initialize current_info
+            print("should be initializing")
+        else:
+            window.current_info = None
+   
 def upload_images(window):
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-    
-
-    for info in window.image_info:
-        print(f"  - {info['filename']}")
-    
-
-    for path in file_paths:
-        print(f"  - {os.path.basename(path)}")
-    
+   
     if file_paths and hasattr(window, 'image_info'):
         window.image_paths = []
         for info in window.image_info:
@@ -1142,9 +1148,7 @@ def upload_images(window):
             window.current_image_index = 0
             load_current_image(window)
         else:
-            print("Debug: No matching images found at all")
             messagebox.showwarning("Warning", "No matching images found")
-
 
 def load_current_image(window):
     if 0 <= window.current_image_index < len(window.image_paths):
@@ -1156,7 +1160,8 @@ def load_current_image(window):
         window.current_image = window.original_image.copy()
        
         # Update the current image info
-        window.current_image_info = window.image_info[window.current_image_index]
+        window.current_image_info = window.image_info[window.current_image_index].copy()
+        print(window.current_image_info)
     else:
         messagebox.showerror("Error", "No image to load")
 
@@ -1179,9 +1184,6 @@ def next_image(window):
 # 88  .8D `8b  d8' `8b d8'8b d8' 88  V888 88booo. `8b  d8' 88   88 88  .8D db   8D 
 # Y8888D'  `Y88P'   `8b8' `8d8'  VP   V8P Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
                                                                                 
-
-
-
 def write_image_info_to_file(window):
     filename = filedialog.asksaveasfilename(defaultextension=".xlsx",
                                             filetypes=[("Excel files", "*.xlsx")])
@@ -1189,41 +1191,36 @@ def write_image_info_to_file(window):
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Image Data"
-
         # Define dilution series
         dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
-
         # Write header
-        headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "Name", "quantification", "fold_dilution"]
+        headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution"]
         ws.append(headers)
-
         # Write data
-        for info in window.image_info:
-            base_row = [info['filename'], info['type'], info['detergent'], info['treatment'], info['repeat'], info['Name']]
-            
+        for info, image_path in zip(window.image_info, window.image_paths):
+            # Use the correct filename from image_paths
+            current_filename = os.path.basename(image_path)
+            base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
+           
             # Add rows for strain A
             if info['QuantificationA']:
                 for quant, dilution in zip(info['QuantificationA'], dilutionSeries[:len(info['QuantificationA'])]):
                     row = base_row + [info['strainA'], quant, dilution]
                     ws.append(row)
-            
+           
             # Add rows for strain B
             if info['QuantificationB']:
                 for quant, dilution in zip(info['QuantificationB'], dilutionSeries[:len(info['QuantificationB'])]):
                     row = base_row + [info['strainB'], quant, dilution]
                     ws.append(row)
-            
+           
             # Add rows for strain C
             if info['QuantificationC']:
                 for quant, dilution in zip(info['QuantificationC'], dilutionSeries[:len(info['QuantificationC'])]):
                     row = base_row + [info['strainC'], quant, dilution]
                     ws.append(row)
-
         # Save the workbook
         wb.save(filename)
-
-
-
 
 
 
