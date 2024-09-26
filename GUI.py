@@ -1,7 +1,7 @@
 
 from pathlib import Path
 import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT
 from tkinter import ttk
 import cv2
 import numpy as np
@@ -282,7 +282,7 @@ def display_results(window):
         "bold")
     )
 
-
+    write_image_info_to_file(window)
     finish_button = Button(
         window,
         text="Finish",
@@ -357,8 +357,15 @@ def display_final_image(window, override =False):
         result_grid = window.result_grid
     else:   
         # Convert the NumPy array to PIL Image
-        gray_image = window.gray_image  # Make sure this is set earlier in the process
-        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        gray_image = window.gray_image  # Make sure this is set earlier in the processs
+        result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        #SAVING INFO
+        window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+        window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+        window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+
+    # Update the window.image_info with the modified current_info
+        window.image_info[window.current_image_index] = window.current_info
 
     # Ensure marked_image is a PIL Image
     if isinstance(marked_image, np.ndarray):
@@ -462,11 +469,22 @@ def create_editFrame(window, backToEdit = False):
         fill=DARK,
         outline="")
 
-    if hasattr(window, 'metadata'):
-        metadata_label = Label(canvas, text=window.metadata, font=(FONT, 16 * -1, 'bold'), bg = LIGHT, fg= DARK)
+
+    if hasattr(window, 'current_image_info'):
+        current_info = window.current_image_info
+        metadata_text = f"Filename: {current_info['filename']}\n"
+        metadata_text += f"StrainA: {current_info['strainA']}\n"
+        metadata_text += f"StrainB: {current_info['strainB']}\n"
+        metadata_text += f"StrainC: {current_info['strainC']}"
     else:
-        metadata_label = Label(canvas, text="No metadata available", font=(FONT,16 * -1,'bold'), bg= LIGHT, fg = DARK)
-    metadata_label.place(x=50, y=900)
+        metadata_text = "No metadata available"
+
+    # Always recreate the metadata label
+    if hasattr(window, 'metadata_label'):
+        window.metadata_label.destroy()  # Destroy the old label
+
+    window.metadata_label = Label(window, text=metadata_text, font=(FONT, 16 * -1, 'bold'), bg=LIGHT, fg=DARK, justify=LEFT)
+    window.metadata_label.place(x=50, y=850)
 
 
     canvas.create_text(
@@ -840,7 +858,14 @@ def recalculate_grid(window):
     height, width = window.gray_image.shape
     # Calculate new grid parameters using user-provided points
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
-    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+    counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+    #SAVING INFO
+    current_info['QuantificationA'] = ordered_counts["Strain 1"]
+    current_info['QuantificationB'] = ordered_counts["Strain 2"]
+    current_info['QuantificationC'] = ordered_counts["Strain 3"]
+
+# Update the window.image_info with the modified current_info
+    window.image_info[window.current_image_index] = current_info
     # Create a color copy of the original image for marking
     # Update window attributes
     window.result_grid= counts
@@ -855,10 +880,10 @@ def update_progress_bar(window):
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
 
 def validate_and_proceed(window):
-    if hasattr(window, 'image_paths') and window.image_paths:  # Check if images have been uploaded
+    if hasattr(window, 'image_paths') and window.image_paths and hasattr(window, 'image_info') and window.image_info:
         create_cropFrame(window)  # Proceed to the next frame
     else:
-         messagebox.showwarning("Warning", "Please upload Image")   
+        messagebox.showwarning("Warning", "Please upload both text file and images")
 
 
 def process_image(window):
@@ -885,7 +910,8 @@ def process_image(window):
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
-    print("imagge is being reprocessed ")
+    #
+    # print("imagge is being reprocessed ")
 
 
 #  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
@@ -954,7 +980,9 @@ def apply_crop(window):
         
         # Crop the image
         window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-    
+        h, w = window.current_image.shape[:2]
+        print("width")
+        print(w)
         #cv2.imshow("Cropped", resize_for_display(window.current_image) )
         process_image(window)
     else:
@@ -1056,48 +1084,81 @@ def create_cropFrame(window):
 # 88b  d88 88      88booo. `8b  d8' 88   88 88  .8D db   8D 
 # ~Y8888P' 88      Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
 
-
 def upload_txt_file(window):
     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
     if file_path:
         window.image_info = []
+        window.image_paths = []  # Initialize image_paths
         with open(file_path, 'r') as file:
-            for line in file:
-                parts = line.strip().split(',')
-                if len(parts) == 5:
-                    window.image_info.append({
-                        'filename': parts[0],
-                        'strainA': parts[1],
-                        'QuantificationA': None,
-                        'strainB': parts[2],
-                        'QuantificationB': None,
-                        'strainC': parts[3],
-                        'QuantificationC': None,
-                        'mediaCondition': parts[4]
-                    })
+            lines = file.readlines()
+            if len(lines) > 1:  # Check if there's more than just the header
+                header = lines[0].strip().split(',')
+                print(f"Debug: Header: {header}")
+                for line in lines[1:]:
+                    parts = line.strip().split(',')
+
+                    if len(parts) == 8:  # Adjusted for the new format
+                        window.image_info.append({
+                            'filename': parts[0],
+                            'type': parts[1],
+                            'detergent': parts[2],
+                            'treatment': parts[3],
+                            'repeat': parts[4],
+                            'strainA': parts[5],
+                            'QuantificationA': None,
+                            'strainB': parts[6],
+                            'QuantificationB': None,
+                            'strainC': parts[7],
+                            'QuantificationC': None
+                        })
+                    else:
+                        print(f"Debug: Skipping line due to incorrect number of parts: {len(parts)}")
         window.current_image_index = 0
+
+    
+
 
 def upload_images(window):
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
+    
+
+    for info in window.image_info:
+        print(f"  - {info['filename']}")
+    
+
+    for path in file_paths:
+        print(f"  - {os.path.basename(path)}")
+    
     if file_paths and hasattr(window, 'image_info'):
         window.image_paths = []
         for info in window.image_info:
-            matching_path = next((path for path in file_paths if info['filename'] in path), None)
+            matching_path = next((path for path in file_paths if os.path.basename(path).lower() == info['filename'].lower()), None)
             if matching_path:
                 window.image_paths.append(matching_path)
-        
+            else:
+                print(f"Debug: No matching image found for {info['filename']}")
+       
         if window.image_paths:
             window.current_image_index = 0
             load_current_image(window)
+        else:
+            print("Debug: No matching images found at all")
+            messagebox.showwarning("Warning", "No matching images found")
+
 
 def load_current_image(window):
     if 0 <= window.current_image_index < len(window.image_paths):
         window.image_path = window.image_paths[window.current_image_index]
         window.original_image = cv2.imread(window.image_path)
+        if window.original_image is None:
+            messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
+            return
         window.current_image = window.original_image.copy()
-        
+       
         # Update the current image info
         window.current_image_info = window.image_info[window.current_image_index]
+    else:
+        messagebox.showerror("Error", "No image to load")
 
 def next_image(window):
     if window.current_image_index < len(window.image_paths) - 1:
@@ -1107,6 +1168,69 @@ def next_image(window):
         update_progress_bar(window)
     else:
         display_results(window)
+
+
+
+
+# d8888b.  .d88b.  db   d8b   db d8b   db db       .d88b.   .d8b.  d8888b. .d8888. 
+# 88  `8D .8P  Y8. 88   I8I   88 888o  88 88      .8P  Y8. d8' `8b 88  `8D 88'  YP 
+# 88   88 88    88 88   I8I   88 88V8o 88 88      88    88 88ooo88 88   88 `8bo.   
+# 88   88 88    88 Y8   I8I   88 88 V8o88 88      88    88 88~~~88 88   88   `Y8b. 
+# 88  .8D `8b  d8' `8b d8'8b d8' 88  V888 88booo. `8b  d8' 88   88 88  .8D db   8D 
+# Y8888D'  `Y88P'   `8b8' `8d8'  VP   V8P Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
+                                                                                
+
+
+
+def write_image_info_to_file(window):
+    filename = filedialog.asksaveasfilename(defaultextension=".xlsx",
+                                            filetypes=[("Excel files", "*.xlsx")])
+    if filename:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Image Data"
+
+        # Define dilution series
+        dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+
+        # Write header
+        headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "Name", "quantification", "fold_dilution"]
+        ws.append(headers)
+
+        # Write data
+        for info in window.image_info:
+            base_row = [info['filename'], info['type'], info['detergent'], info['treatment'], info['repeat'], info['Name']]
+            
+            # Add rows for strain A
+            if info['QuantificationA']:
+                for quant, dilution in zip(info['QuantificationA'], dilutionSeries[:len(info['QuantificationA'])]):
+                    row = base_row + [info['strainA'], quant, dilution]
+                    ws.append(row)
+            
+            # Add rows for strain B
+            if info['QuantificationB']:
+                for quant, dilution in zip(info['QuantificationB'], dilutionSeries[:len(info['QuantificationB'])]):
+                    row = base_row + [info['strainB'], quant, dilution]
+                    ws.append(row)
+            
+            # Add rows for strain C
+            if info['QuantificationC']:
+                for quant, dilution in zip(info['QuantificationC'], dilutionSeries[:len(info['QuantificationC'])]):
+                    row = base_row + [info['strainC'], quant, dilution]
+                    ws.append(row)
+
+        # Save the workbook
+        wb.save(filename)
+
+
+
+
+
+
+
+
+
+
 
 
 

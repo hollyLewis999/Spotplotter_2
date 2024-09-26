@@ -209,7 +209,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
         except ValueError as e:
             print(f"Error in grid calculation: {e}")
             print("Attempting blob detection with looser parameters")
-            x_coords, y_coords, marked_image = findBlobs(binary_image,min_area/1.5, max_area*1.5)  # Looser parameters
+            x_coords, y_coords, marked_image = findBlobs(binary_image,min_area/1.5, max_area*1.5)  # Looser parametersf
             if len(x_coords) < 2 or len(y_coords) < 2:
                 raise ValueError("Unable to detect sufficient blobs for grid calculation")
 
@@ -222,7 +222,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
         y = int(grid_start_y + i * cell_size)
         cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
-    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
+    counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
     if not noClusters and circles is not None:
         for (x, y, r) in circles:
@@ -237,7 +237,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     # cv2.imshow ("marked_image", resize_for_display(marked_image)) 
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
-    return counts, marked_image
+    return counts, marked_image,ordered_counts
 
 
 # d888b  d8888b. d888888b d8888b. 
@@ -421,11 +421,10 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
                 # Color it dark grey and don't count it
                 colored_image[component] = [64, 64, 64]  # Dark grey
     height, width = binary_image.shape
-    print("RESULTS")
-    print("counts" + str(counts[0][0]))
-    print("width" + str(width))
-    counts = (np.round((counts / (width**2)) * 1000000)).astype(int)
-
+    # print("RESULTS")
+    # print("width" + str(width-1))
+    counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
+    # print(analyze_2d_array(counts))
     # Combine the colored_image with the marked_image
     marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
     
@@ -444,10 +443,20 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 4)
     ######UNCOMMENT HERE 
-    #print(split_and_process(counts))
-    return counts, marked_image
+    ordered_counts = split_and_process(counts)
+    #print(counts)
+    return counts, marked_image, ordered_counts
 
-
+# def analyze_2d_array(arr):
+#     flat_arr = np.array(arr).flatten()
+    
+#     max_val = np.max(flat_arr)
+#     min_val = np.min(flat_arr)
+#     rangee = max_val-min_val
+#     avg = np.mean(flat_arr)
+#     std_dev = np.std(flat_arr)
+    
+#     return f"{max_val},{min_val}, {rangee},{avg:.2f},{std_dev:.2f}"
 
 
 # d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
@@ -474,13 +483,17 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     return stretched, blurred, gray_image
 
 
-def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 1000, show_images=False):
+def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
     """Binarize the grayscale image and perform contour detection."""
     
     block_size, divisor_c = 151, 15
     c = max(-50, min(int(-contrast), -1))
+    ####CHANGE BACK LATER
+
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)    
+    # gray_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+    # binary_image = cv2.threshold(gray_image, 175, 255, cv2.THRESH_BINARY)[1]
 
     contour_img = original_image.copy()
     final_binary = np.zeros_like(binary_image)
@@ -663,11 +676,14 @@ def split_and_process(array):
     strain2 = [row[4:8] for row in array]
     strain3 = [row[8:] for row in array]
 
-    # Process and print each strain
-    for i, strain in enumerate([strain1, strain2, strain3], 1):
-        print(f"Strain {i}:")
-        process_strain(strain)
-        print()
+    # Dictionary to store processed strains
+    processed_data = {
+        "Strain 1": process_strain(strain1),
+        "Strain 2": process_strain(strain2),
+        "Strain 3": process_strain(strain3)
+    }
+
+    return processed_data
 
 def process_strain(strain):
     order = [
@@ -676,10 +692,13 @@ def process_strain(strain):
         (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
     ]
 
+    processed_list = []
+
     for col, row in order:
         if row <= 8 and col <= 4:
-            print(strain[row-1][col-1], end=" ")
-    print()
+            processed_list.append(strain[row-1][col-1])
+
+    return processed_list
 
 
 def plotScatter(counts):
