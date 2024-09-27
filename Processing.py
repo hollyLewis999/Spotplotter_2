@@ -213,14 +213,14 @@ def detect_and_draw_circles_origional(binary_image, gray_image, noClusters, min_
             if len(x_coords) < 2 or len(y_coords) < 2:
                 raise ValueError("Unable to detect sufficient blobs for grid calculation")
 
-    # Draw grid lines
-    for i in range(13):
-        x = int(grid_start_x + i * cell_size)
-        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+    # # Draw grid lines
+    # for i in range(13):
+    #     x = int(grid_start_x + i * cell_size)
+    #     cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
     
-    for i in range(9):
-        y = int(grid_start_y + i * cell_size)
-        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+    # for i in range(9):
+    #     y = int(grid_start_y + i * cell_size)
+    #     cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
@@ -264,15 +264,15 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
             x_coords, y_coords, marked_image = findBlobs(binary_image,min_area, max_area)  # Looser parameters
             if len(x_coords) < 2 or len(y_coords) < 2:
                 raise ValueError("Unable to detect sufficient blobs for grid calculation")
-
+    #draw slated  
     # Draw grid lines
-    for i in range(13):
-        x = int(grid_start_x + i * cell_size)
-        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+    # for i in range(13):
+    #     x = int(grid_start_x + i * cell_size)
+    #     cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
     
-    for i in range(9):
-        y = int(grid_start_y + i * cell_size)
-        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+    # for i in range(9):
+    #     y = int(grid_start_y + i * cell_size)
+    #     cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
 
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     

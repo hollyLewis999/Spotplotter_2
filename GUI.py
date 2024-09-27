@@ -20,6 +20,8 @@ import openpyxl
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
+# DARK = "#FFFFFF"
+# LIGHT = "#092934"
 GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
@@ -708,7 +710,7 @@ def create_editFrame(window, backToEdit = False):
         fill = LIGHT,
         accent = DARK)
 
-    smallDots_label = Label(window, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
     smallDots_label.place(x=645, y=223)
     smallDots_slider = create_circular_slider(
         window, min_val=1, max_val=100,
