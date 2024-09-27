@@ -901,6 +901,24 @@ def validate_and_proceed(window):
 def process_image(window):
 
     stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 150)
+    # Define parameter ranges for better readability
+    # stretch_values = [60, 70, 80, 90, 100, 110]
+    # blur_values = [110, 120, 130, 140, 150]
+
+    # # Loop through both ranges and display the results
+    # for stretch in stretch_values:
+    #     for blur in blur_values:
+    #         # Apply the function with current parameters
+    #         stretched, blurred, gray_image = stretch_and_gray(window.current_image, stretch, blur)
+            
+    #         # Create a descriptive window name
+    #         window_name = f"Stretch {stretch} Blur {blur}"
+            
+    #         # Display the result
+    #         cv2.imshow(window_name, resize_for_display(stretched))
+
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     window.gray_image = gray_image
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
     
@@ -1198,6 +1216,7 @@ def write_image_info_to_file(window):
         ws.append(headers)
         # Write data
         for info, image_path in zip(window.image_info, window.image_paths):
+
             # Use the correct filename from image_paths
             current_filename = os.path.basename(image_path)
             base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]

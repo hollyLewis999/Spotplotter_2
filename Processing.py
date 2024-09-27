@@ -165,7 +165,7 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
 
 
 
-def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
+def detect_and_draw_circles_origional(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
     """Detect circles in the image and draw grid, yellow areas, and counts."""
     height, width = binary_image.shape
     max_radius = int(width/24)
@@ -239,7 +239,53 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     # cv2.destroyAllWindows()
     return counts, marked_image,ordered_counts
 
+def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
+    height, width = binary_image.shape
+    max_radius = int(width/24)
+    min_radius = int(max_radius/3)
+    max_area = max_radius**2*(math.pi)
+    min_area = min_radius**2*(math.pi)
+    # print("radiuses")
+    # print(max_radius)
+    # print(min_radius)
+    counts = np.zeros((8, 12))
 
+    x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
+    grid_calculated = False
+    while not grid_calculated:
+        try:
+            grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, debug=False)
+            grid_calculated = True
+        except ValueError as e:
+            print(f"Error in grid calculation: {e}")
+            print("Attempting blob detection with looser parameters")
+            min_area = min_area/1.2
+            max_area = max_area*1.2
+            x_coords, y_coords, marked_image = findBlobs(binary_image,min_area, max_area)  # Looser parameters
+            if len(x_coords) < 2 or len(y_coords) < 2:
+                raise ValueError("Unable to detect sufficient blobs for grid calculation")
+
+    # Draw grid lines
+    for i in range(13):
+        x = int(grid_start_x + i * cell_size)
+        cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
+    
+    for i in range(9):
+        y = int(grid_start_y + i * cell_size)
+        cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+
+    counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
+    
+    
+    # cv2.imshow("marked_image", resize_for_display(marked_image)) 
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
+    # x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
+    # cv2.imshow ("marked_image", resize_for_display(marked_image)) 
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    return counts, marked_image,ordered_counts
 # d888b  d8888b. d888888b d8888b. 
 # 88' Y8b 88  `8D   `88'   88  `8D 
 # 88      88oobY'    88    88   88 
@@ -255,7 +301,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         diffs = np.diff(sorted_coords)
         median_diff = np.median(diffs)
         threshold = max(median_diff *2,10) # Adjust this factor if needed
-        
+        print(threshold)
         clusters = []
         current_cluster = [sorted_coords[0]]
         
