@@ -1119,12 +1119,13 @@ def upload_txt_file(window):
     if file_path:
         window.image_info = []
         window.image_paths = []  # Initialize image_paths
+        skipped_lines = []  # To store skipped lines
         with open(file_path, 'r') as file:
             lines = file.readlines()
             if len(lines) > 1:  # Check if there's more than just the header
                 header = lines[0].strip().split(',')
                 print(f"Debug: Header: {header}")
-                for line in lines[1:]:
+                for i, line in enumerate(lines[1:], start=2):  # Start from 2 to account for the header
                     parts = line.strip().split(',')
                     if len(parts) == 8:  # Adjusted for the new format
                         info = {
@@ -1142,31 +1143,37 @@ def upload_txt_file(window):
                         }
                         window.image_info.append(info)
                     else:
-                        print(f"Debug: Skipping line due to incorrect number of parts: {len(parts)}")
+                        skipped_lines.append(i)  # Collect line number for skipped line
+        # Display skipped lines in a single message if there are any
+        if skipped_lines:
+            messagebox.showwarning("Warning", f"Skipping {len(skipped_lines)} line(s) due to incorrect format.\nLine numbers: {', '.join(map(str, skipped_lines))} \nCorrect Format: FileName,Type,Detergent,Treatment,Repeat,StrainA_Name,StrainB_Name,StrainC_Name")
+        
         window.current_image_index = 0
         if window.image_info:
             window.current_info = window.image_info[0].copy()  # Initialize current_info
-            print("should be initializing")
         else:
             window.current_info = None
-   
+
 def upload_images(window):
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
    
     if file_paths and hasattr(window, 'image_info'):
         window.image_paths = []
+        unmatched_filenames = []  # Collect unmatched filenames
         for info in window.image_info:
             matching_path = next((path for path in file_paths if os.path.basename(path).lower() == info['filename'].lower()), None)
             if matching_path:
                 window.image_paths.append(matching_path)
             else:
-                print(f"Debug: No matching image found for {info['filename']}")
-       
+                unmatched_filenames.append(info['filename'])  # Collect unmatched filenames
+                
         if window.image_paths:
             window.current_image_index = 0
             load_current_image(window)
+            if unmatched_filenames:
+                messagebox.showwarning("Warning", f"No matching images found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}")
         else:
-            messagebox.showwarning("Warning", "No matching images found")
+            messagebox.showwarning("Warning", "No matching images found for all entries")
 
 def load_current_image(window):
     if 0 <= window.current_image_index < len(window.image_paths):
