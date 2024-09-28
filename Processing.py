@@ -154,15 +154,14 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
                     
-                    # Draw a red X at the center
-                    cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
-                                   cv2.MARKER_TILTED_CROSS, thickness=thickness)
+                    # # Draw a red X at the center
+                    # cv2.drawMarker(result_image, (cX, cY), (0, 0, 255), 
+                    #                cv2.MARKER_TILTED_CROSS, thickness=thickness)
                     # print(cX)
                     x_coords.append(cX)
                     y_coords.append(cY)
                     # print(x_coords)
     return x_coords,y_coords,result_image
-
 
 
 def detect_and_draw_circles_origional(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
@@ -224,10 +223,10 @@ def detect_and_draw_circles_origional(binary_image, gray_image, noClusters, min_
 
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
-    if not noClusters and circles is not None:
-        for (x, y, r) in circles:
-            cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
-            cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
+    # if not noClusters and circles is not None:
+    #     for (x, y, r) in circles:
+    #         cv2.circle(marked_image, (x, y), r, (0, 0, 255), 2)
+    #         cv2.circle(marked_image, (x, y), 2, (0, 0, 255), 3)
     
     # cv2.imshow("marked_image", resize_for_display(marked_image)) 
     # cv2.waitKey(0)
@@ -277,9 +276,9 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
     
-    # cv2.imshow("marked_image", resize_for_display(marked_image)) 
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+    cv2.imshow("marked_image_circles", resize_for_display(marked_image)) 
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
     # x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     # cv2.imshow ("marked_image", resize_for_display(marked_image)) 
@@ -292,6 +291,54 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 # 88  ooo 88`8b      88    88   88 
 # 88. ~8~ 88 `88.   .88.   88  .8D 
 #  Y888P  88   YD Y888888P Y8888D' 
+# def findSlant(x_coords, y_coords, x_clusters, y_clusters):
+#         def calculate_slants(coords, clusters):
+#             slants = []
+#             for cluster in clusters:
+#                 # Find points close to this cluster
+#                 cluster_points = [i for i, coord in enumerate(coords) if abs(coord - cluster) < 10]  # Adjust tolerance as needed
+#                 if len(cluster_points) >= 3:  # Only consider clusters with 3 or more points
+#                     for i in range(len(cluster_points)):
+#                         for j in range(i + 1, len(cluster_points)):
+#                             dx = x_coords[cluster_points[j]] - x_coords[cluster_points[i]]
+#                             dy = y_coords[cluster_points[j]] - y_coords[cluster_points[i]]
+#                             if dx != 0 or dy != 0:  # Avoid division by zero
+#                                 angle = math.degrees(math.atan2(dy, dx))
+#                                 # Adjust angle to be between 0-360 degrees
+#                                 angle = (angle + 360) % 360
+#                                 slants.append(angle)
+#             return slants
+
+#         x_slants = calculate_slants(x_coords, x_clusters)
+#         y_slants = calculate_slants(y_coords, y_clusters)
+
+#         print("X-direction slants:", x_slants)
+#         print("Y-direction slants:", y_slants)
+
+#         def calculate_average_slant(slants):
+#             if not slants:
+#                 return 0
+#             # Convert angles to complex numbers
+#             complex_angles = [math.cos(math.radians(s)) + 1j * math.sin(math.radians(s)) for s in slants]
+#             # Calculate the average
+#             average_complex = sum(complex_angles) / len(complex_angles)
+#             # Convert back to angle
+#             average_angle = math.degrees(math.atan2(average_complex.imag, average_complex.real))
+#             # Ensure the result is between 0-360 degrees
+#             return (average_angle + 360) % 360
+
+#         average_x_slant = calculate_average_slant(x_slants)
+#         average_y_slant = calculate_average_slant(y_slants)
+
+#         print(f"Average X-direction slant: {average_x_slant:.2f} degrees")
+#         print(f"Average Y-direction slant: {average_y_slant:.2f} degrees")
+
+#         # Additional debugging information
+#         print(f"Number of x clusters: {len(x_clusters)}")
+#         print(f"Number of y clusters: {len(y_clusters)}")
+#         print(f"X clusters: {x_clusters}")
+#         print(f"Y clusters: {y_clusters}")
+        # return average_x_slant, average_y_slant
 
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
     """Calculate grid parameters based on detected circle or blob coordinates."""
@@ -328,10 +375,17 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
             plt.show()
         
         return cluster_means
+
+
+
     #print(x_coords)
     x_clusters = find_clusters(x_coords)
     y_clusters = find_clusters(y_coords)
+
     
+
+
+    #average_slant = findSlant(x_coords, y_coords, x_clusters, y_clusters)   
     if len(x_clusters) < 2 or len(y_clusters) < 2:
         raise ValueError("Not enough valid clusters found to calculate grid")
     
@@ -403,11 +457,117 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         plt.show()
     
     return grid_start_x, grid_start_y, cell_size, slant_angle
+# def calculate_slanted_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
+#     """Calculate grid parameters based on detected circle or blob coordinates, including slanted angles."""
+    
+#     def find_clusters(coords, min_count=2):
+#         sorted_coords = np.sort(coords)
+#         diffs = np.diff(sorted_coords)
+#         median_diff = np.median(diffs)
+#         threshold = max(median_diff * 2, 10)
+#         clusters = []
+#         current_cluster = [sorted_coords[0]]
+        
+#         for i in range(1, len(sorted_coords)):
+#             if diffs[i-1] < threshold:
+#                 current_cluster.append(sorted_coords[i])
+#             else:
+#                 if len(current_cluster) >= min_count:
+#                     clusters.append(current_cluster)
+#                 current_cluster = [sorted_coords[i]]
+        
+#         if len(current_cluster) >= min_count:
+#             clusters.append(current_cluster)
+        
+#         cluster_means = [np.mean(cluster) for cluster in clusters]
+        
+#         return cluster_means
 
+#     x_clusters = find_clusters(x_coords)
+#     y_clusters = find_clusters(y_coords)
+    
+#     if len(x_clusters) < 2 or len(y_clusters) < 2:
+#         raise ValueError("Not enough valid clusters found to calculate grid")
+    
+#     x_diffs = np.diff(x_clusters)
+#     y_diffs = np.diff(y_clusters)
+    
+#     lowerBound = width / 30
+#     upperBound = width / 10
+#     filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
+#     filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
+    
+#     if not filtered_x_diffs and not filtered_y_diffs:
+#         raise ValueError("No valid differences found within bounds")
+    
+#     cell_size = np.median(filtered_x_diffs + filtered_y_diffs)
+
+#     # Calculate slanted angles for rows and columns
+#     def calculate_slant(coords_x, coords_y):
+#         slope, intercept, r_value, p_value, std_err = linregress(coords_x, coords_y)
+#         angle = np.arctan(slope)
+#         return angle
+
+#     row_angles = []
+#     column_angles = []
+
+#     for cluster in y_clusters:
+#         cluster_x = [x for x, y in zip(x_coords, y_coords) if abs(y - cluster) < cell_size / 2]
+#         if len(cluster_x) > 1:
+#             row_angles.append(calculate_slant(cluster_x, [cluster] * len(cluster_x)))
+
+#     for cluster in x_clusters:
+#         cluster_y = [y for x, y in zip(x_coords, y_coords) if abs(x - cluster) < cell_size / 2]
+#         if len(cluster_y) > 1:
+#             column_angles.append(calculate_slant([cluster] * len(cluster_y), cluster_y))
+
+#     row_slant_angle = np.median(row_angles) if row_angles else 0
+#     column_slant_angle = np.median(column_angles) if column_angles else 0
+
+#     grid_start_x = min(x_clusters) - cell_size / 2
+#     grid_start_y = min(y_clusters) - cell_size / 2
+    
+#     grid_width = cell_size * 12
+#     grid_height = cell_size * 8
+    
+#     if grid_start_x + grid_width > width:
+#         grid_start_x = width - grid_width
+#     if grid_start_y + grid_height > height:
+#         grid_start_y = height - grid_height
+    
+#     if debug:
+#         plt.figure(figsize=(10, 10))
+#         plt.imshow(gray_image, cmap='gray')
+#         plt.scatter(x_coords, y_coords, c='red', s=30, label='Detected spots')
+
+#         # Draw slanted row lines
+#         for j in range(9):
+#             y = grid_start_y + j * cell_size
+#             x_start = grid_start_x
+#             x_end = grid_start_x + grid_width
+#             y_start = y + np.tan(row_slant_angle) * x_start
+#             y_end = y + np.tan(row_slant_angle) * x_end
+#             plt.plot([x_start, x_end], [y_start, y_end], 'b-', alpha=0.5)
+
+#         # Draw slanted column lines
+#         for i in range(13):
+#             x = grid_start_x + i * cell_size
+#             y_start = grid_start_y
+#             y_end = grid_start_y + grid_height
+#             x_start = x + np.tan(column_slant_angle) * y_start
+#             x_end = x + np.tan(column_slant_angle) * y_end
+#             plt.plot([x_start, x_end], [y_start, y_end], 'b-', alpha=0.5)
+
+#         plt.title('Slanted Grid Overlay')
+#         plt.legend()
+#         plt.show()
+    
+#     return grid_start_x, grid_start_y, cell_size, row_slant_angle, column_slant_angle    
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
     Quantify the grid by counting white pixels in each cell, including blobs
-    slightly overlapping (up to 20%) with neighboring blocks.
+    slightly overlapping (up to 20%) with neighboring blocks. All white areas 
+    in the binary image are colored dark grey.
     """
     height, width = binary_image.shape
     rows, cols = 8, 12  # 8x12 grid
@@ -416,13 +576,15 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     labeled_image, num_features = ndimage.label(binary_image)
     
     counts = np.zeros((rows, cols), dtype=int)
+
+
     
-    # Ensure marked_image is in color (3 channels)
-    if len(marked_image.shape) == 2:  # If grayscale, convert to BGR
-        marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
-    
-    # Convert binary_image to BGR for color marking
-    colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    # Color all white areas in the binary image dark grey
+    # Identify white areas in the marked image (where all three channels are white: [255, 255, 255])
+    white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
+    cv2.imshow("marked_image", resize_for_display(marked_image))
+    # Set the identified white areas to dark grey [64, 64, 64] in the marked image
+    marked_image[white_areas] = [64, 64, 64]
     
     for label in range(1, num_features + 1):
         component = (labeled_image == label)
@@ -460,20 +622,13 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             outside_area = total_area - main_area
             
             if outside_area <= 0.2 * total_area:
-                # Count the entire blob in the main cell and color it blue
+                # Count the entire blob in the main cell and color it light grey
                 counts[main_row, main_col] += total_area
-                colored_image[component] = [255, 0, 0]  # Blue
+                marked_image[component] = [255, 255, 255]  # Light grey
             else:
-                # Color it dark grey and don't count it
-                colored_image[component] = [64, 64, 64]  # Dark grey
-    height, width = binary_image.shape
-    # print("RESULTS")
-    # print("width" + str(width-1))
-    counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
-    # print(analyze_2d_array(counts))
-    # Combine the colored_image with the marked_image
-    marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
-    
+
+                pass
+
     # Draw grid and add count text
     for row in range(rows):
         for col in range(cols):
@@ -487,11 +642,12 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             text_x = int(x1 + cell_size / 2)
             text_y = int(y1 + cell_size / 2)
             cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 4)
-    ######UNCOMMENT HERE 
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 6)
+    
     ordered_counts = split_and_process(counts)
-    #print(counts)
     return counts, marked_image, ordered_counts
+
+
 
 # def analyze_2d_array(arr):
 #     flat_arr = np.array(arr).flatten()

@@ -190,8 +190,6 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
  ######  ##     ## ######## ##     ##    ##    ########     ######   ######  ##     ## ######## ######## ##    ##  ######  
 
 
-
-
 def create_titleFrame(window):
     # Create the canvas
     canvas = Canvas(
@@ -1013,8 +1011,8 @@ def apply_crop(window):
         # Crop the image
         window.current_image = window.original_image[y_start:y_end, x_start:x_end]
         h, w = window.current_image.shape[:2]
-        print("width")
-        print(w)
+        # print("width")
+        # print(w)
         #cv2.imshow("Cropped", resize_for_display(window.current_image) )
         process_image(window)
     else:
@@ -1126,7 +1124,7 @@ def upload_txt_file(window):
             lines = file.readlines()
             if len(lines) > 1:  # Check if there's more than just the header
                 header = lines[0].strip().split(',')
-                print(f"Debug: Header: {header}")
+                #print(f"Debug: Header: {header}")
                 for i, line in enumerate(lines[1:], start=2):  # Start from 2 to account for the header
                     parts = line.strip().split(',')
                     if len(parts) == 8:  # Adjusted for the new format
