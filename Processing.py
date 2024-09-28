@@ -276,9 +276,9 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
     
-    cv2.imshow("marked_image_circles", resize_for_display(marked_image)) 
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # cv2.imshow("marked_image_circles", resize_for_display(marked_image)) 
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
 
     # x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     # cv2.imshow ("marked_image", resize_for_display(marked_image)) 
@@ -578,11 +578,12 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     counts = np.zeros((rows, cols), dtype=int)
 
 
-    
+    if len(marked_image.shape) == 2:  # If grayscale, convert to BGR
+        marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
     # Color all white areas in the binary image dark grey
     # Identify white areas in the marked image (where all three channels are white: [255, 255, 255])
     white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
-    cv2.imshow("marked_image", resize_for_display(marked_image))
+    # cv2.imshow("marked_image", resize_for_display(marked_image))
     # Set the identified white areas to dark grey [64, 64, 64] in the marked image
     marked_image[white_areas] = [64, 64, 64]
     

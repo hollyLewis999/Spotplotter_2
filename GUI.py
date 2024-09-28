@@ -764,12 +764,11 @@ def create_editFrame(window, backToEdit = False):
 
    
     return canvas
-    
 def open_grid_override(window):
     # Clear the window
     for widget in window.winfo_children():
         widget.destroy()
-    
+   
     # Create a new canvas for grid override
     canvas = Canvas(
         window,
@@ -781,68 +780,122 @@ def open_grid_override(window):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
-    image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
 
     # Add a title
     canvas.create_text(
         720,
         TITLEHEIGHT,
-        text="Please click centerpoints of dots, start from the top left and work across and down",
+        text="Manage center points. Red: from findBlobs, Blue: manually added",
         fill=DARK,
-        font=(FONT, 12, 
-        "bold")
+        font=(FONT, 12, "bold")
     )
+
     # Use the binarized image (which includes all edits)
     binary_image = window.binarized_image.copy()
     window.binary_image = binary_image
+
     # Convert to RGB for display
     rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
-    
+   
     # Resize the image to fit within the canvas
-    max_width = 1200  # Adjust as needed
-    max_height = 600  # Adjust as needed
+    max_width, max_height = 1200, 600
     h, w = rgb_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
     resized_image = cv2.resize(rgb_image, new_size, interpolation=cv2.INTER_AREA)
-    
+   
     # Convert to PhotoImage
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
-    
+   
     # Calculate position to center the image
     x_position = (1440 - new_size[0]) // 2
     y_position = (1024 - new_size[1]) // 2
-    
+   
     # Display the image
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo  # Keep a reference
-    
-    # Store the scale factor for later use
+   
+    # Store the scale factor and offset for later use
     window.grid_override_scale = scale
     window.grid_override_offset = (x_position, y_position)
-    
-    # Store clicked points
-    window.clicked_pointsx = []
-    window.clicked_pointsy = []
-    # Bind click event
-    canvas.bind("<Button-1>", lambda event: on_canvas_click(event, window, canvas))
-    
+   
+    # Find blobs and get center points
+    height, width = window.binary_image.shape
+    max_radius = int(width/24)
+    min_radius = int(max_radius/3)
+    max_area = max_radius**2*(math.pi)
+    min_area = min_radius**2*(math.pi)
+    x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
+    x_coords, y_coords, _ = findBlobs(binary_image, min_area, max_area)
+    window.center_points = list(zip(x_coords, y_coords))
 
-    create_rounded_button(
-        canvas=canvas,
-        text="Recalculate Grid",
-        command=lambda: recalculate_grid(window),
-        x=buttonPosX,
-        y=buttonPosY, 
-        button_tag ="recalculate_grid")
+    window.blob_points = list(zip(x_coords, y_coords))
+    window.clicked_points = []
+
+    # Function to draw all points
+    def draw_points():
+        canvas.delete("point")
+        for x, y in window.blob_points:
+            scaled_x = x * scale + x_position
+            scaled_y = y * scale + y_position
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill="red", tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill="red", tags="point", width=4)
+        for x, y in window.clicked_points:
+            scaled_x = x * scale + x_position
+            scaled_y = y * scale + y_position
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill="red", tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill="red", tags="point", width=4)
+
+    # Draw initial points
+    draw_points()
+
+    # Function to handle point removal
+    def remove_point(event):
+        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
+        remove_radius = 20  # Increased radius for easier removal
+        window.blob_points = [point for point in window.blob_points 
+                              if ((point[0] - x)**2 + (point[1] - y)**2)**0.5 > remove_radius]
+        window.clicked_points = [point for point in window.clicked_points 
+                                 if ((point[0] - x)**2 + (point[1] - y)**2)**0.5 > remove_radius]
+        draw_points()
+
+    # Function to handle point addition
+    def add_point(event):
+        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
+        window.clicked_points.append((int(x), int(y)))
+        draw_points()
+
+    # Function to handle mouse hover
+    def on_mouse_move(event):
+        canvas.delete("hover_line")
+        x, y = event.x, event.y
+        
+        # Calculate the boundaries of the image
+        left_boundary = x_position
+        right_boundary = x_position + new_size[0]
+        top_boundary = y_position
+        bottom_boundary = y_position + new_size[1]
+        
+        # Draw horizontal line
+        if top_boundary <= y <= bottom_boundary:
+            canvas.create_line(left_boundary, y, right_boundary, y, fill="red", tags="hover_line")
+        
+        # Draw vertical line
+        if left_boundary <= x <= right_boundary:
+            canvas.create_line(x, top_boundary, x, bottom_boundary, fill="red", tags="hover_line")
+
+    # Bind events
+    canvas.bind("<Button-1>", add_point)
+    canvas.bind("<Button-3>", remove_point)
+    canvas.bind("<Motion>", on_mouse_move)
+
+    # Create buttons
+    Button(window, text="Remove Point Mode", command=lambda: canvas.bind("<Button-1>", remove_point)).place(x=50, y=50)
+    Button(window, text="Add Point Mode", command=lambda: canvas.bind("<Button-1>", add_point)).place(x=200, y=50)
+    Button(window, text="Recalculate Grid", command=lambda: recalculate_grid(window)).place(x=350, y=50)
+
+    window.mainloop()
 
 def on_canvas_click(event, window, canvas):
     x, y = event.x, event.y
@@ -854,16 +907,18 @@ def on_canvas_click(event, window, canvas):
     window.clicked_pointsx.append(adjusted_x)
     window.clicked_pointsy.append(adjusted_y)
     # Draw a red X at the clicked point
-    canvas.create_line(x-5, y-5, x+5, y+5, fill=DARK, width=2)
-    canvas.create_line(x-5, y+5, x+5, y-5, fill=DARK, width=2)
+    canvas.create_line(x-5, y-5, x+5, y+5, fill="red", width=4)
+    canvas.create_line(x-5, y+5, x+5, y-5, fill="red", width=4)
 
 def recalculate_grid(window):
-    if len(window.clicked_pointsx) < 12:
-        messagebox.showerror("Error", "Please select at least 16 points")
+    all_points = window.blob_points + window.clicked_points
+    if len(all_points) < 12:
+        messagebox.showwarning("Not enough points", "Please ensure there are at least 12 points before recalculating the grid.")
         return
-   
+
     # Convert clicked points to numpy array
-    pointsx, pointsy = np.array(window.clicked_pointsx), np.array(window.clicked_pointsy)
+    window.clicked_pointsx = [point[0] for point in all_points]
+    window.clicked_pointsy = [point[1] for point in all_points]
     height, width = window.gray_image.shape
     # Calculate new grid parameters using user-provided points
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
