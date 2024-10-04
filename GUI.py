@@ -13,6 +13,7 @@ from functools import partial
 import time
 import math 
 import sys
+# from GraphTesting import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 
 import openpyxl
@@ -23,12 +24,13 @@ LIGHT = "#FFFFFF"
 # DARK = "#FFFFFF"
 # LIGHT = "#092934"
 GRAY = "#B0B0B0"
+ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 buttonPosX = 1200
-buttonPosY = 910
+buttonPosY = 885
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
@@ -214,29 +216,45 @@ def create_titleFrame(window):
     # Convert to PhotoImage for Tkinter
     image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
     canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
-    canvas.create_image(720.0, 400.0, image=image_image_10)
+    canvas.create_image(720.0, 420.0, image=image_image_10)
 
+
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Upload Assays",
+    #     command=lambda: upload_images(window),
+    #     x=620.0,
+    #     y=650.0, )
+
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Upload MetaData",
+    #     command=lambda: upload_txt_file(window),
+    #     x=400.0,
+    #     y=650.0,)
+
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Upload Plate Data",
+    #     command=lambda: upload_txt_file(window),
+    #     x=840.0,
+    #     y=650.0,)
 
     create_rounded_button(
         canvas=canvas,
         text="Upload Assays",
         command=lambda: upload_images(window),
-        x=620.0,
-        y=650.0, )
+        x=730.0,
+        y=670.0, )
 
     create_rounded_button(
         canvas=canvas,
         text="Upload MetaData",
         command=lambda: upload_txt_file(window),
-        x=400.0,
-        y=650.0,)
+        x=510.0,
+        y=670.0,)
 
-    create_rounded_button(
-        canvas=canvas,
-        text="Upload Plate Data",
-        command=lambda: upload_txt_file(window),
-        x=840.0,
-        y=650.0,)
+
 
     create_rounded_button(
         canvas=canvas,
@@ -299,6 +317,23 @@ def display_results(window):
         pady=10
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
+    #         'filename': parts[0],
+    #     'type': parts[1],
+    #     'detergent': parts[2],
+    #     'treatment': parts[3],
+    #     'repeat': parts[4],
+    #     'strainA': parts[5],
+    #     'QuantificationA': None,
+    #     'strainB': parts[6],
+    #     'QuantificationB': None,
+    #     'strainC': parts[7],
+    #     'QuantificationC': None
+    # }
+    # window.image_info.append(info)
+
+    # plot_logarithmic_graph(window.image_info[0])
+
+
     
 def display_final_image(window, override =False):
     #cv2.imshow("contours", resize_for_display(window.contour_img))
@@ -328,30 +363,66 @@ def display_final_image(window, override =False):
         image=image_image_1
     )
 
-    next_button = Button(
-        window,
-        text= "Next",
-        command=lambda: next_image(window),
-        font=(FONT, 14),
-        bg=DARK,
-        fg=LIGHT,
-        padx=20,
-        pady=10
-    )
-    next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
-    
+    # next_button = Button(
+    #     window,
+    #     text= "Next",
+    #     command=lambda: next_image(window),
+    #     font=(FONT, 14),
+    #     bg=DARK,
+    #     fg=LIGHT,
+    #     padx=20,
+    #     pady=10
+    # )
+    # next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
 
-    override_button = Button(
-        window,
+
+
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Override Grid",
+    #     command=lambda: next_image(window),
+    #     x=buttonPosX,
+    #     y=buttonPosY,
+    #     button_tag = "override_button" )
+
+    # override_button = Button(
+    #     window,
+    #     text="Override Grid",
+    #     command=lambda: open_grid_override(window),
+    #     font=(FONT, 14),
+    #     bg=DARK,
+    #     fg=LIGHT,
+    #     padx=20,
+    #     pady=10
+    # )
+    # override_button.place(relx=0.3, rely=0.9, anchor="center")
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Redo Edit",
+        command=lambda: create_editFrame(window),
+        x=720-225,
+        y=buttonPosY,
+        button_tag = "back_button_edit" )
+
+
+    create_rounded_button(
+        canvas=canvas,
         text="Override Grid",
         command=lambda: open_grid_override(window),
-        font=(FONT, 14),
-        bg=DARK,
-        fg=LIGHT,
-        padx=20,
-        pady=10
-    )
-    override_button.place(relx=0.3, rely=0.9, anchor="center")
+        x=720+25,
+        y=buttonPosY,
+        button_tag = "override_button" )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: next_image(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "DisplayNext" )
+
+
 
 
     # Create a frame to center the image
@@ -361,68 +432,62 @@ def display_final_image(window, override =False):
         marked_image = window.marked_image
         result_grid = window.result_grid
     else:   
-        # Convert the NumPy array to PIL Image
-        gray_image = window.gray_image  # Make sure this is set earlier in the processs
+
+        gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
         if hasattr(window, 'current_info'):
             window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
             window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
             window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
-            # Update the window.image_info with the modified current_info
+
             window.image_info[window.current_image_index] = window.current_info.copy()
         else:
             print("Error: current_info not initialized")
 
+        # print("TESTER INFORMATION:") 
+        # print("_______________________________________________________________________")
+        # print(ordered_counts["Strain 1"])    
+        # print(ordered_counts["Strain 2"])   
+        # print(ordered_counts["Strain 3"])   
+
     # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info
 
-    # Ensure marked_image is a PIL Image
-    if isinstance(marked_image, np.ndarray):
-        marked_image = Image.fromarray(marked_image)
+    # Ensure marked_image is a NumPy array, convert from PIL if necessary
+    if isinstance(marked_image, Image.Image):
+        marked_image = np.array(marked_image)
 
-    # Convert to "RGB" mode if not already
-    if marked_image.mode not in ["RGB", "RGBA"]:
-        marked_image = marked_image.convert("RGB")
+    # Resize the image to fit within the canvas
+    max_width, max_height = 1200, 700
+    h, w = marked_image.shape[:2]
+    scale = min(max_width / w, max_height / h)
+    new_size = (int(w * scale), int(h * scale))
+    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
 
-    # Resize the image to fit the window (adjust as needed)
-    max_size = (1000, 800)  # Maximum width and height
-    marked_image.thumbnail(max_size, Image.Resampling.LANCZOS)
+    # Convert the resized image back to a PIL Image for use with Tkinter
+    img = Image.fromarray(resized_image)
 
-    # Convert to PhotoImage
-    photo = ImageTk.PhotoImage(marked_image)
+    # Convert to PhotoImage for displaying in Tkinter
+    photo = ImageTk.PhotoImage(img)
 
-    # Create a label to display the image
-    image_label = Label(frame, image=photo, bg=LIGHT)
-    image_label.image = photo  # Keep a reference
-    image_label.pack()
+    # Calculate position to center the image on the canvas
+    x_position = (1440 - new_size[0]) // 2  # Adjust 1440 to the actual canvas width
+    y_position = (974 - new_size[1]) // 2  # Adjust 1024 to the actual canvas height
 
-
-    # Add a "Back to Editing" button
-    back_button = Button(
-        window,
-        text="Back to Editing",
-        command=lambda: create_editFrame(window),
-        font=(FONT, 14),
-        bg=DARK,
-        fg=LIGHT,
-        padx=20,
-        pady=10
-    )
-    back_button.place(relx=0.5, rely=0.9, anchor="center")
+    # Display the image on the canvas
+    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
+    canvas.image = photo  # Keep a reference to avoid garbage collection
 
 
 
 
-    # Create a frame for the progress bar
+
+    #Progress Bar
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-
-    # Create and pack the progress bar with the custom style
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
                                         length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
-
-    # Label next to the progress bar
     window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
     window.progress_label.pack(side="left")
     
@@ -452,7 +517,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_1
     )
 
-    window.show_original = False  # Initialize with showing the original image
+    window.show_original = False 
 
     create_rounded_button(
         canvas=canvas,
@@ -478,7 +543,7 @@ def create_editFrame(window, backToEdit = False):
         fill=DARK,
         outline="")
 
-
+    #displaying metadata fro mthe textfile
     if hasattr(window, 'current_image_info'):
         current_info = window.current_image_info
         metadata_text = f"Filename: {current_info['filename']}\n"
@@ -488,7 +553,7 @@ def create_editFrame(window, backToEdit = False):
     else:
         metadata_text = "No metadata available1"
 
-    # Always recreate the metadata label
+    #fixing issue of only metadata displaying
     if hasattr(window, 'metadata_label'):
         window.metadata_label.destroy()  # Destroy the old label
 
@@ -498,7 +563,7 @@ def create_editFrame(window, backToEdit = False):
 
     canvas.create_text(
         1391.0,
-        380.0,
+        400.0,
         text="Add",
         fill=LIGHT,
         font=(FONT, 14 * -1,'bold')
@@ -515,12 +580,12 @@ def create_editFrame(window, backToEdit = False):
 
 
     image_path_2 = relative_to_assets("image_2.png")
-    img_thinPen = Image.open(image_path_2)  # Open image using Pillow
+    img_thinPen = Image.open(image_path_2) 
 
-    # Resize the image while keeping better quality
+    #resizing image, using the othermethod made it super pixelated
     img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
 
-    # Convert to PhotoImage for Tkinter
+
     image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
     window.edit_images.append(image_image_2)
     button_thin_pen = Button(
@@ -533,31 +598,27 @@ def create_editFrame(window, backToEdit = False):
    
     )
     
-    button_thin_pen.place(x=1377.0, y=480.0)
+    button_thin_pen.place(x=1377.0, y=420.0)
 
 
-    image_path_3 = relative_to_assets("image_3.png")
-    img_adder = Image.open(image_path_3)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
-    img_adder_resized = img_adder.resize((img_adder.width // 11, img_adder.height // 11), Image.LANCZOS)
-
-    # Convert to PhotoImage for Tkinter
-    image_image_3 = ImageTk.PhotoImage(img_adder_resized)    
-    window.edit_images.append(image_image_3)
-    magic_adder_button = Button(
-        window,
-        image=image_image_3,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: print("adder"),
-        relief="flat",
-        bg = DARK
-    )
-    magic_adder_button.place(x=1376,y=402)
+    # image_path_3 = relative_to_assets("image_3.png")
+    # img_adder = Image.open(image_path_3) 
+    # img_adder_resized = img_adder.resize((img_adder.width // 11, img_adder.height // 11), Image.LANCZOS)
+    # image_image_3 = ImageTk.PhotoImage(img_adder_resized)    
+    # window.edit_images.append(image_image_3)
+    # magic_adder_button = Button(
+    #     window,
+    #     image=image_image_3,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: print("adder"),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # magic_adder_button.place(x=1376,y=402)
 
 
-    # Big eraser
+    #big eraser
     image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
     image_image_4 = image_image_4.subsample(11, 11) 
     window.edit_images.append(image_image_4)
@@ -573,12 +634,10 @@ def create_editFrame(window, backToEdit = False):
     big_eraser_button.place(x=1377.0, y=655.0)
 
     image_path_5 = relative_to_assets("image_5.png")
-    img_thickPen = Image.open(image_path_5)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_thickPen = Image.open(image_path_5) 
     img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
 
-    # Convert to PhotoImage for Tkinter
+
     image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
     window.edit_images.append(image_image_5)
     big_pen_button = Button(
@@ -590,16 +649,14 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    big_pen_button.place(x=1377, y=441)
+    big_pen_button.place(x=1377, y=460)
 
 
     image_path_6 = relative_to_assets("image_6.png")
-    img_flood = Image.open(image_path_6)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_flood = Image.open(image_path_6) 
     img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
 
-    # Convert to PhotoImage for Tkinter
+
     image_image_6 = ImageTk.PhotoImage(img_flood_resized)
     window.edit_images.append(image_image_6)
     flood_eraser_button = Button(
@@ -614,12 +671,9 @@ def create_editFrame(window, backToEdit = False):
     flood_eraser_button.place(x=1376.0, y=616.0)
 
     image_path_7 = relative_to_assets("image_7.png")
-    img_redo = Image.open(image_path_7)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_redo = Image.open(image_path_7)
     img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
 
-    # Convert to PhotoImage for Tkinter
     image_image_7 = ImageTk.PhotoImage(img_redo_resized)
     window.edit_images.append(image_image_7)
     redo_button = Button(
@@ -634,16 +688,11 @@ def create_editFrame(window, backToEdit = False):
     redo_button.place(x=1376.0, y=251.0)
 
 
-    # Undo Button
+    #undo
     image_path_8 = relative_to_assets("image_8.png")
-    img_undo = Image.open(image_path_8)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_undo = Image.open(image_path_8) 
     img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
-
-    # Convert to PhotoImage for Tkinter
     image_image_8 = ImageTk.PhotoImage(img_undo_resized)
-
     window.edit_images.append(image_image_8)
     undo_button = Button(
         window,
@@ -657,15 +706,10 @@ def create_editFrame(window, backToEdit = False):
     undo_button.place(x=1376.0, y=212.0)
 
 
-    # Thin eraser
-
+    # thin eraser
     image_path_9 = relative_to_assets("image_9.png")
-    img_thinEraser = Image.open(image_path_9)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_thinEraser = Image.open(image_path_9)
     img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
-
-    # Convert to PhotoImage for Tkinter
     image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
     window.edit_images.append(image_image_9)
     thin_eraser_button = Button(
@@ -684,16 +728,15 @@ def create_editFrame(window, backToEdit = False):
 
     total_width = 1295 - 34
     total_height = 783 - 203
-    img_width = total_width // 2 -50 # Half of the total width for each image
+    img_width = total_width // 2 -50 #each must be half the width
     img_height = total_height
 
     window.left_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
     window.left_canvas.place(x=30, y=303)
-
     window.right_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
     window.right_canvas.place(x=690, y=303)
 
-    # Display images
+
     display_images(window)
     
     create_rounded_button(
@@ -701,15 +744,17 @@ def create_editFrame(window, backToEdit = False):
         text="Toggle",
         command=lambda: toggle_image(window),
         x=40,
-        y=215,
+        y=205,
         button_tag = "Toggle",
-        width = 110, 
-        height = 40,
+        width = 140, 
+        height = 60,
         fill = LIGHT,
         accent = DARK)
 
+
+    #sliders
     smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    smallDots_label.place(x=645, y=223)
+    smallDots_label.place(x=665, y=223)
     smallDots_slider = create_circular_slider(
         window, min_val=1, max_val=100,
         position=(700, 190),
@@ -717,9 +762,8 @@ def create_editFrame(window, backToEdit = False):
         initial_value=window.excludeSmallDots
     )
 
-    # Contrast Slider
     contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    contrast_label.place(x=200, y=223)
+    contrast_label.place(x=220, y=223)
     contrast_slider = create_circular_slider(
         window, min_val=0, max_val=40,
         position=(300, 190),
@@ -729,13 +773,12 @@ def create_editFrame(window, backToEdit = False):
 
 
 
-    # Bind events for editing on both canvases
+    #bind mouse clicks to start the drawing mode, binding it like this allows the user to draw continiously until they let go of the click
     for canvas in [window.left_canvas, window.right_canvas]:
         canvas.bind("<ButtonPress-1>", lambda event: start_draw(window, event))
         canvas.bind("<B1-Motion>", lambda event: draw(window, event))
         canvas.bind("<ButtonRelease-1>", lambda event: stop_draw(window, event))
-
-    # Connect buttons to functions
+    #configuring buttonts to theit associated fucntions/modes
     button_thin_pen.config(command=lambda: set_mode(window, "small_brush"))
     big_pen_button.config(command=lambda: set_mode(window, "large_brush"))
     thin_eraser_button.config(command=lambda: set_mode(window, "small_eraser"))
@@ -747,29 +790,24 @@ def create_editFrame(window, backToEdit = False):
 
 
 
-    # Create a frame for the progress bar
+    #progress bar (same code for all screens)
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-
-    # Create and pack the progress bar with the custom style
+    #making the position a global variable so if i move it i dont have to change it for all screens
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
                                         length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
-
-    # Label next to the progress bar
     window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
     window.progress_label.pack(side="left")
-    
     update_progress_bar(window)
 
    
     return canvas
 def open_grid_override(window):
-    # Clear the window
+
     for widget in window.winfo_children():
         widget.destroy()
    
-    # Create a new canvas for grid override
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -781,46 +819,39 @@ def open_grid_override(window):
     )
     canvas.place(x=0, y=0)
 
-    # Add a title
-    canvas.create_text(
-        720,
-        TITLEHEIGHT,
-        text="Manage center points. Red: from findBlobs, Blue: manually added",
-        fill=DARK,
-        font=(FONT, 12, "bold")
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
     )
 
-    # Use the binarized image (which includes all edits)
     binary_image = window.binarized_image.copy()
     window.binary_image = binary_image
 
-    # Convert to RGB for display
     rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
    
-    # Resize the image to fit within the canvas
-    max_width, max_height = 1200, 600
+    #resizing as the dataset images are HUGE
+    max_width, max_height = 1200, 700
     h, w = rgb_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
     resized_image = cv2.resize(rgb_image, new_size, interpolation=cv2.INTER_AREA)
    
-    # Convert to PhotoImage
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
-   
-    # Calculate position to center the image
     x_position = (1440 - new_size[0]) // 2
-    y_position = (1024 - new_size[1]) // 2
-   
-    # Display the image
+    y_position = (974 - new_size[1]) // 2
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
-    canvas.image = photo  # Keep a reference
+    canvas.image = photo
    
-    # Store the scale factor and offset for later use
+    #use scale factor for pen tools so it maps correcly on the image
     window.grid_override_scale = scale
     window.grid_override_offset = (x_position, y_position)
    
-    # Find blobs and get center points
+    #find the blobs so the centerpoints are displayed if the user tries to override the grid. Finding blobs is based on the size of the image incase the image is much bigger/smaller it cant be a set pixel size
     height, width = window.binary_image.shape
     max_radius = int(width/24)
     min_radius = int(max_radius/3)
@@ -833,34 +864,46 @@ def open_grid_override(window):
     window.blob_points = list(zip(x_coords, y_coords))
     window.clicked_points = []
 
-    # Function to draw all points
+    #allows the user to add points
     def draw_points():
         canvas.delete("point")
         for x, y in window.blob_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill="red", tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill="red", tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
         for x, y in window.clicked_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill="red", tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill="red", tags="point", width=4)
-
-    # Draw initial points
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
     draw_points()
 
-    # Function to handle point removal
+    #allows the user to remove points that they made OR points detected from find blobs
     def remove_point(event):
         x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
-        remove_radius = 20  # Increased radius for easier removal
-        window.blob_points = [point for point in window.blob_points 
-                              if ((point[0] - x)**2 + (point[1] - y)**2)**0.5 > remove_radius]
-        window.clicked_points = [point for point in window.clicked_points 
-                                 if ((point[0] - x)**2 + (point[1] - y)**2)**0.5 > remove_radius]
+        remove_radius = 50  #this allows the user to not be so exact with where they click
+        blob_points = []
+
+        #checking to see if point must be removed
+        for point in window.blob_points:
+            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
+            if distance > remove_radius:
+                blob_points.append(point)
+
+        window.blob_points = blob_points
+        #same thing for the clicked points
+        clicked_points = []
+        for point in window.clicked_points:
+            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
+            if distance > remove_radius:
+                clicked_points.append(point)
+
+        window.clicked_points = clicked_points
+        #redraw everyhting
         draw_points()
 
-    # Function to handle point addition
+    #if the user clicks the
     def add_point(event):
         x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
         window.clicked_points.append((int(x), int(y)))
@@ -879,11 +922,11 @@ def open_grid_override(window):
         
         # Draw horizontal line
         if top_boundary <= y <= bottom_boundary:
-            canvas.create_line(left_boundary, y, right_boundary, y, fill="red", tags="hover_line")
+            canvas.create_line(left_boundary, y, right_boundary, y, fill=ACCENT, tags="hover_line")
         
         # Draw vertical line
         if left_boundary <= x <= right_boundary:
-            canvas.create_line(x, top_boundary, x, bottom_boundary, fill="red", tags="hover_line")
+            canvas.create_line(x, top_boundary, x, bottom_boundary, fill=ACCENT, tags="hover_line")
 
     # Bind events
     canvas.bind("<Button-1>", add_point)
@@ -891,9 +934,38 @@ def open_grid_override(window):
     canvas.bind("<Motion>", on_mouse_move)
 
     # Create buttons
-    Button(window, text="Remove Point Mode", command=lambda: canvas.bind("<Button-1>", remove_point)).place(x=50, y=50)
-    Button(window, text="Add Point Mode", command=lambda: canvas.bind("<Button-1>", add_point)).place(x=200, y=50)
-    Button(window, text="Recalculate Grid", command=lambda: recalculate_grid(window)).place(x=350, y=50)
+    create_rounded_button(
+        canvas=canvas,
+        text="Remove Points",
+        command=lambda: canvas.bind("<Button-1>", remove_point),
+        x=720+25,
+        y=buttonPosY,
+        button_tag = "Remove_Points" )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Add Points",
+        command=lambda: canvas.bind("<Button-1>", add_point),
+        x=720-225,
+        y=buttonPosY,
+        button_tag = "Add_points" )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Recalculate Grid",
+        command=lambda: recalculate_grid(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "Recalculate" )
+
+
+
+
+
+    # Button(window, text="Remove Point Mode", command=lambda: canvas.bind("<Button-1>", remove_point)).place(x=50, y=50)
+    # Button(window, text="Add Point Mode", command=lambda: canvas.bind("<Button-1>", add_point)).place(x=200, y=50)
+    # Button(window, text="Recalculate Grid", command=lambda: recalculate_grid(window)).place(x=350, y=50)
 
     window.mainloop()
 
@@ -930,6 +1002,15 @@ def recalculate_grid(window):
         window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
         # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info.copy()
+        
+        print("RECALCULATED:      TESTER INFORMATION:") 
+        print("_______________________________________________________________________")
+        print(ordered_counts["Strain 1"])    
+        print(ordered_counts["Strain 2"])   
+        print(ordered_counts["Strain 3"])   
+
+
+
     else:
         print("Error: current_info not initialized")
 
@@ -939,6 +1020,7 @@ def recalculate_grid(window):
     window.marked_image = marked_image
     # Display the final image with the new grid
     display_final_image(window, True)
+
 
 def update_progress_bar(window):
     if hasattr(window, 'progress_bar') and window.progress_bar:
@@ -955,12 +1037,16 @@ def validate_and_proceed(window):
 
 def process_image(window):
 
-    stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 150)
-    # Define parameter ranges for better readability
+    stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 180, False)
+    # cv2.imshow("origional", resize_for_display(window.current_image))
+    # cv2.imshow("streached", resize_for_display(stretched))
+    # cv2.imshow("blurred", resize_for_display(blurred))
+    # cv2.imshow("gray_image", resize_for_display(gray_image))
+
     # stretch_values = [60, 70, 80, 90, 100, 110]
     # blur_values = [110, 120, 130, 140, 150]
 
-    # # Loop through both ranges and display the results
+
     # for stretch in stretch_values:
     #     for blur in blur_values:
     #         # Apply the function with current parameters
@@ -1104,7 +1190,7 @@ def create_cropFrame(window):
     canvas.create_text(
         720,
         TITLEHEIGHT,
-        text="Please crop image to exclude plate lable, line up vertical sides with inner edges of the plate",
+        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
         fill=DARK,
         font=(FONT, 12, 
         "bold")

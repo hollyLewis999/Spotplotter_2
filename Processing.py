@@ -263,27 +263,10 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
             x_coords, y_coords, marked_image = findBlobs(binary_image,min_area, max_area)  # Looser parameters
             if len(x_coords) < 2 or len(y_coords) < 2:
                 raise ValueError("Unable to detect sufficient blobs for grid calculation")
-    #draw slated  
-    # Draw grid lines
-    # for i in range(13):
-    #     x = int(grid_start_x + i * cell_size)
-    #     cv2.line(marked_image, (x, 0), (x, height), (255, 0, 0), 3)
-    
-    # for i in range(9):
-    #     y = int(grid_start_y + i * cell_size)
-    #     cv2.line(marked_image, (0, y), (width, y), (255, 0, 0), 3)
+
 
     counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
     
-    
-    # cv2.imshow("marked_image_circles", resize_for_display(marked_image)) 
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-    # x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
-    # cv2.imshow ("marked_image", resize_for_display(marked_image)) 
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     return counts, marked_image,ordered_counts
 # d888b  d8888b. d888888b d8888b. 
 # 88' Y8b 88  `8D   `88'   88  `8D 
@@ -291,54 +274,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 # 88  ooo 88`8b      88    88   88 
 # 88. ~8~ 88 `88.   .88.   88  .8D 
 #  Y888P  88   YD Y888888P Y8888D' 
-# def findSlant(x_coords, y_coords, x_clusters, y_clusters):
-#         def calculate_slants(coords, clusters):
-#             slants = []
-#             for cluster in clusters:
-#                 # Find points close to this cluster
-#                 cluster_points = [i for i, coord in enumerate(coords) if abs(coord - cluster) < 10]  # Adjust tolerance as needed
-#                 if len(cluster_points) >= 3:  # Only consider clusters with 3 or more points
-#                     for i in range(len(cluster_points)):
-#                         for j in range(i + 1, len(cluster_points)):
-#                             dx = x_coords[cluster_points[j]] - x_coords[cluster_points[i]]
-#                             dy = y_coords[cluster_points[j]] - y_coords[cluster_points[i]]
-#                             if dx != 0 or dy != 0:  # Avoid division by zero
-#                                 angle = math.degrees(math.atan2(dy, dx))
-#                                 # Adjust angle to be between 0-360 degrees
-#                                 angle = (angle + 360) % 360
-#                                 slants.append(angle)
-#             return slants
-
-#         x_slants = calculate_slants(x_coords, x_clusters)
-#         y_slants = calculate_slants(y_coords, y_clusters)
-
-#         print("X-direction slants:", x_slants)
-#         print("Y-direction slants:", y_slants)
-
-#         def calculate_average_slant(slants):
-#             if not slants:
-#                 return 0
-#             # Convert angles to complex numbers
-#             complex_angles = [math.cos(math.radians(s)) + 1j * math.sin(math.radians(s)) for s in slants]
-#             # Calculate the average
-#             average_complex = sum(complex_angles) / len(complex_angles)
-#             # Convert back to angle
-#             average_angle = math.degrees(math.atan2(average_complex.imag, average_complex.real))
-#             # Ensure the result is between 0-360 degrees
-#             return (average_angle + 360) % 360
-
-#         average_x_slant = calculate_average_slant(x_slants)
-#         average_y_slant = calculate_average_slant(y_slants)
-
-#         print(f"Average X-direction slant: {average_x_slant:.2f} degrees")
-#         print(f"Average Y-direction slant: {average_y_slant:.2f} degrees")
-
-#         # Additional debugging information
-#         print(f"Number of x clusters: {len(x_clusters)}")
-#         print(f"Number of y clusters: {len(y_clusters)}")
-#         print(f"X clusters: {x_clusters}")
-#         print(f"Y clusters: {y_clusters}")
-        # return average_x_slant, average_y_slant
+# 
 
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
     """Calculate grid parameters based on detected circle or blob coordinates."""
@@ -385,7 +321,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     
 
 
-    #average_slant = findSlant(x_coords, y_coords, x_clusters, y_clusters)   
+
     if len(x_clusters) < 2 or len(y_clusters) < 2:
         raise ValueError("Not enough valid clusters found to calculate grid")
     
@@ -457,112 +393,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         plt.show()
     
     return grid_start_x, grid_start_y, cell_size, slant_angle
-# def calculate_slanted_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
-#     """Calculate grid parameters based on detected circle or blob coordinates, including slanted angles."""
-    
-#     def find_clusters(coords, min_count=2):
-#         sorted_coords = np.sort(coords)
-#         diffs = np.diff(sorted_coords)
-#         median_diff = np.median(diffs)
-#         threshold = max(median_diff * 2, 10)
-#         clusters = []
-#         current_cluster = [sorted_coords[0]]
-        
-#         for i in range(1, len(sorted_coords)):
-#             if diffs[i-1] < threshold:
-#                 current_cluster.append(sorted_coords[i])
-#             else:
-#                 if len(current_cluster) >= min_count:
-#                     clusters.append(current_cluster)
-#                 current_cluster = [sorted_coords[i]]
-        
-#         if len(current_cluster) >= min_count:
-#             clusters.append(current_cluster)
-        
-#         cluster_means = [np.mean(cluster) for cluster in clusters]
-        
-#         return cluster_means
 
-#     x_clusters = find_clusters(x_coords)
-#     y_clusters = find_clusters(y_coords)
-    
-#     if len(x_clusters) < 2 or len(y_clusters) < 2:
-#         raise ValueError("Not enough valid clusters found to calculate grid")
-    
-#     x_diffs = np.diff(x_clusters)
-#     y_diffs = np.diff(y_clusters)
-    
-#     lowerBound = width / 30
-#     upperBound = width / 10
-#     filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
-#     filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
-    
-#     if not filtered_x_diffs and not filtered_y_diffs:
-#         raise ValueError("No valid differences found within bounds")
-    
-#     cell_size = np.median(filtered_x_diffs + filtered_y_diffs)
-
-#     # Calculate slanted angles for rows and columns
-#     def calculate_slant(coords_x, coords_y):
-#         slope, intercept, r_value, p_value, std_err = linregress(coords_x, coords_y)
-#         angle = np.arctan(slope)
-#         return angle
-
-#     row_angles = []
-#     column_angles = []
-
-#     for cluster in y_clusters:
-#         cluster_x = [x for x, y in zip(x_coords, y_coords) if abs(y - cluster) < cell_size / 2]
-#         if len(cluster_x) > 1:
-#             row_angles.append(calculate_slant(cluster_x, [cluster] * len(cluster_x)))
-
-#     for cluster in x_clusters:
-#         cluster_y = [y for x, y in zip(x_coords, y_coords) if abs(x - cluster) < cell_size / 2]
-#         if len(cluster_y) > 1:
-#             column_angles.append(calculate_slant([cluster] * len(cluster_y), cluster_y))
-
-#     row_slant_angle = np.median(row_angles) if row_angles else 0
-#     column_slant_angle = np.median(column_angles) if column_angles else 0
-
-#     grid_start_x = min(x_clusters) - cell_size / 2
-#     grid_start_y = min(y_clusters) - cell_size / 2
-    
-#     grid_width = cell_size * 12
-#     grid_height = cell_size * 8
-    
-#     if grid_start_x + grid_width > width:
-#         grid_start_x = width - grid_width
-#     if grid_start_y + grid_height > height:
-#         grid_start_y = height - grid_height
-    
-#     if debug:
-#         plt.figure(figsize=(10, 10))
-#         plt.imshow(gray_image, cmap='gray')
-#         plt.scatter(x_coords, y_coords, c='red', s=30, label='Detected spots')
-
-#         # Draw slanted row lines
-#         for j in range(9):
-#             y = grid_start_y + j * cell_size
-#             x_start = grid_start_x
-#             x_end = grid_start_x + grid_width
-#             y_start = y + np.tan(row_slant_angle) * x_start
-#             y_end = y + np.tan(row_slant_angle) * x_end
-#             plt.plot([x_start, x_end], [y_start, y_end], 'b-', alpha=0.5)
-
-#         # Draw slanted column lines
-#         for i in range(13):
-#             x = grid_start_x + i * cell_size
-#             y_start = grid_start_y
-#             y_end = grid_start_y + grid_height
-#             x_start = x + np.tan(column_slant_angle) * y_start
-#             x_end = x + np.tan(column_slant_angle) * y_end
-#             plt.plot([x_start, x_end], [y_start, y_end], 'b-', alpha=0.5)
-
-#         plt.title('Slanted Grid Overlay')
-#         plt.legend()
-#         plt.show()
-    
-#     return grid_start_x, grid_start_y, cell_size, row_slant_angle, column_slant_angle    
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
     """
     Quantify the grid by counting white pixels in each cell, including blobs
@@ -638,28 +469,31 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             x2 = int(x1 + cell_size)
             y2 = int(y1 + cell_size)
             
-            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # Draw rectangle for the grid cell
+            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (65, 105, 255), 2)
             
-            text_x = int(x1 + cell_size / 2)
-            text_y = int(y1 + cell_size / 2)
-            cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 6)
-    
+            # The text to be displayed
+            text = str(counts[row, col])
+            
+            # Get the text size to calculate the center position
+            font = cv2.FONT_HERSHEY_SIMPLEX
+            font_scale = 2
+            thickness = 3
+            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+            
+            # Calculate the centered position for the text and cast to int
+            text_x = int(x1 + (cell_size - text_size[0]) // 2)
+            text_y = int(y1 + (cell_size + text_size[1]) // 2)
+            
+            # Draw the text in the center of the block
+            cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (65, 105, 255), thickness)
+
     ordered_counts = split_and_process(counts)
     return counts, marked_image, ordered_counts
 
 
 
-# def analyze_2d_array(arr):
-#     flat_arr = np.array(arr).flatten()
-    
-#     max_val = np.max(flat_arr)
-#     min_val = np.min(flat_arr)
-#     rangee = max_val-min_val
-#     avg = np.mean(flat_arr)
-#     std_dev = np.std(flat_arr)
-    
-#     return f"{max_val},{min_val}, {rangee},{avg:.2f},{std_dev:.2f}"
+
 
 
 # d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
@@ -676,13 +510,25 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     :param upper_bound: Upper bound for intensity stretching"""
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
-    gray_image = cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+    # blurredEdges = cv2.bilateralFilter(stretched, d=9, sigmaColor=75, sigmaSpace=75)
+    # blurred = cv2.fastNlMeansDenoising(stretched, h=10, templateWindowSize=7, searchWindowSize=21)
+    # blurredEdges3 = cv2.edgePreservingFilter(stretched, flags=1, sigma_s=60, sigma_r=0.4)
+    # blurredEdges4 = cv2.medianBlur(stretched, ksize=5)
+    # gray_image_notBlurred = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
+    gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
     #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
 
     if show_images:
-        cv2.imshow('stretched', resize_for_display(stretched))
-        cv2.imshow('blurred', resize_for_display(blurred))
-        cv2.imshow('gray', resize_for_display(gray_image))
+        cv2.imshow('original_image', resize_for_display(original_image))
+        #cv2.imshow('stretched', resize_for_display(stretched))
+        # cv2.imshow('GaussianBlur', resize_for_display(blurred))
+        # cv2.imshow('bilateralFilter', resize_for_display(blurredEdges))
+        # cv2.imshow('fastNlMeansDenoising', resize_for_display(blurredEdges2))
+        # cv2.imshow('edgePreservingFilter', resize_for_display(blurredEdges3))
+        # cv2.imshow('medianBlur', resize_for_display(blurredEdges4))
+
+        #cv2.imshow('grayBlur', resize_for_display(gray_image))
+        #cv2.imshow('gray', resize_for_display(gray_image_notBlurred))
     return stretched, blurred, gray_image
 
 
@@ -729,141 +575,6 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, sh
     return binary_image, contour_img, final_binary,block_size
 
 
-
-
-    
-
-
-# d8888b. d88888b d8888b. .d8888. d8888b. d88888b  .o88b. d888888b d888888b db    db d88888b 
-# 88  `8D 88'     88  `8D 88'  YP 88  `8D 88'     d8P  Y8 `~~88~~'   `88'   88    88 88'     
-# 88oodD' 88ooooo 88oobY' `8bo.   88oodD' 88ooooo 8P         88       88    Y8    8P 88ooooo 
-# 88~~~   88~~~~~ 88`8b     `Y8b. 88~~~   88~~~~~ 8b         88       88    `8b  d8' 88~~~~~ 
-# 88      88.     88 `88. db   8D 88      88.     Y8b  d8    88      .88.    `8bd8'  88.     
-# 88      Y88888P 88   YD `8888Y' 88      Y88888P  `Y88P'    YP    Y888888P    YP    Y88888P
-
-def detect_lines(image):
-    # Process the image to detect lines
-    stretched, blurred, gray_image = stretch_and_gray(image, 90, 150)
-    binary_image, contour_img, final_binary, block_size = binarize(gray_image, image)
-    gray_image = (binary_image * 255).astype(np.uint8) 
-    lines = cv2.HoughLinesP(gray_image, 1, np.pi/180, threshold=30, minLineLength=800, maxLineGap=20)
-    return lines
-
-def classify_lines(lines, image_shape):
-    # Classify lines based on their angle as vertical
-    vertical_lines = []
-    if lines is not None:
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            angle = np.arctan2(y2 - y1, x2 - x1) * 180. / np.pi
-            length = np.sqrt((x2 - x1)**2 + (y2 - y1)**2)
-            
-            # Consider lines with steep angles to be vertical
-            if abs(angle) > 80:  
-                if length > image_shape[0] * 0.5:  # Ensure lines are long enough
-                    vertical_lines.append((x1, y1, x2, y2))
-    
-    # Sort vertical lines from left to right
-    vertical_lines.sort(key=lambda line: min(line[0], line[2]))
-    
-    return vertical_lines
-def correct_perspective(image, vertical_lines):
-    h, w = image.shape[:2]
-    
-    if len(vertical_lines) < 2:
-        print("Not enough vertical lines detected for perspective correction.")
-        return image
-    
-    # Use the leftmost and rightmost vertical lines for perspective correction
-    left_line = vertical_lines[0]
-    right_line = vertical_lines[-1]
-    
-    # Calculate the x-coordinates at the top and bottom of the image for the perspective transformation
-    x_left_top = left_line[0]
-    x_left_bottom = left_line[2]
-    x_right_top = right_line[0]
-    x_right_bottom = right_line[2]
-    
-    # Calculate shifts for vertical alignment
-    avg_left_x = (x_left_top + x_left_bottom) // 2
-    avg_right_x = (x_right_top + x_right_bottom) // 2
-    shift = avg_right_x - avg_left_x
-    
-    # Calculate destination points
-    # These points aim to keep the lines vertical without stretching
-    src_pts = np.float32([
-        [x_left_top, 0],
-        [x_right_top, 0],
-        [x_right_bottom, h - 1],
-        [x_left_bottom, h - 1]
-    ])
-    
-    # Destination points are shifted horizontally to straighten the vertical lines
-    dst_pts = np.float32([
-        [x_left_top, 0],
-        [x_left_top + shift, 0],
-        [x_left_top + shift, h - 1],
-        [x_left_top, h - 1]
-    ])
-    
-    # Get the perspective transform matrix
-    matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    
-    # Apply the perspective transform
-    result = cv2.warpPerspective(image, matrix, (w, h))
-    
-    return result
-
-
-def draw_lines_and_measure(image, vertical_lines):
-    # Draw detected lines and measure the distance between innermost vertical lines
-    marked_image = image.copy()
-    if vertical_lines is not None and len(vertical_lines) >= 2:
-        # Draw all lines in red
-        for line in vertical_lines:
-            x1, y1, x2, y2 = line
-            cv2.line(marked_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-        
-        # Measure the distance between the innermost lines
-        left_inner = vertical_lines[0]
-        right_inner = vertical_lines[-1]
-        distance = abs(left_inner[0] - right_inner[0])
-        
-        # Draw a line indicating the measurement
-        mid_y = image.shape[0] // 2
-        cv2.line(marked_image, (left_inner[0], mid_y), (right_inner[0], mid_y), (255, 255, 0), 3)
-        
-        # Draw measurement text
-        text = f"{distance} pixels"
-        font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 1.5
-        font_thickness = 3
-        text_size = cv2.getTextSize(text, font, font_scale, font_thickness)[0]
-        text_x = left_inner[0] + (right_inner[0] - left_inner[0]) // 2 - text_size[0] // 2
-        text_y = mid_y - 20
-        cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 255, 0), font_thickness)
-        #cv2.imshow("marked_image", resize_for_display(marked_image))
-    #return marked_image
-
-def correct_perspective_pipeline(original_image):
-    # Full pipeline for detecting lines, correcting perspective, and drawing the result
-    lines = detect_lines(original_image)
-    if lines is None:
-        print("No lines detected.")
-        return original_image
-    
-    vertical_lines = classify_lines(lines, original_image.shape)
-    if len(vertical_lines) < 2:
-        print("Not enough vertical lines detected for perspective correction.")
-        return original_image
-    
-    # Apply perspective correction
-    corrected_image = correct_perspective(original_image, vertical_lines)
-    
-    # Measure and display lines after correction
-    draw_lines_and_measure(corrected_image, vertical_lines)
-    
-    return corrected_image
 
 
 #  d888b  d8888b.  .d8b.  d8888b. db   db 
@@ -924,6 +635,9 @@ def plotScatter(counts):
   plt.tight_layout()
   
   plt.show()
+
+
+
 
 
 
