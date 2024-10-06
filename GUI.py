@@ -1062,7 +1062,7 @@ def process_image(window):
     # cv2.destroyAllWindows()
     window.gray_image = gray_image
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
-    
+    gaussian_binary, mean_binary, overlay_img, result_img = binarize_and_overlay(window.gray_image, window.current_image, show_images=True)
     #############################FOR TESTING#######################
 
 

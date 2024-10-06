@@ -409,13 +409,11 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     counts = np.zeros((rows, cols), dtype=int)
 
 
-    if len(marked_image.shape) == 2:  # If grayscale, convert to BGR
+    if len(marked_image.shape) == 2:  
         marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
-    # Color all white areas in the binary image dark grey
-    # Identify white areas in the marked image (where all three channels are white: [255, 255, 255])
+
     white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
-    # cv2.imshow("marked_image", resize_for_display(marked_image))
-    # Set the identified white areas to dark grey [64, 64, 64] in the marked image
+
     marked_image[white_areas] = [64, 64, 64]
     
     for label in range(1, num_features + 1):
@@ -460,7 +458,8 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             else:
 
                 pass
-
+    for count in counts:
+        count = count/(width**2)
     # Draw grid and add count text
     for row in range(rows):
         for col in range(cols):
@@ -530,7 +529,77 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
         #cv2.imshow('grayBlur', resize_for_display(gray_image))
         #cv2.imshow('gray', resize_for_display(gray_image_notBlurred))
     return stretched, blurred, gray_image
+    
+def binarize_and_overlay(gray_image, original_image, contrast=20, exclude_small_dots=15, show_images=False):
+    """Binarize the grayscale image using Gaussian and mean thresholding, perform contour detection, and overlay results."""
+    
+    height, width = gray_image.shape
+    block_size, divisor_c = 151, 15
+    c = max(-50, min(int(-contrast), -1))
+    
+    # Gaussian thresholding
+    gaussian_binary = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                            cv2.THRESH_BINARY, block_size, -11)
+    
+    # Mean thresholding
+    mean_binary = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                        cv2.THRESH_BINARY, block_size, -20)
+    
+    # Function to process contours
+    def process_contours(binary_image):
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        exclude_small_dots_area = int((width * (exclude_small_dots / 5000)) ** 2)
+        processed_contours = []
+        for cntr in contours:
+            area = cv2.contourArea(cntr)
+            if area > exclude_small_dots_area:
+                processed_contours.append(cntr)
+        return processed_contours
 
+    # Process contours for both thresholding methods
+    gaussian_contours = process_contours(gaussian_binary)
+    mean_contours = process_contours(mean_binary)
+
+    # Create masks for each set of contours
+    gaussian_mask = np.zeros(gray_image.shape, dtype=np.uint8)
+    mean_mask = np.zeros(gray_image.shape, dtype=np.uint8)
+
+    cv2.drawContours(gaussian_mask, gaussian_contours, -1, 255, -1)
+    cv2.drawContours(mean_mask, mean_contours, -1, 255, -1)
+
+    # Find overlapping regions
+    overlap_mask = cv2.bitwise_and(gaussian_mask, mean_mask)
+
+    # Create overlay image
+    overlay_img = original_image.copy()
+
+    # Draw contours with different colors
+    cv2.drawContours(overlay_img, gaussian_contours, -1, (0, 255, 0), 2)  # Green for Gaussian
+    cv2.drawContours(overlay_img, mean_contours, -1, (255, 0, 0), 2)  # Blue for Mean
+
+    # Draw overlapping contours in red
+    overlap_contours, _ = cv2.findContours(overlap_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(overlay_img, overlap_contours, -1, (0, 0, 255), 2)  # Red for overlap
+
+    # Create legend
+    legend_img = np.ones((100, width, 3), dtype=np.uint8) * 255
+    cv2.putText(legend_img, "Gaussian Thresholding", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(legend_img, "Mean Thresholding", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(legend_img, "Overlapping Regions", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
+
+    # Combine overlay and legend
+    result_img = np.vstack((overlay_img, legend_img))
+
+    if show_images:
+        plt.figure(figsize=(12, 8))
+        plt.imshow(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB))
+        plt.title("Thresholding Results Overlay")
+        plt.axis('off')
+        plt.show()
+
+    return gaussian_binary, mean_binary, overlay_img, result_img
+
+    
 
 def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
     """Binarize the grayscale image and perform contour detection."""
