@@ -13,7 +13,7 @@ from functools import partial
 import time
 import math 
 import sys
-# from GraphTesting import *
+from GraphTesting import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 
 import openpyxl
@@ -317,24 +317,43 @@ def display_results(window):
         pady=10
     )
     finish_button.place(relx=0.5, rely=0.9, anchor="center")
-    #         'filename': parts[0],
-    #     'type': parts[1],
-    #     'detergent': parts[2],
-    #     'treatment': parts[3],
-    #     'repeat': parts[4],
-    #     'strainA': parts[5],
-    #     'QuantificationA': None,
-    #     'strainB': parts[6],
-    #     'QuantificationB': None,
-    #     'strainC': parts[7],
-    #     'QuantificationC': None
-    # }
-    # window.image_info.append(info)
 
-    # plot_logarithmic_graph(window.image_info[0])
+    print(f"Debug:123 ALL INFO : {window.image_info}" )
+# Extract required information
 
+    strain_a = window.image_info[0]['strainA']
+    quantifications = [item['QuantificationA'] for item in window.image_info]
+    plate_names = [item['filename'] for item in window.image_info]
 
-    
+    # Call the plotting function
+    figA, statsA = plot_logarithmic_graph(
+        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
+        f"Growth Curve for {strain_a}",
+        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
+    )
+
+    strain_b = window.image_info[0]['strainB']
+    quantifications = [item['QuantificationB'] for item in window.image_info]
+    plate_names = [item['filename'] for item in window.image_info]
+
+    figB, statsB =plot_logarithmic_graph(
+        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
+        f"Growth Curve for {strain_b}",
+        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
+    )
+
+    strain_c = window.image_info[0]['strainC']
+    quantifications = [item['QuantificationC'] for item in window.image_info]
+    plate_names = [item['filename'] for item in window.image_info]
+
+    figC, statsC =plot_logarithmic_graph(
+        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
+        f"Growth Curve for {strain_c}",
+        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
+    )
+
+    generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, "growth_curves_report.pdf")
+
 def display_final_image(window, override =False):
     #cv2.imshow("contours", resize_for_display(window.contour_img))
     add_to_history(window)
@@ -363,39 +382,6 @@ def display_final_image(window, override =False):
         image=image_image_1
     )
 
-    # next_button = Button(
-    #     window,
-    #     text= "Next",
-    #     command=lambda: next_image(window),
-    #     font=(FONT, 14),
-    #     bg=DARK,
-    #     fg=LIGHT,
-    #     padx=20,
-    #     pady=10
-    # )
-    # next_button.place(x=1192.0, y=935.0, width=207.0, height=61.0)
-
-
-
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Override Grid",
-    #     command=lambda: next_image(window),
-    #     x=buttonPosX,
-    #     y=buttonPosY,
-    #     button_tag = "override_button" )
-
-    # override_button = Button(
-    #     window,
-    #     text="Override Grid",
-    #     command=lambda: open_grid_override(window),
-    #     font=(FONT, 14),
-    #     bg=DARK,
-    #     fg=LIGHT,
-    #     padx=20,
-    #     pady=10
-    # )
-    # override_button.place(relx=0.3, rely=0.9, anchor="center")
 
     create_rounded_button(
         canvas=canvas,
@@ -431,8 +417,12 @@ def display_final_image(window, override =False):
     if (override):
         marked_image = window.marked_image
         result_grid = window.result_grid
+        window.image_info[window.current_image_index] = window.current_info.copy()
+        print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        print(f"Debug: Current image info: {window.current_info}")
+        print(f"Debug: 345434 ALL INFO : {window.image_info}" )
     else:   
-
+        
         gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
         if hasattr(window, 'current_info'):
@@ -440,7 +430,10 @@ def display_final_image(window, override =False):
             window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
             window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
 
-            window.image_info[window.current_image_index] = window.current_info.copy()
+            window.image_info[window.current_image_index] = window.current_info
+            print(f"Debug: CURRENT INDEX {window.current_image_index}")
+            print(f"Debug: Current image info: {window.current_info}")
+            print(f"Debug:098765 ALL INFO : {window.image_info}" )
         else:
             print("Error: current_info not initialized")
 
@@ -451,8 +444,8 @@ def display_final_image(window, override =False):
         # print(ordered_counts["Strain 3"])   
 
     # Update the window.image_info with the modified current_info
-        window.image_info[window.current_image_index] = window.current_info
-
+        # window.image_info[window.current_image_index] = window.current_info
+        # print(window.current_image_index)
     # Ensure marked_image is a NumPy array, convert from PIL if necessary
     if isinstance(marked_image, Image.Image):
         marked_image = np.array(marked_image)
@@ -463,6 +456,11 @@ def display_final_image(window, override =False):
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
     resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
+    window.image_info[window.current_image_index]["IMGgrid"] = marked_image
+    window.image_info[window.current_image_index]["IMGbinary"] = window.binarized_image
+    window.image_info[window.current_image_index]["IMGcontour"] = window.contour_img
+    window.image_info[window.current_image_index]["threshold"] = window.contrast_value
+    window.image_info[window.current_image_index]["smallArea"] = window.excludeSmallDots
 
     # Convert the resized image back to a PIL Image for use with Tkinter
     img = Image.fromarray(resized_image)
@@ -544,8 +542,8 @@ def create_editFrame(window, backToEdit = False):
         outline="")
 
     #displaying metadata fro mthe textfile
-    if hasattr(window, 'current_image_info'):
-        current_info = window.current_image_info
+    if hasattr(window, 'current_info'):
+        current_info = window.current_info
         metadata_text = f"Filename: {current_info['filename']}\n"
         metadata_text += f"StrainA: {current_info['strainA']}\n"
         metadata_text += f"StrainB: {current_info['strainB']}\n"
@@ -1009,7 +1007,9 @@ def recalculate_grid(window):
         print(ordered_counts["Strain 2"])   
         print(ordered_counts["Strain 3"])   
 
-
+        print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        print(f"Debug: Current image info: {window.current_info}")
+        print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
 
     else:
         print("Error: current_info not initialized")
@@ -1062,7 +1062,7 @@ def process_image(window):
     # cv2.destroyAllWindows()
     window.gray_image = gray_image
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
-    gaussian_binary, mean_binary, overlay_img, result_img = binarize_and_overlay(window.gray_image, window.current_image, show_images=True)
+    #gaussian_binary, mean_binary, overlay_img, result_img = binarize_and_overlay(window.gray_image, window.current_image, show_images=True)
     #############################FOR TESTING#######################
 
 
@@ -1280,7 +1280,12 @@ def upload_txt_file(window):
                             'strainB': parts[6],
                             'QuantificationB': None,
                             'strainC': parts[7],
-                            'QuantificationC': None
+                            'QuantificationC': None,
+                            'IMGcontours': None,  
+                            'IMGbinary': None,   
+                            'IMGgrid': None, 
+                            'IMGthreshold': 0,
+                            'IMGsmallArea': 0   
                         }
                         window.image_info.append(info)
                     else:
@@ -1326,8 +1331,12 @@ def load_current_image(window):
         window.current_image = window.original_image.copy()
        
         # Update the current image info
-        window.current_image_info = window.image_info[window.current_image_index].copy()
-        print(window.current_image_info)
+        print("IS IT HERE??????")
+
+        print("AFTER")
+        window.current_info = window.image_info[window.current_image_index].copy()
+        print(f"Debug: Loading image {window.current_image_index}")
+        print(f"Debug: Current image info: {window.current_info}")
     else:
         messagebox.showerror("Error", "No image to load")
 
@@ -1337,6 +1346,9 @@ def next_image(window):
         load_current_image(window)
         create_cropFrame(window)
         update_progress_bar(window)
+        print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        print(f"Debug: Current image info: {window.current_info}")
+        print(f"Debug: ALL INFO : {window.image_info}" )
     else:
         display_results(window)
 
