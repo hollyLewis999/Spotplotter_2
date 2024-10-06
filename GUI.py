@@ -37,8 +37,109 @@ PROGRESSY = 36
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from io import BytesIO
+from reportlab.pdfgen import canvas
+def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
+    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0.1*inch)
+    story = []
+
+    # Define styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+    heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
+    body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
+
+    # Logo
+    logo_path = relative_to_assets("image_1.png")
+    logo = ImageR(logo_path, width=505/2, height=176/2)  # Adjust size as needed
+        logo.drawHeight = height
+        logo.drawWidth = width
+
+        # Add the logo to the very top of the page with minimal space
+        story.append(logo)
+        story.append(Spacer(1, 6))  # Reduce space to make it higher
+
+        # Add title
+        # story.append(Paragraph(f"Growth Curve for {strain}", title_style))
+        # story.append(Spacer(1, 12))
+    # Color scheme
+    color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']   # Alternating colors for table columns
+
+    # Function to add a plot and its statistics to the story
+    def add_plot_and_stats(fig, stats, strain):
+
+        # Resize the logo while maintaining proportions
 
 
+        # Save plot to a BytesIO object
+        img_data = BytesIO()
+        fig.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
+        img_data.seek(0)
+
+        # Add plot
+        story.append(ImageR(img_data, width=500, height=350))  # Increased size
+        story.append(Spacer(1, 12))
+
+        # Add statistics
+        story.append(Paragraph("Statistics:", heading_style))
+
+        # Prepare data for the table
+        table_data = [[''] + [stat['label'] for stat in stats]]
+        for row_label in ['Slope', 'Intercept', 'R-squared', 'Formula', 'Y-cut', 'X-cut', 'X at Y=50']:
+            row = [row_label]
+            for stat in stats:
+                if row_label == 'Formula':
+                    value = stat['formula']
+                elif row_label == 'R-squared':
+                    value = f"{stat['r_squared']:.3f}"
+                elif row_label == 'X at Y=50':
+                    value = f"{stat['x_at_y50']:.2f}"
+                else:
+                    key = row_label.lower().replace('-', '_')
+                    value = f"{stat[key]:.2f}"
+                row.append(value)
+            table_data.append(row)
+
+        # Create table with alternating column colors
+        table = Table(table_data)
+        table_style = [
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (0, -1), colors.lightgrey),
+        ]
+
+        # Add alternating colors to columns
+        for i in range(1, len(table_data[0])):
+            table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
+
+        table.setStyle(TableStyle(table_style))
+        story.append(table)
+        story.append(PageBreak())  # Ensure each graph starts on a new page
+
+    # Add plots and statistics for each strain
+    add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
+    add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
+    add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
+
+    # Add page numbers
+    def add_page_number(canvas, doc):
+        canvas.saveState()
+        canvas.setFont('Helvetica', 10)
+        page_number_text = f"Page {doc.page}"
+        canvas.drawRightString(letter[0] - 0.5*inch, 0.5*inch, page_number_text)
+        canvas.restoreState()
+
+    # Build the PDF
+    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
 
 # .d8888. d888888b db    db db      d88888b 
 # 88'  YP `~~88~~' `8b  d8' 88      88'     
@@ -353,6 +454,8 @@ def display_results(window):
     )
 
     generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, "growth_curves_report.pdf")
+
+    
 
 def display_final_image(window, override =False):
     #cv2.imshow("contours", resize_for_display(window.contour_img))
@@ -1650,3 +1753,17 @@ title_frame_widgets = create_titleFrame(window)
 
 window.resizable(False, False)
 window.mainloop()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
