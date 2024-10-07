@@ -45,7 +45,7 @@ from reportlab.lib.pagesizes import letter
 from io import BytesIO
 from reportlab.pdfgen import canvas
 def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
-    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0.1*inch)
+    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0.01*inch, bottomMargin=0.25*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
     story = []
 
     # Define styles
@@ -55,24 +55,22 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
     body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
 
     # Logo
-    logo_path = relative_to_assets("image_1.png")
-    logo = ImageR(logo_path, width=505/2, height=176/2)  # Adjust size as needed
-        logo.drawHeight = height
-        logo.drawWidth = width
+    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)  # Adjust size as needed
 
-        # Add the logo to the very top of the page with minimal space
-        story.append(logo)
-        story.append(Spacer(1, 6))  # Reduce space to make it higher
+    # Add the logo to the very top of the page with minimal space
 
-        # Add title
-        # story.append(Paragraph(f"Growth Curve for {strain}", title_style))
-        # story.append(Spacer(1, 12))
+
+    # Add title
+    # story.append(Paragraph(f"Growth Curve for {strain}", title_style))
+    # story.append(Spacer(1, 12))
     # Color scheme
     color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']   # Alternating colors for table columns
 
     # Function to add a plot and its statistics to the story
     def add_plot_and_stats(fig, stats, strain):
-
+        story.append(logo)
+        story.append(Spacer(1, 6))  # Reduce space to make it higher
         # Resize the logo while maintaining proportions
 
 
@@ -83,10 +81,10 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
 
         # Add plot
         story.append(ImageR(img_data, width=500, height=350))  # Increased size
-        story.append(Spacer(1, 12))
+        story.append(Spacer(1, 18))  #changed here
 
         # Add statistics
-        story.append(Paragraph("Statistics:", heading_style))
+        # story.append(Paragraph("Statistics:", heading_style))
 
         # Prepare data for the table
         table_data = [[''] + [stat['label'] for stat in stats]]
@@ -114,7 +112,7 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (0, -1), colors.lightgrey),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
         ]
 
         # Add alternating colors to columns
@@ -131,9 +129,100 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
     add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
 
     # Add page numbers
+
+    def cv2_to_pil(cv2_img):
+        if cv2_img is None:
+            print("it is none??")
+            return None
+        if len(cv2_img.shape) == 2:  # Grayscale
+            return Image.fromarray(cv2_img)
+        elif len(cv2_img.shape) == 3:  # Color
+            return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
+
+    # Function to add a page for each entry in window.image_info
+    def add_info_page(info):
+        story.append(logo)
+        story.append(Spacer(1, 1))  # Reduce space to make it higher
+        # Add header
+        header_text = f"Filename: {info['filename']}\n" \
+                    f"Type: {info['type']}\n" \
+                    f"Detergent: {info['detergent']}\n" \
+                    f"Treatment: {info['treatment']}\n" \
+                    f"Repeat: {info['repeat']}\n" \
+                    f"Strain A: {info['strainA']}\n" \
+                    f"Strain B: {info['strainB']}\n" \
+                    f"Strain C: {info['strainC']}"
+        story.append(Paragraph(header_text, body_style))
+        story.append(Spacer(1, 12))
+
+        # Function to get image size while maintaining aspect ratio
+        def get_image_size(img, max_width, max_height):
+            img_width, img_height = img.size
+            aspect_ratio = img_width / img_height
+            if img_width > max_width:
+                img_width = max_width
+                img_height = img_width / aspect_ratio
+            if img_height > max_height:
+                img_height = max_height
+                img_width = img_height * aspect_ratio
+            return img_width, img_height
+
+        # Add IMGcontours and IMGbinary side by side
+        max_width = 250  # Maximum width for each image
+        max_height = 200  # Maximum height for each image
+        images = []
+        # cv2.imshow("contours", resize_for_display(window.image_info['IMGcontours']))
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
+
+
+
+        for img_key in ['IMGcontours', 'IMGbinary']:
+
+  
+            if info[img_key] is not None:
+                pil_img = cv2_to_pil(info[img_key])
+
+                if pil_img:
+                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
+                    img_data = BytesIO()
+                    pil_img.save(img_data, format='PNG')
+                    img_data.seek(0)
+                    images.append(ImageR(img_data, width=img_width, height=img_height))
+            else:
+                images.append(Paragraph("Image not available", body_style))
+        if images:
+            story.append(Table([images]))
+            story.append(Spacer(1, 12))
+
+        # Add IMGthreshold and IMGsmallArea values
+        threshold_text = f"Threshold: {info['threshold']}"
+        small_area_text = f"Small Area Exclusion: {info['smallArea']}"
+        story.append(Paragraph(threshold_text + "\t\t" + small_area_text, body_style))
+        story.append(Spacer(1, 12))
+
+        # Add IMGgrid
+        if info['IMGgrid'] is not None:
+            info['IMGgrid'] = cv2.cvtColor(info['IMGgrid'], cv2.COLOR_RGB2BGR)
+            img_grid = cv2_to_pil(info['IMGgrid'])
+            if img_grid:
+                max_grid_width = 500
+                max_grid_height = 350
+                grid_width, grid_height = get_image_size(img_grid, max_grid_width, max_grid_height)
+                img_data_grid = BytesIO()
+                img_grid.save(img_data_grid, format='PNG')
+                img_data_grid.seek(0)
+                story.append(ImageR(img_data_grid, width=grid_width, height=grid_height))
+        else:
+            story.append(Paragraph("Grid image not available", body_style))
+        story.append(PageBreak())
+
+    for info in window.image_info:
+        add_info_page(info)
+
     def add_page_number(canvas, doc):
         canvas.saveState()
-        canvas.setFont('Helvetica', 10)
+        canvas.setFont("Helvetica", 10)
         page_number_text = f"Page {doc.page}"
         canvas.drawRightString(letter[0] - 0.5*inch, 0.5*inch, page_number_text)
         canvas.restoreState()
@@ -387,40 +476,38 @@ def display_results(window):
     )
     canvas.place(x=0, y=0)
 
-    image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
+    image_path_10 = relative_to_assets("image_10.png")
 
-    # Add a title
+    img_logobig = Image.open(image_path_10)  # Open image using Pillow
+
+    # Resize the image while keeping better quality
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
+
+    # Convert to PhotoImage for Tkinter
+    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
+    canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
+    canvas.create_image(720.0, 420.0, image=image_image_10)
+
+    window.show_original = False 
+
+
+
+    # Add a title (you can adjust TITLEHEIGHT based on your layout)
+
     canvas.create_text(
-        720,
-        TITLEHEIGHT,
-        text="Downloading Reults",
+        720,  
+        750.0,# Center horizontally
+        text="Results Downloading......",
         fill=DARK,
-        font=(FONT, 12, 
-        "bold")
+        font=(FONT, 12, "bold"),
+        anchor="center"  # This will center the text based on the x position
     )
 
-    write_image_info_to_file(window)
-    finish_button = Button(
-        window,
-        text="Finish",
-        command=window.quit,
-        font=(FONT, 14),
-        bg=DARK,
-        fg=LIGHT,
-        padx=20,
-        pady=10
-    )
-    finish_button.place(relx=0.5, rely=0.9, anchor="center")
 
-    print(f"Debug:123 ALL INFO : {window.image_info}" )
-# Extract required information
+#     print(f"Debug:123 ALL INFO : {window.image_info}" )
+# # Extract required information
+    window.update()
+
 
     strain_a = window.image_info[0]['strainA']
     quantifications = [item['QuantificationA'] for item in window.image_info]
@@ -454,6 +541,17 @@ def display_results(window):
     )
 
     generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, "growth_curves_report.pdf")
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Finish",
+        command=lambda: window.quit(),
+        x=720 - (200 // 2),  
+        y=buttonPosY-100,
+        button_tag="Finish"
+    )
+
+
 
     
 
@@ -519,15 +617,17 @@ def display_final_image(window, override =False):
     frame.place(relx=0.5, rely=0.5, anchor="center")
     if (override):
         marked_image = window.marked_image
+        #window.image_info[window.current_image_index]["IMGgrid"] = marked_image
         result_grid = window.result_grid
         window.image_info[window.current_image_index] = window.current_info.copy()
-        print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        print(f"Debug: Current image info: {window.current_info}")
-        print(f"Debug: 345434 ALL INFO : {window.image_info}" )
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
     else:   
         
         gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        # cv2.imshow("marked", resize_for_display(marked_image))
         if hasattr(window, 'current_info'):
             window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
             window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
@@ -552,16 +652,30 @@ def display_final_image(window, override =False):
     # Ensure marked_image is a NumPy array, convert from PIL if necessary
     if isinstance(marked_image, Image.Image):
         marked_image = np.array(marked_image)
-
+    
+        print("yes is instance")
+    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)    
     # Resize the image to fit within the canvas
     max_width, max_height = 1200, 700
     h, w = marked_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
-    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
     window.image_info[window.current_image_index]["IMGgrid"] = marked_image
+    # cv2.imshow("marked", resize_for_display(marked_image))
+    # #cv2.imshow("contours", resize_for_display(window.marked_image))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
+
+
     window.image_info[window.current_image_index]["IMGbinary"] = window.binarized_image
-    window.image_info[window.current_image_index]["IMGcontour"] = window.contour_img
+    ###HERE ABC
+    # window.image_info[window.current_image_index]["IMGgrid"] = marked_image
+    # cv2.imshow("marked", resize_for_display(marked_image))
+    # # cv2.imshow("contours", resize_for_display(window.marked_image))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+
     window.image_info[window.current_image_index]["threshold"] = window.contrast_value
     window.image_info[window.current_image_index]["smallArea"] = window.excludeSmallDots
 
@@ -959,6 +1073,9 @@ def open_grid_override(window):
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
     x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
+    # cv2.imshow("marked image1244443", resize_for_display(marked_image))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
     x_coords, y_coords, _ = findBlobs(binary_image, min_area, max_area)
     window.center_points = list(zip(x_coords, y_coords))
 
@@ -1096,6 +1213,8 @@ def recalculate_grid(window):
     # Calculate new grid parameters using user-provided points
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
     counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+
+    
     #SAVING INFO
     if hasattr(window, 'current_info'):
         window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
@@ -1104,15 +1223,15 @@ def recalculate_grid(window):
         # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info.copy()
         
-        print("RECALCULATED:      TESTER INFORMATION:") 
-        print("_______________________________________________________________________")
-        print(ordered_counts["Strain 1"])    
-        print(ordered_counts["Strain 2"])   
-        print(ordered_counts["Strain 3"])   
+        # print("RECALCULATED:      TESTER INFORMATION:") 
+        # print("_______________________________________________________________________")
+        # print(ordered_counts["Strain 1"])    
+        # print(ordered_counts["Strain 2"])   
+        # print(ordered_counts["Strain 3"])   
 
-        print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        print(f"Debug: Current image info: {window.current_info}")
-        print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
 
     else:
         print("Error: current_info not initialized")
@@ -1121,6 +1240,7 @@ def recalculate_grid(window):
     # Update window attributes
     window.result_grid= counts
     window.marked_image = marked_image
+
     # Display the final image with the new grid
     display_final_image(window, True)
 
@@ -1387,8 +1507,8 @@ def upload_txt_file(window):
                             'IMGcontours': None,  
                             'IMGbinary': None,   
                             'IMGgrid': None, 
-                            'IMGthreshold': 0,
-                            'IMGsmallArea': 0   
+                            'threshold': 0,
+                            'smallArea': 0   
                         }
                         window.image_info.append(info)
                     else:
@@ -1433,10 +1553,10 @@ def load_current_image(window):
             return
         window.current_image = window.original_image.copy()
        
-        # Update the current image info
-        print("IS IT HERE??????")
+        # # Update the current image info
+        # print("IS IT HERE??????")
 
-        print("AFTER")
+        # print("AFTER")
         window.current_info = window.image_info[window.current_image_index].copy()
         print(f"Debug: Loading image {window.current_image_index}")
         print(f"Debug: Current image info: {window.current_info}")
@@ -1593,12 +1713,18 @@ def display_images(window):
             contour_img = img_np.copy()
             for cntr in contours:
                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 2)
+            window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
+            window.current_info["IMGcontours"] = contour_img 
+            # cv2.imshow("contours2345", resize_for_display(contour_img))
+            # # # cv2.imshow("contours", resize_for_display(window.marked_image))
+            # cv2.waitKey(0)
+            # cv2.destroyAllWindows()
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-
         img_left.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
         window.photo_left = ImageTk.PhotoImage(img_left)
         window.left_canvas.config(width=window.photo_left.width(), height=window.photo_left.height())
         window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
+
 
     except Exception as e:
         print(f"Error in display_images: {e}")

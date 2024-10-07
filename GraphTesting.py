@@ -40,7 +40,6 @@ def calculate_statistics(x, y, color, label):
         }
     
     return None
-
 def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
     dilutionSeries = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
     normValue = (y1[0] + y2[0]) / 2
@@ -76,13 +75,14 @@ def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
     plt.xlabel('Dilution Series', fontsize=16, fontweight='bold')
     plt.ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
 
-    plt.legend(fontsize=10, loc='upper right', bbox_to_anchor=(0.98, 0.98),
+    # Increase fontsize for the legend
+    plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
                ncol=1, frameon=True, facecolor='white', edgecolor='none', framealpha=0.7)
 
     plt.tick_params(axis='both', which='major', labelsize=14)
     
     plt.tight_layout()
-    
+
     # Return the figure and the collected statistics
     return plt.gcf(), statistics
 
@@ -91,8 +91,10 @@ def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
 # y2= [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0]
 # y3= [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 990, 1650, 590, 662, 0, 203, 0, 161, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 0]
 # y4=[20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-# plot_logarithmic_graph(
+# plt , _ = plot_logarithmic_graph(
 #     y1, y2, y3, y4,
 #     "StrainNAME",
 #     "P4272701", "P4272705", "P4272703", "P4272707"
 # )
+
+

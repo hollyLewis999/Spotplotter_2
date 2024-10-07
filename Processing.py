@@ -90,30 +90,30 @@ def resize_for_display(image, max_width=1280, max_height=720):
         return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
     return image
 
-def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask, lines_mask):
-    """Combine black and white masks into a single colored image."""
-    # Convert black and white masks to color (BGR)
-    circles_mask_color = cv2.cvtColor(circles_mask, cv2.COLOR_GRAY2BGR)
-    gridlines_mask_color = cv2.cvtColor(gridlines_mask, cv2.COLOR_GRAY2BGR)
-    yellow_areas_mask_color = cv2.cvtColor(yellow_areas_mask, cv2.COLOR_GRAY2BGR)
-    counts_mask_color = cv2.cvtColor(counts_mask, cv2.COLOR_GRAY2BGR)
-    lines_mask_color = cv2.cvtColor(lines_mask, cv2.COLOR_GRAY2BGR)
+# def combine_masks(circles_mask, gridlines_mask, yellow_areas_mask, counts_mask, lines_mask):
+#     """Combine black and white masks into a single colored image."""
+#     # Convert black and white masks to color (BGR)
+#     circles_mask_color = cv2.cvtColor(circles_mask, cv2.COLOR_GRAY2BGR)
+#     gridlines_mask_color = cv2.cvtColor(gridlines_mask, cv2.COLOR_GRAY2BGR)
+#     yellow_areas_mask_color = cv2.cvtColor(yellow_areas_mask, cv2.COLOR_GRAY2BGR)
+#     counts_mask_color = cv2.cvtColor(counts_mask, cv2.COLOR_GRAY2BGR)
+#     lines_mask_color = cv2.cvtColor(lines_mask, cv2.COLOR_GRAY2BGR)
     
-    # Set colors
-    circles_mask_color[:, :] = [0, 255, 0]  # Green for circles
-    gridlines_mask_color[:, :] = [255, 0, 0]  # Red for gridlines
-    yellow_areas_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
-    line_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
-    # Initialize the combined mask
-    combined_mask = np.zeros_like(circles_mask_color)
+#     # Set colors
+#     circles_mask_color[:, :] = [0, 255, 0]  # Green for circles
+#     gridlines_mask_color[:, :] = [255, 0, 0]  # Red for gridlines
+#     yellow_areas_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
+#     line_mask_color[:, :] = [0, 255, 255]  # Yellow for yellow areas
+#     # Initialize the combined mask
+#     combined_mask = np.zeros_like(circles_mask_color)
 
-    # Combine masks
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, circles_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, gridlines_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, yellow_areas_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, counts_mask_color, 1.0, 0)
-    combined_mask = cv2.addWeighted(combined_mask, 1.0, line_mask_color, 1.0, 0)
-    return combined_mask
+#     # Combine masks
+#     combined_mask = cv2.addWeighted(combined_mask, 1.0, circles_mask_color, 1.0, 0)
+#     combined_mask = cv2.addWeighted(combined_mask, 1.0, gridlines_mask_color, 1.0, 0)
+#     combined_mask = cv2.addWeighted(combined_mask, 1.0, yellow_areas_mask_color, 1.0, 0)
+#     combined_mask = cv2.addWeighted(combined_mask, 1.0, counts_mask_color, 1.0, 0)
+#     combined_mask = cv2.addWeighted(combined_mask, 1.0, line_mask_color, 1.0, 0)
+#     return combined_mask
 
 
 #  .o88b. d888888b d8888b.  .o88b. db      d88888b .d8888. 
@@ -469,7 +469,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             y2 = int(y1 + cell_size)
             
             # Draw rectangle for the grid cell
-            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (65, 105, 255), 2)
+            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), 2)
             
             # The text to be displayed
             text = str(counts[row, col])
@@ -485,7 +485,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             text_y = int(y1 + (cell_size + text_size[1]) // 2)
             
             # Draw the text in the center of the block
-            cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (65, 105, 255), thickness)
+            cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
 
     ordered_counts = split_and_process(counts)
     return counts, marked_image, ordered_counts
