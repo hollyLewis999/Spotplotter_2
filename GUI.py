@@ -132,7 +132,7 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
 
     def cv2_to_pil(cv2_img):
         if cv2_img is None:
-            print("it is none??")
+            # print("it is none??")
             return None
         if len(cv2_img.shape) == 2:  # Grayscale
             return Image.fromarray(cv2_img)
@@ -627,6 +627,9 @@ def display_final_image(window, override =False):
         
         gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        
+        print("UNORDERED COUNTS")
+        print(ordered_counts)
         # cv2.imshow("marked", resize_for_display(marked_image))
         if hasattr(window, 'current_info'):
             window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
@@ -634,17 +637,17 @@ def display_final_image(window, override =False):
             window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
 
             window.image_info[window.current_image_index] = window.current_info
-            print(f"Debug: CURRENT INDEX {window.current_image_index}")
-            print(f"Debug: Current image info: {window.current_info}")
-            print(f"Debug:098765 ALL INFO : {window.image_info}" )
+            # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+            # print(f"Debug: Current image info: {window.current_info}")
+            # print(f"Debug:098765 ALL INFO : {window.image_info}" )
         else:
             print("Error: current_info not initialized")
 
-        # print("TESTER INFORMATION:") 
-        # print("_______________________________________________________________________")
-        # print(ordered_counts["Strain 1"])    
-        # print(ordered_counts["Strain 2"])   
-        # print(ordered_counts["Strain 3"])   
+        print("TESTER INFORMATION:") 
+        print("_______________________________________________________________________")
+        print(ordered_counts["Strain 1"])    
+        print(ordered_counts["Strain 2"])   
+        print(ordered_counts["Strain 3"])   
 
     # Update the window.image_info with the modified current_info
         # window.image_info[window.current_image_index] = window.current_info
@@ -653,7 +656,7 @@ def display_final_image(window, override =False):
     if isinstance(marked_image, Image.Image):
         marked_image = np.array(marked_image)
     
-        print("yes is instance")
+        # print("yes is instance")
     marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)    
     # Resize the image to fit within the canvas
     max_width, max_height = 1200, 700
@@ -1214,6 +1217,9 @@ def recalculate_grid(window):
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
     counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
 
+
+    print("UNORDERED COUNTS")
+    print(counts)
     
     #SAVING INFO
     if hasattr(window, 'current_info'):
@@ -1223,11 +1229,11 @@ def recalculate_grid(window):
         # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info.copy()
         
-        # print("RECALCULATED:      TESTER INFORMATION:") 
-        # print("_______________________________________________________________________")
-        # print(ordered_counts["Strain 1"])    
-        # print(ordered_counts["Strain 2"])   
-        # print(ordered_counts["Strain 3"])   
+        print("RECALCULATED:      TESTER INFORMATION:") 
+        print("_______________________________________________________________________")
+        print(ordered_counts["Strain 1"])    
+        print(ordered_counts["Strain 2"])   
+        print(ordered_counts["Strain 3"])   
 
         # print(f"Debug: CURRENT INDEX {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
@@ -1259,8 +1265,8 @@ def validate_and_proceed(window):
 
 
 def process_image(window):
-
-    stretched, blurred, gray_image = stretch_and_gray(window.current_image, 90, 180, False)
+    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, 90, 180, False)
+    window.contrast_value = idealContrast
     # cv2.imshow("origional", resize_for_display(window.current_image))
     # cv2.imshow("streached", resize_for_display(stretched))
     # cv2.imshow("blurred", resize_for_display(blurred))
@@ -1284,7 +1290,10 @@ def process_image(window):
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
     window.gray_image = gray_image
+
+
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
+
     #gaussian_binary, mean_binary, overlay_img, result_img = binarize_and_overlay(window.gray_image, window.current_image, show_images=True)
     #############################FOR TESTING#######################
 
@@ -1558,8 +1567,8 @@ def load_current_image(window):
 
         # print("AFTER")
         window.current_info = window.image_info[window.current_image_index].copy()
-        print(f"Debug: Loading image {window.current_image_index}")
-        print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: Loading image {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
     else:
         messagebox.showerror("Error", "No image to load")
 
@@ -1569,9 +1578,9 @@ def next_image(window):
         load_current_image(window)
         create_cropFrame(window)
         update_progress_bar(window)
-        print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        print(f"Debug: Current image info: {window.current_info}")
-        print(f"Debug: ALL INFO : {window.image_info}" )
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
         display_results(window)
 
@@ -1584,46 +1593,7 @@ def next_image(window):
 # 88   88 88    88 Y8   I8I   88 88 V8o88 88      88    88 88~~~88 88   88   `Y8b. 
 # 88  .8D `8b  d8' `8b d8'8b d8' 88  V888 88booo. `8b  d8' 88   88 88  .8D db   8D 
 # Y8888D'  `Y88P'   `8b8' `8d8'  VP   V8P Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
-                                                                                
-def write_image_info_to_file(window):
-    filename = filedialog.asksaveasfilename(defaultextension=".xlsx",
-                                            filetypes=[("Excel files", "*.xlsx")])
-    if filename:
-        wb = openpyxl.Workbook()
-        ws = wb.active
-        ws.title = "Image Data"
-        # Define dilution series
-        dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
-        # Write header
-        headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution"]
-        ws.append(headers)
-        # Write data
-        for info, image_path in zip(window.image_info, window.image_paths):
-
-            # Use the correct filename from image_paths
-            current_filename = os.path.basename(image_path)
-            base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
-           
-            # Add rows for strain A
-            if info['QuantificationA']:
-                for quant, dilution in zip(info['QuantificationA'], dilutionSeries[:len(info['QuantificationA'])]):
-                    row = base_row + [info['strainA'], quant, dilution]
-                    ws.append(row)
-           
-            # Add rows for strain B
-            if info['QuantificationB']:
-                for quant, dilution in zip(info['QuantificationB'], dilutionSeries[:len(info['QuantificationB'])]):
-                    row = base_row + [info['strainB'], quant, dilution]
-                    ws.append(row)
-           
-            # Add rows for strain C
-            if info['QuantificationC']:
-                for quant, dilution in zip(info['QuantificationC'], dilutionSeries[:len(info['QuantificationC'])]):
-                    row = base_row + [info['strainC'], quant, dilution]
-                    ws.append(row)
-        # Save the workbook
-        wb.save(filename)
-
+ 
 
 
 
@@ -1712,7 +1682,7 @@ def display_images(window):
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contour_img = img_np.copy()
             for cntr in contours:
-                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 2)
+                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 2)
             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img 
             # cv2.imshow("contours2345", resize_for_display(contour_img))

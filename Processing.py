@@ -12,6 +12,7 @@ from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import math
 from scipy import ndimage
+from streachRange import *
 ######################################For scaling
 COLOUMS = 12
 
@@ -451,7 +452,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             main_area = max_overlap
             outside_area = total_area - main_area
             
-            if outside_area <= 0.2 * total_area:
+            if outside_area <= 0.4 * total_area:
                 # Count the entire blob in the main cell and color it light grey
                 counts[main_row, main_col] += total_area
                 marked_image[component] = [255, 255, 255]  # Light grey
@@ -507,7 +508,15 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     
     :param lower_bound: Lower bound for intensity stretching
     :param upper_bound: Upper bound for intensity stretching"""
+    stretchedBAD = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    blurredBAD = cv2.GaussianBlur(stretchedBAD, (0, 0), sigmaX=5, sigmaY=5)
+    gray_imageBAD= cv2.cvtColor(blurredBAD, cv2.COLOR_BGR2GRAY)
+    lower_bound, upper_bound = analyze_tonal_range(original_image)
+
+    print("Lower and upper bounds" + str(lower_bound) +"       "+  str(upper_bound))
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    idealContrast = int(-0.1813*(upper_bound -lower_bound)+25.113)
+    #stretched = skimage.exposure.rescale_intensity(original_image, in_range=(72, 216), out_range=(0, 255)).astype(np.uint8)
     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
     # blurredEdges = cv2.bilateralFilter(stretched, d=9, sigmaColor=75, sigmaSpace=75)
     # blurred = cv2.fastNlMeansDenoising(stretched, h=10, templateWindowSize=7, searchWindowSize=21)
@@ -516,7 +525,7 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     # gray_image_notBlurred = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
     #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
-
+    cv2.imshow('stretched', resize_for_display(stretched))
     if show_images:
         cv2.imshow('original_image', resize_for_display(original_image))
         #cv2.imshow('stretched', resize_for_display(stretched))
@@ -528,22 +537,21 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
 
         #cv2.imshow('grayBlur', resize_for_display(gray_image))
         #cv2.imshow('gray', resize_for_display(gray_image_notBlurred))
-    return stretched, blurred, gray_image
+    return stretched, blurred, gray_image, idealContrast
     
-def binarize_and_overlay(gray_image, original_image, contrast=20, exclude_small_dots=15, show_images=False):
+def binarize_and_overlay(gray_image, gray_imageBAD, original_image, contrastBAD,contrast=20, exclude_small_dots=15, show_images=False):
     """Binarize the grayscale image using Gaussian and mean thresholding, perform contour detection, and overlay results."""
     
     height, width = gray_image.shape
     block_size, divisor_c = 151, 15
     c = max(-50, min(int(-contrast), -1))
-    
-    # Gaussian thresholding
-    gaussian_binary = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-                                            cv2.THRESH_BINARY, block_size, -11)
+
     
     # Mean thresholding
     mean_binary = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                        cv2.THRESH_BINARY, block_size, -20)
+                                        cv2.THRESH_BINARY, block_size, -18)
+    mean_binaryBAD = cv2.adaptiveThreshold(gray_imageBAD, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                        cv2.THRESH_BINARY, block_size, contrastBAD)                                    
     
     # Function to process contours
     def process_contours(binary_image):
@@ -557,24 +565,24 @@ def binarize_and_overlay(gray_image, original_image, contrast=20, exclude_small_
         return processed_contours
 
     # Process contours for both thresholding methods
-    gaussian_contours = process_contours(gaussian_binary)
+
     mean_contours = process_contours(mean_binary)
-
+    mean_contoursBAD = process_contours(mean_binaryBAD)
     # Create masks for each set of contours
-    gaussian_mask = np.zeros(gray_image.shape, dtype=np.uint8)
-    mean_mask = np.zeros(gray_image.shape, dtype=np.uint8)
 
-    cv2.drawContours(gaussian_mask, gaussian_contours, -1, 255, -1)
+    mean_mask = np.zeros(gray_image.shape, dtype=np.uint8)
+    mean_maskBAD = np.zeros(gray_image.shape, dtype=np.uint8)
+    cv2.drawContours(mean_maskBAD, mean_contoursBAD, -1, 255, -1)
     cv2.drawContours(mean_mask, mean_contours, -1, 255, -1)
 
     # Find overlapping regions
-    overlap_mask = cv2.bitwise_and(gaussian_mask, mean_mask)
+    overlap_mask = cv2.bitwise_and(mean_maskBAD, mean_mask)
 
     # Create overlay image
     overlay_img = original_image.copy()
 
     # Draw contours with different colors
-    cv2.drawContours(overlay_img, gaussian_contours, -1, (0, 255, 0), 2)  # Green for Gaussian
+    cv2.drawContours(overlay_img, mean_contoursBAD, -1, (0, 255, 0), 2)  # Green for Gaussian
     cv2.drawContours(overlay_img, mean_contours, -1, (255, 0, 0), 2)  # Blue for Mean
 
     # Draw overlapping contours in red
@@ -583,8 +591,8 @@ def binarize_and_overlay(gray_image, original_image, contrast=20, exclude_small_
 
     # Create legend
     legend_img = np.ones((100, width, 3), dtype=np.uint8) * 255
-    cv2.putText(legend_img, "Gaussian Thresholding", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    cv2.putText(legend_img, "Mean Thresholding", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
+    cv2.putText(legend_img, "Adaptive Strech and Contrast", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+    cv2.putText(legend_img, "Constant Strech and Contrast", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
     cv2.putText(legend_img, "Overlapping Regions", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
 
     # Combine overlay and legend

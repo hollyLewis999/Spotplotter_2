@@ -70,7 +70,7 @@ def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
             y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
             plt.plot(x_fit, y_fit, color=color, linestyle='--', label=("R² =" + str(round(stats['r_squared'], 3)) + "\n" + stats['formula'] + "\n"))
     
-    plt.title(title, fontsize=20, fontweight='bold', pad=20)
+    plt.title(f"Growth Curve for {title}", fontsize=20, fontweight='bold', pad=20)
     plt.ylim(0, 120)
     plt.xlabel('Dilution Series', fontsize=16, fontweight='bold')
     plt.ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
@@ -98,3 +98,8 @@ def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
 # )
 
 
+
+
+# [34836, 19115, 18236, 17047, 17213, 9879, 19880, 9501, 10821, 11041, 9224, 9191, 1982, 4877, 8236, 3349, 7730, 3062, 989, 758, 9, 4668, 2812, 1315, 0, 1064, 405, 0, 507, 0, 0, 0]
+# [25866, 27395, 7657, 16971, 4872, 3206, 10361, 6266, 4289, 2888, 8605, 2004, 0, 2367, 2000, 3302, 0, 0, 0, 0, 0, 0, 519, 0, 0, 0, 0, 0, 0, 623, 0, 0]
+# [50616, 37339, 30041, 27021, 16966, 14982, 19105, 12030, 17760, 15553, 17760, 8717, 0, 15382, 12191, 4635, 6970, 8798, 0, 4020, 6, 738, 0, 508, 0, 1228, 419, 0, 0, 0, 1111, 649]

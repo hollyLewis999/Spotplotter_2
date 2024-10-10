@@ -61,4 +61,13 @@ def create_comparative_tonal_histogram(image_path1, image_path2):
 
 image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0.jpg"
 image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0C.jpg"
+
+# image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/tonalUnseen.jpg"
+# image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/MiddletonalUnseen.jpg"
+
+
+image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0C.jpg"
+
+# image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/tonalUnseen.jpg"
+image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/MiddletonalUnseen.jpg"
 create_comparative_tonal_histogram(image_path1, image_path2)

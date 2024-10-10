@@ -1,0 +1,263 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+from pathlib import Path
+import seaborn as sns
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
+from io import BytesIO
+import cv2
+import sys
+from PIL import Image
+from datetime import datetime
+from GraphTesting import *
+sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+
+
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
+# Set up matplotlib and seaborn
+
+
+class MockWindow:
+    def __init__(self):
+        self.image_info = [
+            {
+                'filename': 'test_image.jpg',
+                'type': 'Growth Curve',
+                'detergent': 'SDS',
+                'treatment': 'Heat Shock',
+                'repeat': '1',
+                'strainA': 'E. coli K-12',
+                'strainB': 'E. coli BL21',
+                'strainC': 'E. coli DH5α',
+                'IMGcontours': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
+                'IMGbinary': np.random.randint(0, 255, (400, 500,3), dtype=np.uint8),
+                'IMGgrid': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
+                'threshold': 128,
+                'smallArea': 50
+            }
+        ]
+
+
+
+def cv2_to_pil(cv2_img):
+    if cv2_img is None:
+        return None
+    if len(cv2_img.shape) == 2:  # Grayscale
+        return Image.fromarray(cv2_img)
+    elif len(cv2_img.shape) == 3:  # Color
+        return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
+
+def get_image_size(img, max_width, max_height):
+    img_width, img_height = img.size
+    aspect_ratio = img_width / img_height
+    if img_width > max_width:
+        img_width = max_width
+        img_height = img_width / aspect_ratio
+    if img_height > max_height:
+        img_height = max_height
+        img_width = img_height * aspect_ratio
+    return img_width, img_height
+
+def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
+    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0*inch, bottomMargin=0.5*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
+    story = []
+
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+    heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
+    body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
+    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)  # Adjust size as needed
+
+    color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
+
+    def add_plot_and_stats(fig, stats, strain):
+        story.append(logo)
+        story.append(Spacer(1, 6))
+
+        story.append(Spacer(1, 12))
+
+        img_data = BytesIO()
+        fig.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
+        img_data.seek(0)
+
+        story.append(ImageR(img_data, width=6*inch, height=4*inch))
+        story.append(Spacer(1, 80))
+
+        table_data = [[''] + [stat['label'] for stat in stats]]
+        for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'Y-cut', 'X-cut', 'X at Y=50']:
+            row = [row_label]
+            for stat in stats:
+                if row_label == 'Formula':
+                    value = stat['formula']
+                elif row_label == 'R-squared':
+                    value = f"{stat['r_squared']:.3f}"
+                elif row_label == 'X at Y=50':
+                    value = f"{stat['x_at_y50']:.2f}"
+                else:
+                    key = row_label.lower().replace('-', '_')
+                    value = f"{stat[key]:.2f}"
+                row.append(value)
+            table_data.append(row)
+
+        table = Table(table_data)
+        table_style = [
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+        ]
+
+        for i in range(1, len(table_data[0])):
+            table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
+
+        table.setStyle(TableStyle(table_style))
+        story.append(table)
+        story.append(PageBreak())
+
+    def add_info_page(info):
+        story.append(logo)
+        story.append(Spacer(1, 1))
+        
+        # Header text (top-left block)
+        header_text = f"""<br/><br/><br/><br/>
+        <b>Filename:</b> &nbsp; {info['filename']}<br/>
+        <b>Type:</b> &nbsp; {info['type']}<br/>
+        <b>Detergent:</b> &nbsp; {info['detergent']}<br/>
+        <b>Treatment:</b> &nbsp; {info['treatment']}<br/>
+        <b>Repeat:</b> &nbsp; {info['repeat']}<br/>
+        <b>Strain A:</b> &nbsp; {info['strainA']}<br/>
+        <b>Strain B:</b> &nbsp; {info['strainB']}<br/>
+        <b>Strain C:</b> &nbsp; {info['strainC']}<br/>
+        <b>Parameters Used:</b> &nbsp;<br/>
+        <b>Threshold:</b> &nbsp {info['threshold']}<br/>
+        <b>Minimum Area:</b> &nbsp {info['smallArea']}<br/>
+        """
+        
+        max_width = 230
+        max_height = 200
+        
+        # Function to create image with caption
+        def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
+            if info[img_key] is not None:
+                pil_img = cv2_to_pil(info[img_key])
+                if pil_img:
+                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
+                    img_data = BytesIO()
+                    pil_img.save(img_data, format='PNG')
+                    img_data.seek(0)
+                    img = ImageR(img_data, width=img_width, height=img_height)
+                    return [img, Paragraph(caption, body_style)]
+            return [Paragraph("Image not available", body_style), Paragraph(caption, body_style)]
+        
+        # Create top row table
+        top_row_data = [
+            [Paragraph(header_text, body_style), create_image_with_caption('IMGcontours', "Contours Image", max_width = 350, max_height =300 )]
+        ]
+        top_row_table = Table(top_row_data, colWidths=[150, 350])
+        top_row_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        
+        # Create bottom row table
+        bottom_row_data = [
+            [create_image_with_caption('IMGbinary', "Binary Image"), create_image_with_caption('IMGgrid', "Grid Image")]
+        ]
+        bottom_row_table = Table(bottom_row_data, colWidths=[250, 250])
+        bottom_row_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ]))
+        
+        # Add tables to the story
+        story.append(top_row_table)
+        story.append(bottom_row_table)
+        story.append(PageBreak())
+
+    def add_final_info_page():
+        story.append(logo)
+        story.append(Spacer(1, 6))
+
+        story.append(Spacer(1, 12))
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        info_text = f"""
+        This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
+
+        Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
+
+        To read the full report please see: <i>GITHUB LINK</i>
+
+
+        <b>Formula:</b> The formula represents the linear regression equation that models determined using the by linregress function from scipy.stats which determines the relationship between the logarithm of the dilution series and relative growth. It follows the form:
+        y = m ⋅ log10(x) + b
+
+        <b>Normalization:</b> The relative growth values were normalized to a baseline to make the results comparable across different conditions. The quantified values of each spot were divided by the average value of the first spot in the -ATP for each strain.
+
+        <b>The slope (m):</b> indicates the rate of change in relative growth as the dilution series increases (on a logarithmic scale). A steep slope indicated that the growth has a faster knockdown as the dilution changes. A shallow slope indicates that the growth is more stable across dilutions.
+
+        <b>The intercept (b)</b> and y-cut is the relative growth when the solution is not diluted.
+
+        <b>The R-squared value</b> measures how well the linear regression line fits the data, where 1 represents a perfect fit and 0 represents no relationship. Higher R² values indicates that the growth follows a linear relationship.
+
+        <b>The X-cut</b> refers to the point where the regression line crosses the x-axis, indicating the dilution value at which the relative growth would theoretically be zero (no growth).
+
+        <b>X at Y = 50:</b> This value represents the dilution series value when the relative growth is 50% i.e., the knockdown is 50% in comparison to the -ATP series.
+        """
+
+        for paragraph in info_text.split('\n\n'):
+            story.append(Paragraph(paragraph.strip(), body_style))
+            story.append(Spacer(1, 6))
+
+    add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
+    add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
+    add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
+
+    for info in window.image_info:
+        add_info_page(info)
+
+    add_final_info_page()
+
+    doc.build(story)
+
+# Mock data
+y1 = [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0]
+y2 = [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0]
+y3 = [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 990, 1650, 590, 662, 0, 203, 0, 161, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 0]
+y4 = [20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
+
+# Create mock window object
+window = MockWindow()
+
+# Generate plots and statistics
+figA, statsA = plot_logarithmic_graph(y1, y2, y3, y4, window.image_info[0]['strainA'], "P4272701", "P4272705", "P4272703", "P4272707")
+figB, statsB = plot_logarithmic_graph(y2, y3, y4, y1, window.image_info[0]['strainB'], "P4272705", "P4272703", "P4272707", "P4272701")
+figC, statsC = plot_logarithmic_graph(y3, y4, y1, y2, window.image_info[0]['strainC'], "P4272703", "P4272707", "P4272701", "P4272705")
+
+# Generate PDF report
+output_filename = "test_report.pdf"
+generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename)
+
+print(f"PDF report generated: {output_filename}")
+
+# Clean up matplotlib figures
+plt.close('all')
