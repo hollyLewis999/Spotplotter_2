@@ -285,7 +285,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         diffs = np.diff(sorted_coords)
         median_diff = np.median(diffs)
         threshold = max(median_diff *2,10) # Adjust this factor if needed
-        print(threshold)
+        # print(threshold)
         clusters = []
         current_cluster = [sorted_coords[0]]
         
@@ -459,43 +459,136 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             else:
 
                 pass
-    for count in counts:
-        count = count/(width**2)
-    # Draw grid and add count text
+    print ("COUNT 00" + str(counts[0,0]))
+    print("WIDTH: " + str(width))        
+    counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
+    print ("hopefully After scaling" + str(counts[0,0]))
+    #drawing the grid and adding the counts
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = width/1200
+    thickness = int(width**(0.125)) #scaling the thickness so that it looks normal on smaller images
+
     for row in range(rows):
         for col in range(cols):
             x1 = int(grid_start_x + col * cell_size)
             y1 = int(grid_start_y + row * cell_size)
             x2 = int(x1 + cell_size)
             y2 = int(y1 + cell_size)
+            thickness = 3
+            #rectangle
+            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
             
-            # Draw rectangle for the grid cell
-            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), 2)
-            
-            # The text to be displayed
+            #text
             text = str(counts[row, col])
             
-            # Get the text size to calculate the center position
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 2
-            thickness = 3
+            #getting the length of the text so that it will be in the middle of the block
+            #print(thickness)
             text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
             
-            # Calculate the centered position for the text and cast to int
+            #put it in the midpoint
             text_x = int(x1 + (cell_size - text_size[0]) // 2)
             text_y = int(y1 + (cell_size + text_size[1]) // 2)
             
-            # Draw the text in the center of the block
+            #place text
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-
+     
     ordered_counts = split_and_process(counts)
     return counts, marked_image, ordered_counts
 
 
 
 
+# # THIS IS THE ONLD ONE GROM GITHUB
+# def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
+#     """
+#     Quantify the grid by counting white pixels in each cell, including blobs
+#     slightly overlapping (up to 20%) with neighboring blocks.
+#     """
+#     height, width = binary_image.shape
+#     rows, cols = 8, 12  # 8x12 grid
+    
+#     # Label connected components
+#     labeled_image, num_features = ndimage.label(binary_image)
+    
+#     counts = np.zeros((rows, cols), dtype=int)
+    
+#     # Ensure marked_image is in color (3 channels)
+#     if len(marked_image.shape) == 2:  # If grayscale, convert to BGR
+#         marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
+    
+#     # Convert binary_image to BGR for color marking
+#     colored_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
+    
+#     for label in range(1, num_features + 1):
+#         component = (labeled_image == label)
+#         coords = np.column_stack(np.where(component))
+        
+#         min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
+#         max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
+#         min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
+#         max_col = min(cols - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+        
+#         main_cell = None
+#         max_overlap = 0
+#         total_area = np.sum(component)
+        
+#         for row in range(min_row, max_row + 1):
+#             for col in range(min_col, max_col + 1):
+#                 x1 = int(grid_start_x + col * cell_size)
+#                 y1 = int(grid_start_y + row * cell_size)
+#                 x2 = int(x1 + cell_size)
+#                 y2 = int(y1 + cell_size)
+                
+#                 x1, y1 = max(0, x1), max(0, y1)
+#                 x2, y2 = min(width, x2), min(height, y2)
+                
+#                 cell = component[y1:y2, x1:x2]
+#                 overlap = np.sum(cell)
+                
+#                 if overlap > max_overlap:
+#                     max_overlap = overlap
+#                     main_cell = (row, col)
+        
+#         if main_cell is not None:
+#             main_row, main_col = main_cell
+#             main_area = max_overlap
+#             outside_area = total_area - main_area
+            
+#             if outside_area <= 0.2 * total_area:
+#                 # Count the entire blob in the main cell and color it blue
+#                 counts[main_row, main_col] += total_area
+#                 colored_image[component] = [255, 0, 0]  # Blue
+#             else:
+#                 # Color it dark grey and don't count it
+#                 colored_image[component] = [64, 64, 64]  # Dark grey
+#     height, width = binary_image.shape
 
+#      # print("RESULTS")
+#     # print("width" + str(width-1))
+#     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
+#     # print(analyze_2d_array(counts))
+#     # Combine the colored_image with the marked_image
+#     marked_image = cv2.addWeighted(marked_image, 1, colored_image, 0.5, 0)
 
+#      # Draw grid and add count text
+#     for row in range(rows):
+#         for col in range(cols):
+#             x1 = int(grid_start_x + col * cell_size)
+#             y1 = int(grid_start_y + row * cell_size)
+#             x2 = int(x1 + cell_size)
+#             y2 = int(y1 + cell_size)
+            
+#             cv2.rectangle(marked_image, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            
+#             text_x = int(x1 + cell_size / 2)
+#             text_y = int(y1 + cell_size / 2)
+#             cv2.putText(marked_image, str(counts[row, col]), (text_x - 20, text_y + 10),
+#                         cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 4)
+#     ######UNCOMMENT HERE 
+
+#     ordered_counts = split_and_process(counts)
+#     #print(counts)
+#     return counts, marked_image, ordered_counts
 # d8888b. d888888b d8b   db  .d8b.  d8888b. d888888b d88888D d88888b 
 # 88  `8D   `88'   888o  88 d8' `8b 88  `8D   `88'   YP  d8' 88'     
 # 88oooY'    88    88V8o 88 88ooo88 88oobY'    88       d8'  88ooooo 
@@ -508,14 +601,16 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     
     :param lower_bound: Lower bound for intensity stretching
     :param upper_bound: Upper bound for intensity stretching"""
-    stretchedBAD = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
-    blurredBAD = cv2.GaussianBlur(stretchedBAD, (0, 0), sigmaX=5, sigmaY=5)
-    gray_imageBAD= cv2.cvtColor(blurredBAD, cv2.COLOR_BGR2GRAY)
+    # stretchedBAD = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    # blurredBAD = cv2.GaussianBlur(stretchedBAD, (0, 0), sigmaX=5, sigmaY=5)
+    # gray_imageBAD= cv2.cvtColor(blurredBAD, cv2.COLOR_BGR2GRAY)
     lower_bound, upper_bound = analyze_tonal_range(original_image)
 
-    print("Lower and upper bounds" + str(lower_bound) +"       "+  str(upper_bound))
+    # print("Lower and upper bounds" + str(lower_bound) +"       "+  str(upper_bound))
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     idealContrast = int(-0.1813*(upper_bound -lower_bound)+25.113)
+    idealContrast = max(idealContrast,2)
+    idealContrast = min(idealContrast,20)
     #stretched = skimage.exposure.rescale_intensity(original_image, in_range=(72, 216), out_range=(0, 255)).astype(np.uint8)
     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
     # blurredEdges = cv2.bilateralFilter(stretched, d=9, sigmaColor=75, sigmaSpace=75)
@@ -617,10 +712,24 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, sh
     ####CHANGE BACK LATER
 
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)    
+                                       cv2.THRESH_BINARY, block_size, c)   
+    
+############################################################################
+#CHANGE BACK LATER ONLY FOR TESTING GROUND TRUTH
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+############################################################################
     # gray_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
     # binary_image = cv2.threshold(gray_image, 175, 255, cv2.THRESH_BINARY)[1]
-
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+############################################################################
+############################################################################
     contour_img = original_image.copy()
     final_binary = np.zeros_like(binary_image)
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)

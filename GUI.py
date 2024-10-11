@@ -13,7 +13,7 @@ from functools import partial
 import time
 import math 
 import sys
-from GraphTesting import *
+from outputs import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 
 import openpyxl
@@ -37,198 +37,6 @@ PROGRESSY = 36
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
-from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from io import BytesIO
-from reportlab.pdfgen import canvas
-def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
-    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0.01*inch, bottomMargin=0.25*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
-    story = []
-
-    # Define styles
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
-    heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
-    body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
-
-    # Logo
-    logo_path = relative_to_assets("LogoHorizontalDark.png")
-    logo = ImageR(logo_path, width=1170/4, height=407/4)  # Adjust size as needed
-
-    # Add the logo to the very top of the page with minimal space
-
-
-    # Add title
-    # story.append(Paragraph(f"Growth Curve for {strain}", title_style))
-    # story.append(Spacer(1, 12))
-    # Color scheme
-    color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']   # Alternating colors for table columns
-
-    # Function to add a plot and its statistics to the story
-    def add_plot_and_stats(fig, stats, strain):
-        story.append(logo)
-        story.append(Spacer(1, 6))  # Reduce space to make it higher
-        # Resize the logo while maintaining proportions
-
-
-        # Save plot to a BytesIO object
-        img_data = BytesIO()
-        fig.savefig(img_data, format='png', dpi=300, bbox_inches='tight')
-        img_data.seek(0)
-
-        # Add plot
-        story.append(ImageR(img_data, width=500, height=350))  # Increased size
-        story.append(Spacer(1, 18))  #changed here
-
-        # Add statistics
-        # story.append(Paragraph("Statistics:", heading_style))
-
-        # Prepare data for the table
-        table_data = [[''] + [stat['label'] for stat in stats]]
-        for row_label in ['Slope', 'Intercept', 'R-squared', 'Formula', 'Y-cut', 'X-cut', 'X at Y=50']:
-            row = [row_label]
-            for stat in stats:
-                if row_label == 'Formula':
-                    value = stat['formula']
-                elif row_label == 'R-squared':
-                    value = f"{stat['r_squared']:.3f}"
-                elif row_label == 'X at Y=50':
-                    value = f"{stat['x_at_y50']:.2f}"
-                else:
-                    key = row_label.lower().replace('-', '_')
-                    value = f"{stat[key]:.2f}"
-                row.append(value)
-            table_data.append(row)
-
-        # Create table with alternating column colors
-        table = Table(table_data)
-        table_style = [
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-        ]
-
-        # Add alternating colors to columns
-        for i in range(1, len(table_data[0])):
-            table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
-
-        table.setStyle(TableStyle(table_style))
-        story.append(table)
-        story.append(PageBreak())  # Ensure each graph starts on a new page
-
-    # Add plots and statistics for each strain
-    add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
-    add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
-    add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
-
-    # Add page numbers
-
-    def cv2_to_pil(cv2_img):
-        if cv2_img is None:
-            # print("it is none??")
-            return None
-        if len(cv2_img.shape) == 2:  # Grayscale
-            return Image.fromarray(cv2_img)
-        elif len(cv2_img.shape) == 3:  # Color
-            return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
-
-    # Function to add a page for each entry in window.image_info
-    def add_info_page(info):
-        story.append(logo)
-        story.append(Spacer(1, 1))  # Reduce space to make it higher
-        # Add header
-        header_text = f"Filename: {info['filename']}\n" \
-                    f"Type: {info['type']}\n" \
-                    f"Detergent: {info['detergent']}\n" \
-                    f"Treatment: {info['treatment']}\n" \
-                    f"Repeat: {info['repeat']}\n" \
-                    f"Strain A: {info['strainA']}\n" \
-                    f"Strain B: {info['strainB']}\n" \
-                    f"Strain C: {info['strainC']}"
-        story.append(Paragraph(header_text, body_style))
-        story.append(Spacer(1, 12))
-
-        # Function to get image size while maintaining aspect ratio
-        def get_image_size(img, max_width, max_height):
-            img_width, img_height = img.size
-            aspect_ratio = img_width / img_height
-            if img_width > max_width:
-                img_width = max_width
-                img_height = img_width / aspect_ratio
-            if img_height > max_height:
-                img_height = max_height
-                img_width = img_height * aspect_ratio
-            return img_width, img_height
-
-        # Add IMGcontours and IMGbinary side by side
-        max_width = 250  # Maximum width for each image
-        max_height = 200  # Maximum height for each image
-        images = []
-        # cv2.imshow("contours", resize_for_display(window.image_info['IMGcontours']))
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-
-
-        for img_key in ['IMGcontours', 'IMGbinary']:
-
-  
-            if info[img_key] is not None:
-                pil_img = cv2_to_pil(info[img_key])
-
-                if pil_img:
-                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
-                    img_data = BytesIO()
-                    pil_img.save(img_data, format='PNG')
-                    img_data.seek(0)
-                    images.append(ImageR(img_data, width=img_width, height=img_height))
-            else:
-                images.append(Paragraph("Image not available", body_style))
-        if images:
-            story.append(Table([images]))
-            story.append(Spacer(1, 12))
-
-        # Add IMGthreshold and IMGsmallArea values
-        threshold_text = f"Threshold: {info['threshold']}"
-        small_area_text = f"Small Area Exclusion: {info['smallArea']}"
-        story.append(Paragraph(threshold_text + "\t\t" + small_area_text, body_style))
-        story.append(Spacer(1, 12))
-
-        # Add IMGgrid
-        if info['IMGgrid'] is not None:
-            info['IMGgrid'] = cv2.cvtColor(info['IMGgrid'], cv2.COLOR_RGB2BGR)
-            img_grid = cv2_to_pil(info['IMGgrid'])
-            if img_grid:
-                max_grid_width = 500
-                max_grid_height = 350
-                grid_width, grid_height = get_image_size(img_grid, max_grid_width, max_grid_height)
-                img_data_grid = BytesIO()
-                img_grid.save(img_data_grid, format='PNG')
-                img_data_grid.seek(0)
-                story.append(ImageR(img_data_grid, width=grid_width, height=grid_height))
-        else:
-            story.append(Paragraph("Grid image not available", body_style))
-        story.append(PageBreak())
-
-    for info in window.image_info:
-        add_info_page(info)
-
-    def add_page_number(canvas, doc):
-        canvas.saveState()
-        canvas.setFont("Helvetica", 10)
-        page_number_text = f"Page {doc.page}"
-        canvas.drawRightString(letter[0] - 0.5*inch, 0.5*inch, page_number_text)
-        canvas.restoreState()
-
-    # Build the PDF
-    doc.build(story, onFirstPage=add_page_number, onLaterPages=add_page_number)
 
 # .d8888. d888888b db    db db      d88888b 
 # 88'  YP `~~88~~' `8b  d8' 88      88'     
@@ -236,8 +44,11 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
 #   `Y8b.    88       88    88      88~~~~~ 
 # db   8D    88       88    88booo. 88.     
 # `8888Y'    YP       YP    Y88888P Y88888P 
-                                          
-                                          
+
+
+#################################################################
+# The functions create_circular_slider, create_round_button and round_rectabgle were created by Chatgbt, Tkinter did not have very asthetic sliders or buttons
+#                                       
 def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
     frame = Frame(master, width=300, height=70, bg=DARK)
     frame.place(x=position[0], y=position[1])
@@ -383,7 +194,6 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
 
 
 def create_titleFrame(window):
-    # Create the canvas
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -395,40 +205,16 @@ def create_titleFrame(window):
     )
     canvas.place(x=0, y=0)
    
-    # Load the image
+    ###LOGO IMAGE
     image_path_10 = relative_to_assets("image_10.png")
+    img_logobig = Image.open(image_path_10)
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS) #this resizing method maintains the quality
 
-    img_logobig = Image.open(image_path_10)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
-    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
-
-    # Convert to PhotoImage for Tkinter
+    #has to be a photoimage for Tkinkter, 
     image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
-    canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
+    canvas.image_image_10 = image_image_10
     canvas.create_image(720.0, 420.0, image=image_image_10)
 
-
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Upload Assays",
-    #     command=lambda: upload_images(window),
-    #     x=620.0,
-    #     y=650.0, )
-
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Upload MetaData",
-    #     command=lambda: upload_txt_file(window),
-    #     x=400.0,
-    #     y=650.0,)
-
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Upload Plate Data",
-    #     command=lambda: upload_txt_file(window),
-    #     x=840.0,
-    #     y=650.0,)
 
     create_rounded_button(
         canvas=canvas,
@@ -445,7 +231,6 @@ def create_titleFrame(window):
         y=670.0,)
 
 
-
     create_rounded_button(
         canvas=canvas,
         text="Next",
@@ -457,14 +242,10 @@ def create_titleFrame(window):
 
 
 def display_results(window):
-    # Clear the window
+
     for widget in window.winfo_children():
         widget.destroy()
-        # Right image (editing image)
-    # cv2.imshow("debug image", resize_for_display(window.debug_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    # Create a new canvas for results
+
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -475,19 +256,16 @@ def display_results(window):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
-
+    #logo
     image_path_10 = relative_to_assets("image_10.png")
-
-    img_logobig = Image.open(image_path_10)  # Open image using Pillow
-
-    # Resize the image while keeping better quality
+    img_logobig = Image.open(image_path_10)
     img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
 
-    # Convert to PhotoImage for Tkinter
     image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
-    canvas.image_image_10 = image_image_10  # Keep a reference to avoid garbage collection
+    canvas.image_image_10 = image_image_10 
     canvas.create_image(720.0, 420.0, image=image_image_10)
 
+    #the GUI start
     window.show_original = False 
 
 
@@ -540,7 +318,7 @@ def display_results(window):
         plate_names[0], plate_names[1], plate_names[2], plate_names[3]
     )
 
-    generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, "growth_curves_report.pdf")
+    generate_all_outputs(window)
 
     create_rounded_button(
         canvas=canvas,
@@ -627,9 +405,11 @@ def display_final_image(window, override =False):
         
         gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
+
+        cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
         
-        print("UNORDERED COUNTS")
-        print(ordered_counts)
+
         # cv2.imshow("marked", resize_for_display(marked_image))
         if hasattr(window, 'current_info'):
             window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
@@ -645,6 +425,7 @@ def display_final_image(window, override =False):
 
         print("TESTER INFORMATION:") 
         print("_______________________________________________________________________")
+        print(window.current_info['filename'])
         print(ordered_counts["Strain 1"])    
         print(ordered_counts["Strain 2"])   
         print(ordered_counts["Strain 3"])   
