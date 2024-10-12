@@ -11,20 +11,14 @@ from reportlab.lib.pagesizes import letter
 from io import BytesIO
 import cv2
 import sys
-from PIL import Image 
+#from PIL import Image 
 from datetime import datetime
-from GraphTesting import *
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy import stats
-import seaborn as sns
 from tkinter import filedialog, simpledialog
-import tkinter as tk
 import os
 import sys
 import openpyxl
-from tkinter import filedialog
-import matplotlib.pyplot as plt
+
+
 
 
 FONT = "Microsoft New Tai Lue"

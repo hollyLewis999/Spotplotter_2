@@ -8,12 +8,14 @@ import numpy as np
 from scipy.spatial import distance
 from PIL import Image, ImageTk, ImageDraw
 import copy
-from Processing import *
 from functools import partial
 import time
 import math 
 import sys
+
+from Processing import *
 from outputs import *
+
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 
 import openpyxl
@@ -935,7 +937,7 @@ def recalculate_grid(window):
     window.clicked_pointsy = [point[1] for point in all_points]
     height, width = window.gray_image.shape
     #new grid using user clicked AND previously detected
-    grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
+    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
     counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
 
     
