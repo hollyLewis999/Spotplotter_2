@@ -14,10 +14,116 @@ import sys
 from PIL import Image
 from datetime import datetime
 from GraphTesting import *
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy import stats
+import seaborn as sns
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 
+#  d888b  d8888b.  .d8b.  d8888b. db   db .d8888. 
+# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP 
+# 88      88oobY' 88ooo88 88oodD' 88ooo88 `8bo.   
+# 88  ooo 88`8b   88~~~88 88~~~   88~~~88   `Y8b. 
+# 88. ~8~ 88 `88. 88   88 88      88   88 db   8D 
+#  Y888P  88   YD YP   YP 88      YP   YP `8888Y' 
+
+FONT = "Microsoft New Tai Lue"
+plt.rcParams['font.family'] = FONT
+
+sns.set_style("whitegrid")
+
+def normalize_array(arr, nomValue):
+    return [100 * val / nomValue for val in arr]
+
+def calculate_statistics(x, y, color, label):
+    valid_x = []
+    valid_y = []
+    for xi, yi in zip(x, y):
+        if xi > 0 and yi > 5:
+            valid_x.append(np.log10(xi))
+            valid_y.append(yi)
+    
+    if len(valid_x) > 1:
+        slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
+        r_squared = r_value ** 2
+        m, b = np.polyfit(valid_x, valid_y, 1)
+        y_cut = b
+        x_cut = 10 ** (-b / m)
+        x_at_y50 = 10 ** ((50 - b) / m)
+        formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
+        
+        return {
+            'slope': m,
+            'intercept': b,
+            'r_squared': r_squared,
+            'formula': formula,
+            'y_cut': y_cut,
+            'x_cut': x_cut,
+            'x_at_y50': x_at_y50,
+            'label': label
+        }
+    
+    return None
+def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
+    dilutionSeries = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+    normValue = (y1[0] + y2[0]) / 2
+    y_data = [normalize_array(y, normValue) for y in [y1, y2, y3, y4]]
+    
+    colors = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
+    markers = ['o', 's', '^', 'D']
+    labels = [key1, key2, key3, key4]
+    
+    plt.figure(figsize=(12, 8))
+    sns.set_context("notebook", font_scale=1.2)
+    
+    plt.xscale('log')
+    ax = plt.gca()
+    ax.set_facecolor('#F5F5F5')
+    ATcs = "-ATc", "-ATc", "+ATc", "+ATc"
+    
+    statistics = []  # List to hold the statistics for each dataset
+
+    for y, color, marker, label, ATc in zip(y_data, colors, markers, labels, ATcs):
+        stats = calculate_statistics(dilutionSeries, y, color, label)
+        if stats is not None:
+            statistics.append(stats)
+            label = ATc + " (" + label + " )"
+            sns.scatterplot(x=dilutionSeries, y=y, color=color, marker=marker, label=label, s=80)
+            
+            x_fit = np.logspace(np.log10(min(dilutionSeries)), np.log10(max(dilutionSeries)), num=100)
+            y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+            plt.plot(x_fit, y_fit, color=color, linestyle='--', label=("R² =" + str(round(stats['r_squared'], 3)) + "\n" + stats['formula'] + "\n"))
+    
+    plt.title(f"Growth Curve for {title}", fontsize=20, fontweight='bold', pad=20)
+    plt.ylim(0, 120)
+    plt.xlabel('Dilution Series', fontsize=16, fontweight='bold')
+    plt.ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+
+    # Increase fontsize for the legend
+    plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
+               ncol=1, frameon=True, facecolor='white', edgecolor='none', framealpha=0.7)
+
+    plt.tick_params(axis='both', which='major', labelsize=14)
+    
+    plt.tight_layout()
+
+    # Return the figure and the collected statistics
+    return plt.gcf(), statistics
+
+
+
+
+
+
+
+# d8888b. d8888b. d88888b 
+# 88  `8D 88  `8D 88'     
+# 88oodD' 88   88 88ooo   
+# 88~~~   88   88 88~~~   
+# 88      88  .8D 88      
+# 88      Y8888D' YP      
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -238,6 +344,54 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
     add_final_info_page()
 
     doc.build(story)
+
+
+# d88888b db    db  .o88b. d88888b db      
+# 88'     `8b  d8' d8P  Y8 88'     88      
+# 88ooooo  `8bd8'  8P      88ooooo 88      
+# 88~~~~~  .dPYb.  8b      88~~~~~ 88      
+# 88.     .8P  Y8. Y8b  d8 88.     88booo. 
+# Y88888P YP    YP  `Y88P' Y88888P Y88888P 
+
+def write_image_info_to_file(window):
+    filename = filedialog.asksaveasfilename(defaultextension=".xlsx",
+                                            filetypes=[("Excel files", "*.xlsx")])
+    if filename:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "Image Data"
+        # Define dilution series
+        dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+        # Write header
+        headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution"]
+        ws.append(headers)
+        # Write data
+        for info, image_path in zip(window.image_info, window.image_paths):
+
+            # Use the correct filename from image_paths
+            current_filename = os.path.basename(image_path)
+            base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
+           
+            # Add rows for strain A
+            if info['QuantificationA']:
+                for quant, dilution in zip(info['QuantificationA'], dilutionSeries[:len(info['QuantificationA'])]):
+                    row = base_row + [info['strainA'], quant, dilution]
+                    ws.append(row)
+           
+            # Add rows for strain B
+            if info['QuantificationB']:
+                for quant, dilution in zip(info['QuantificationB'], dilutionSeries[:len(info['QuantificationB'])]):
+                    row = base_row + [info['strainB'], quant, dilution]
+                    ws.append(row)
+           
+            # Add rows for strain C
+            if info['QuantificationC']:
+                for quant, dilution in zip(info['QuantificationC'], dilutionSeries[:len(info['QuantificationC'])]):
+                    row = base_row + [info['strainC'], quant, dilution]
+                    ws.append(row)
+        # Save the workbook
+        wb.save(filename)
+
 
 # Mock data
 y1 = [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0]

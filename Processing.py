@@ -620,7 +620,7 @@ def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False
     # gray_image_notBlurred = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
     #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
-    cv2.imshow('stretched', resize_for_display(stretched))
+    #cv2.imshow('stretched', resize_for_display(stretched))
     if show_images:
         cv2.imshow('original_image', resize_for_display(original_image))
         #cv2.imshow('stretched', resize_for_display(stretched))

@@ -265,65 +265,27 @@ def display_results(window):
     canvas.image_image_10 = image_image_10 
     canvas.create_image(720.0, 420.0, image=image_image_10)
 
-    #the GUI start
-    window.show_original = False 
-
-
-
-    # Add a title (you can adjust TITLEHEIGHT based on your layout)
 
     canvas.create_text(
         720,  
-        750.0,# Center horizontally
+        750.0,
         text="Results Downloading......",
         fill=DARK,
         font=(FONT, 12, "bold"),
-        anchor="center"  # This will center the text based on the x position
+        anchor="center" 
     )
 
-
-#     print(f"Debug:123 ALL INFO : {window.image_info}" )
-# # Extract required information
+    #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
     window.update()
 
 
-    strain_a = window.image_info[0]['strainA']
-    quantifications = [item['QuantificationA'] for item in window.image_info]
-    plate_names = [item['filename'] for item in window.image_info]
-
-    # Call the plotting function
-    figA, statsA = plot_logarithmic_graph(
-        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
-        f"Growth Curve for {strain_a}",
-        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
-    )
-
-    strain_b = window.image_info[0]['strainB']
-    quantifications = [item['QuantificationB'] for item in window.image_info]
-    plate_names = [item['filename'] for item in window.image_info]
-
-    figB, statsB =plot_logarithmic_graph(
-        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
-        f"Growth Curve for {strain_b}",
-        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
-    )
-
-    strain_c = window.image_info[0]['strainC']
-    quantifications = [item['QuantificationC'] for item in window.image_info]
-    plate_names = [item['filename'] for item in window.image_info]
-
-    figC, statsC =plot_logarithmic_graph(
-        quantifications[0], quantifications[1], quantifications[2], quantifications[3],
-        f"Growth Curve for {strain_c}",
-        plate_names[0], plate_names[1], plate_names[2], plate_names[3]
-    )
-
+    #generates the PDF, the excel and the images 
     generate_all_outputs(window)
-
+    #this will only display once the results are generated
     create_rounded_button(
         canvas=canvas,
         text="Finish",
-        command=lambda: window.quit(),
+        command=lambda: window.quit(),#will exit the program
         x=720 - (200 // 2),  
         y=buttonPosY-100,
         button_tag="Finish"
@@ -334,13 +296,11 @@ def display_results(window):
     
 
 def display_final_image(window, override =False):
-    #cv2.imshow("contours", resize_for_display(window.contour_img))
-    add_to_history(window)
-    # Clear the window
+    add_to_history(window) #incase the user goes back
+
     for widget in window.winfo_children():
         widget.destroy()
 
-    # Create a new canvas
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -390,27 +350,26 @@ def display_final_image(window, override =False):
 
 
 
-    # Create a frame to center the image
+    #frame where result will be displayed
     frame = Frame(window, bg=LIGHT)
     frame.place(relx=0.5, rely=0.5, anchor="center")
-    if (override):
+    if (override):#ie if the user has over ridden the grid
         marked_image = window.marked_image
-        #window.image_info[window.current_image_index]["IMGgrid"] = marked_image
         result_grid = window.result_grid
         window.image_info[window.current_image_index] = window.current_info.copy()
         # print(f"Debug: CURRENT INDEX {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
     else:   
-        
         gray_image = window.gray_image  
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
-        path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
 
-        cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
-        
+        #comment out later, for testing and report
+        # path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
+        # cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
+        # # cv2.imshow("marked", resize_for_display(marked_image))
 
-        # cv2.imshow("marked", resize_for_display(marked_image))
+        #checking to see if the window has current into to avoid cracshing
         if hasattr(window, 'current_info'):
             window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
             window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
@@ -423,36 +382,36 @@ def display_final_image(window, override =False):
         else:
             print("Error: current_info not initialized")
 
-        print("TESTER INFORMATION:") 
-        print("_______________________________________________________________________")
-        print(window.current_info['filename'])
-        print(ordered_counts["Strain 1"])    
-        print(ordered_counts["Strain 2"])   
-        print(ordered_counts["Strain 3"])   
+        # print("TESTER INFORMATION:") 
+        # print("_______________________________________________________________________")
+        # print(window.current_info['filename'])
+        # print(ordered_counts["Strain 1"])    
+        # print(ordered_counts["Strain 2"])   
+        # print(ordered_counts["Strain 3"])   
 
-    # Update the window.image_info with the modified current_info
-        # window.image_info[window.current_image_index] = window.current_info
-        # print(window.current_image_index)
-    # Ensure marked_image is a NumPy array, convert from PIL if necessary
+    #make sure its the correct type
     if isinstance(marked_image, Image.Image):
         marked_image = np.array(marked_image)
-    
         # print("yes is instance")
-    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)    
-    # Resize the image to fit within the canvas
+
+    #this is also taking into account that the one uses RGB and the other uses BGR    
+    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)   
+
+
+    #resizing the image to fit
     max_width, max_height = 1200, 700
     h, w = marked_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
+
+
+    #saving what values and images to be used in the PDF reort
+    window.image_info[window.current_image_index]["threshold"] = window.contrast_value
+    window.image_info[window.current_image_index]["smallArea"] = window.excludeSmallDots
     window.image_info[window.current_image_index]["IMGgrid"] = marked_image
-    # cv2.imshow("marked", resize_for_display(marked_image))
-    # #cv2.imshow("contours", resize_for_display(window.marked_image))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
-
-
     window.image_info[window.current_image_index]["IMGbinary"] = window.binarized_image
+    
+    
     ###HERE ABC
     # window.image_info[window.current_image_index]["IMGgrid"] = marked_image
     # cv2.imshow("marked", resize_for_display(marked_image))
@@ -460,28 +419,23 @@ def display_final_image(window, override =False):
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
 
-    window.image_info[window.current_image_index]["threshold"] = window.contrast_value
-    window.image_info[window.current_image_index]["smallArea"] = window.excludeSmallDots
 
-    # Convert the resized image back to a PIL Image for use with Tkinter
+
+
+    #Has to be PIL image for tkinkter, resizing and displaying
+    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
     img = Image.fromarray(resized_image)
-
-    # Convert to PhotoImage for displaying in Tkinter
     photo = ImageTk.PhotoImage(img)
-
-    # Calculate position to center the image on the canvas
-    x_position = (1440 - new_size[0]) // 2  # Adjust 1440 to the actual canvas width
-    y_position = (974 - new_size[1]) // 2  # Adjust 1024 to the actual canvas height
-
-    # Display the image on the canvas
+    x_position = (1440 - new_size[0]) // 2
+    y_position = (974 - new_size[1]) // 2
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
-    canvas.image = photo  # Keep a reference to avoid garbage collection
+    canvas.image = photo
 
 
 
 
 
-    #Progress Bar
+    #progress bar was created with help from Chat GBT
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
@@ -493,7 +447,7 @@ def display_final_image(window, override =False):
     update_progress_bar(window)
     
 def create_editFrame(window, backToEdit = False):
-    global backToEdit2
+    global backToEdit2 #have to put this here if i want to edit it within this function
 
     canvas = Canvas(
         window,
@@ -542,7 +496,7 @@ def create_editFrame(window, backToEdit = False):
         fill=DARK,
         outline="")
 
-    #displaying metadata fro mthe textfile
+    #displaying metadata fro mthe textfile, checking if current_info is initilised
     if hasattr(window, 'current_info'):
         current_info = window.current_info
         metadata_text = f"Filename: {current_info['filename']}\n"
@@ -580,7 +534,6 @@ def create_editFrame(window, backToEdit = False):
 
     image_path_2 = relative_to_assets("image_2.png")
     img_thinPen = Image.open(image_path_2) 
-
     #resizing image, using the othermethod made it super pixelated
     img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
 
@@ -789,7 +742,7 @@ def create_editFrame(window, backToEdit = False):
 
 
 
-    #progress bar (same code for all screens)
+    #progress bar (same code for all screens), created with help from chatGBT
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
     #making the position a global variable so if i move it i dont have to change it for all screens
@@ -802,8 +755,11 @@ def create_editFrame(window, backToEdit = False):
 
    
     return canvas
-def open_grid_override(window):
 
+
+
+#if the grid is not detectecd correctly then the user can ovverride it 
+def open_grid_override(window):
     for widget in window.winfo_children():
         widget.destroy()
    
@@ -905,37 +861,39 @@ def open_grid_override(window):
         #redraw everyhting
         draw_points()
 
-    #if the user clicks the
+    #if the user clicks
     def add_point(event):
         x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
-        window.clicked_points.append((int(x), int(y)))
-        draw_points()
+        #check if the point is within the image boundaries (otherwise it draws when you click on the add button)
+        if (0 <= x < window.binary_image.shape[1] and 
+            0 <= y < window.binary_image.shape[0]):
+            window.clicked_points.append((int(x), int(y)))
+            draw_points()
 
-    # Function to handle mouse hover
+    #moves the crosshairs
     def on_mouse_move(event):
         canvas.delete("hover_line")
         x, y = event.x, event.y
         
-        # Calculate the boundaries of the image
+        #checking how far they must expand so they are not outside the image boundaries
         left_boundary = x_position
         right_boundary = x_position + new_size[0]
         top_boundary = y_position
         bottom_boundary = y_position + new_size[1]
-        
-        # Draw horizontal line
+
+        #drawing them
         if top_boundary <= y <= bottom_boundary:
             canvas.create_line(left_boundary, y, right_boundary, y, fill=ACCENT, tags="hover_line")
         
-        # Draw vertical line
         if left_boundary <= x <= right_boundary:
             canvas.create_line(x, top_boundary, x, bottom_boundary, fill=ACCENT, tags="hover_line")
 
-    # Bind events
+    #this was the other option instead of the buttons, it binds to left and right mouse clicks
     canvas.bind("<Button-1>", add_point)
     canvas.bind("<Button-3>", remove_point)
     canvas.bind("<Motion>", on_mouse_move)
 
-    # Create buttons
+    #buttons
     create_rounded_button(
         canvas=canvas,
         text="Remove Points",
@@ -962,45 +920,24 @@ def open_grid_override(window):
         button_tag = "Recalculate" )
 
 
-
-
-
-    # Button(window, text="Remove Point Mode", command=lambda: canvas.bind("<Button-1>", remove_point)).place(x=50, y=50)
-    # Button(window, text="Add Point Mode", command=lambda: canvas.bind("<Button-1>", add_point)).place(x=200, y=50)
-    # Button(window, text="Recalculate Grid", command=lambda: recalculate_grid(window)).place(x=350, y=50)
-
     window.mainloop()
 
-def on_canvas_click(event, window, canvas):
-    x, y = event.x, event.y
-    
-    # Adjust coordinates based on image position and scaling
-    adjusted_x = (x - window.grid_override_offset[0]) / window.grid_override_scale
-    adjusted_y = (y - window.grid_override_offset[1]) / window.grid_override_scale
-    
-    window.clicked_pointsx.append(adjusted_x)
-    window.clicked_pointsy.append(adjusted_y)
-    # Draw a red X at the clicked point
-    canvas.create_line(x-5, y-5, x+5, y+5, fill="red", width=4)
-    canvas.create_line(x-5, y+5, x+5, y-5, fill="red", width=4)
 
 def recalculate_grid(window):
+    #user clicked and previously detected
     all_points = window.blob_points + window.clicked_points
     if len(all_points) < 12:
         messagebox.showwarning("Not enough points", "Please ensure there are at least 12 points before recalculating the grid.")
         return
 
-    # Convert clicked points to numpy array
+    #convert to numpy array so its the same type as the senterpoints
     window.clicked_pointsx = [point[0] for point in all_points]
     window.clicked_pointsy = [point[1] for point in all_points]
     height, width = window.gray_image.shape
-    # Calculate new grid parameters using user-provided points
+    #new grid using user clicked AND previously detected
     grid_start_x, grid_start_y, cell_size, slant_angle = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
     counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
 
-
-    print("UNORDERED COUNTS")
-    print(counts)
     
     #SAVING INFO
     if hasattr(window, 'current_info'):
@@ -1010,11 +947,11 @@ def recalculate_grid(window):
         # Update the window.image_info with the modified current_info
         window.image_info[window.current_image_index] = window.current_info.copy()
         
-        print("RECALCULATED:      TESTER INFORMATION:") 
-        print("_______________________________________________________________________")
-        print(ordered_counts["Strain 1"])    
-        print(ordered_counts["Strain 2"])   
-        print(ordered_counts["Strain 3"])   
+        # print("RECALCULATED:      TESTER INFORMATION:") 
+        # print("_______________________________________________________________________")
+        # print(ordered_counts["Strain 1"])    
+        # print(ordered_counts["Strain 2"])   
+        # print(ordered_counts["Strain 3"])   
 
         # print(f"Debug: CURRENT INDEX {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
@@ -1023,24 +960,24 @@ def recalculate_grid(window):
     else:
         print("Error: current_info not initialized")
 
-    # Create a color copy of the original image for marking
-    # Update window attributes
+    #update so the new override one is used
     window.result_grid= counts
     window.marked_image = marked_image
-
-    # Display the final image with the new grid
     display_final_image(window, True)
 
 
+#progress bar update - help from chatGBT
 def update_progress_bar(window):
     if hasattr(window, 'progress_bar') and window.progress_bar:
         progress = (window.current_image_index + 1) / len(window.image_paths) * 100
         window.progress_bar['value'] = progress
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
 
+
 def validate_and_proceed(window):
+    #first checks if there is attribute and there are valiv paths and there is image info and image info it proergated
     if hasattr(window, 'image_paths') and window.image_paths and hasattr(window, 'image_info') and window.image_info:
-        create_cropFrame(window)  # Proceed to the next frame
+        create_cropFrame(window)
     else:
         messagebox.showwarning("Warning", "Please upload both text file and images")
 
@@ -1048,6 +985,8 @@ def validate_and_proceed(window):
 def process_image(window):
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, 90, 180, False)
     window.contrast_value = idealContrast
+
+    #For testing 
     # cv2.imshow("origional", resize_for_display(window.current_image))
     # cv2.imshow("streached", resize_for_display(stretched))
     # cv2.imshow("blurred", resize_for_display(blurred))
@@ -1056,46 +995,29 @@ def process_image(window):
     # stretch_values = [60, 70, 80, 90, 100, 110]
     # blur_values = [110, 120, 130, 140, 150]
 
-
     # for stretch in stretch_values:
     #     for blur in blur_values:
-    #         # Apply the function with current parameters
     #         stretched, blurred, gray_image = stretch_and_gray(window.current_image, stretch, blur)
-            
-    #         # Create a descriptive window name
     #         window_name = f"Stretch {stretch} Blur {blur}"
-            
-    #         # Display the result
     #         cv2.imshow(window_name, resize_for_display(stretched))
 
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
     window.gray_image = gray_image
-
-
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
-
-    #gaussian_binary, mean_binary, overlay_img, result_img = binarize_and_overlay(window.gray_image, window.current_image, show_images=True)
-    #############################FOR TESTING#######################
-
-
-    #################################################################
-
-
 
     window.contour_img = contour_img
     window.binarized_image = final_binary
     window.debug_image = np.stack((final_binary,) * 3, axis=-1)
     
-    # Only initialize history if it's empty
+    # only initialize history if it's empty, othewise its adding doubles
     if not window.history:
         window.history = [window.binarized_image.copy()]
         window.redo_stack = []
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
-    #
-    # print("imagge is being reprocessed ")
+
 
 
 #  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
@@ -1105,8 +1027,8 @@ def process_image(window):
 # Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
 #  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
 
+#generated by chatGBT
 def resize_for_display_crop(image, max_width=1000, max_height=650):
-    """Resize image for display while maintaining aspect ratio."""
     h, w = image.shape[:2]
     scale = min(max_width/w, max_height/h)
     new_size = (int(w*scale), int(h*scale))
@@ -1364,22 +1286,6 @@ def next_image(window):
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
         display_results(window)
-
-
-
-
-# d8888b.  .d88b.  db   d8b   db d8b   db db       .d88b.   .d8b.  d8888b. .d8888. 
-# 88  `8D .8P  Y8. 88   I8I   88 888o  88 88      .8P  Y8. d8' `8b 88  `8D 88'  YP 
-# 88   88 88    88 88   I8I   88 88V8o 88 88      88    88 88ooo88 88   88 `8bo.   
-# 88   88 88    88 Y8   I8I   88 88 V8o88 88      88    88 88~~~88 88   88   `Y8b. 
-# 88  .8D `8b  d8' `8b d8'8b d8' 88  V888 88booo. `8b  d8' 88   88 88  .8D db   8D 
-# Y8888D'  `Y88P'   `8b8' `8d8'  VP   V8P Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
- 
-
-
-
-
-
 
 
 
