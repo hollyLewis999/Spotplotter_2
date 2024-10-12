@@ -12,7 +12,6 @@ from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import math
 from scipy import ndimage
-from streachRange import *
 
 COLOUMS = 12
 
@@ -33,6 +32,126 @@ def resize_for_display(image, max_width=1280, max_height=720):
         new_size = (int(w*scale), int(h*scale))
         return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
     return image
+
+# d8888b. d8888b. d88888b d8888b. d8888b.  .d88b.   .o88b. 
+# 88  `8D 88  `8D 88'     88  `8D 88  `8D .8P  Y8. d8P  Y8 
+# 88oodD' 88oobY' 88ooooo 88oodD' 88oobY' 88    88 8P      
+# 88~~~   88`8b   88~~~~~ 88~~~   88`8b   88    88 8b      
+# 88      88 `88. 88.     88      88 `88. `8b  d8' Y8b  d8 
+# 88      88   YD Y88888P 88      88   YD  `Y88P'   `Y88P' 
+
+
+def calculate_brightness(img_array):
+    #get the different channels, this colour is in BGR not RGB
+    blue_channel = img_array[:, :, 0]
+    green_channel = img_array[:, :, 1]
+    red_channel = img_array[:, :, 2]
+    
+    #weighted changels based on fomula
+    red_weighted = 0.299 * red_channel
+    green_weighted = 0.587 * green_channel
+    blue_weighted = 0.114 * blue_channel
+    brightness = red_weighted + green_weighted + blue_weighted
+    
+    return brightness
+
+    
+def get_inner_image(image):
+    height, width = image.shape[:2]
+    start_y = int(height * 0.2) #take off more from the bottom becuse of plate edge
+    end_y = int(height * 0.9)
+    start_x = int(width * 0.1)
+    end_x = int(width * 0.9)
+    return image[start_y:end_y, start_x:end_x]
+
+def get_99_percent_range(brightness):
+    #using a cumalitive histogramdisstogram
+    hist, bin_edges = np.histogram(brightness.ravel(), bins=256, range=(0, 255))
+    cumulative = np.cumsum(hist)
+    total_pixels = cumulative[-1]
+    lower = np.searchsorted(cumulative, 0.005 * total_pixels)
+    upper = np.searchsorted(cumulative, 0.995 * total_pixels)
+    return int(lower), int(upper)
+
+def analyze_tonal_range(image):
+    inner_image = get_inner_image(image)
+    brightness = calculate_brightness(inner_image)
+    lower, upper = get_99_percent_range(brightness)
+    
+    return lower, upper
+
+
+def stretch_and_gray(original_image, show_images=False):
+
+    lower_bound, upper_bound = analyze_tonal_range(original_image)
+    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    #setting contrast as a function of the streach
+    idealContrast = int(-0.1813*(upper_bound -lower_bound)+25.113)
+    idealContrast = max(idealContrast,2)
+    idealContrast = min(idealContrast,20)
+
+
+    # blurredEdges = cv2.bilateralFilter(stretched, d=9, sigmaColor=75, sigmaSpace=75)
+    # blurred = cv2.fastNlMeansDenoising(stretched, h=10, templateWindowSize=7, searchWindowSize=21)
+    # blurredEdges3 = cv2.edgePreservingFilter(stretched, flags=1, sigma_s=60, sigma_r=0.4)
+    # blurredEdges4 = cv2.medianBlur(stretched, ksize=5)
+    # gray_image_notBlurred = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
+    #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
+    #cv2.imshow('stretched', resize_for_display(stretched))
+
+
+    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
+    gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+
+    #if show_images:
+        #cv2.imshow('original_image', resize_for_display(original_image))
+        #cv2.imshow('stretched', resize_for_display(stretched))
+        # cv2.imshow('GaussianBlur', resize_for_display(blurred))
+        # cv2.imshow('bilateralFilter', resize_for_display(blurredEdges))
+        # cv2.imshow('fastNlMeansDenoising', resize_for_display(blurredEdges2))
+        # cv2.imshow('edgePreservingFilter', resize_for_display(blurredEdges3))
+        # cv2.imshow('medianBlur', resize_for_display(blurredEdges4))
+        #cv2.imshow('grayBlur', resize_for_display(gray_image))
+        #cv2.imshow('gray', resize_for_display(gray_image_notBlurred))
+    return stretched, blurred, gray_image, idealContrast
+    
+ 
+
+def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
+    
+    block_size, divisor_c = 151, 15
+    c = max(-50, min(int(-contrast), -1))
+    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
+                                       cv2.THRESH_BINARY, block_size, c)   
+    
+    ############################################################################
+    #CHANGE BACK LATER ONLY FOR TESTING GROUND TRUTH
+    ############################################################################
+        # gray_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
+        # binary_image = cv2.threshold(gray_image, 175, 255, cv2.THRESH_BINARY)[1]
+    ############################################################################
+
+    contour_img = original_image.copy()
+    final_binary = np.zeros_like(binary_image)
+    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    height, width = binary_image.shape
+    #scale the exclude small dots 
+    excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
+
+    areas = [cv2.contourArea(cntr) for cntr in contours]
+    median_area = np.median(areas) if areas else 0
+    excludeSmallDots
+
+    #check if the area is big enough before drawing
+    for cntr in contours:
+        area = cv2.contourArea(cntr)
+        if area > excludeSmallDots:
+            cv2.drawContours(contour_img, [cntr], 0, (0,255,255), 2)
+            cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+
+
+    return binary_image, contour_img, final_binary,block_size
 
 
 
@@ -231,31 +350,30 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     return grid_start_x, grid_start_y, cell_size 
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
-    """
-    Quantify the grid by counting white pixels in each cell, including blobs
-    slightly overlapping (up to 20%) with neighboring blocks. All white areas 
-    in the binary image are colored dark grey.
-    """
+
     height, width = binary_image.shape
-    rows, cols = 8, 12  # 8x12 grid
-    
-    # Label connected components
-    labeled_image, num_features = ndimage.label(binary_image)
-    
-    counts = np.zeros((rows, cols), dtype=int)
+    rows, cols = 8, 12  #8x12 grid
+
+    #https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
+    #checks how many spots there are, takes into account the touching white pixels are one area
+    labeled_image, num_features = ndimage.label(binary_image) 
+    counts = np.zeros((rows, cols), dtype=int) #place holder to quantifications
 
 
+    #needs to be in colour to add markings
     if len(marked_image.shape) == 2:  
         marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
 
+    #turn everything  dark grey to show that its not counted
     white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
-
     marked_image[white_areas] = [64, 64, 64]
     
+    #loops though each spot
     for label in range(1, num_features + 1):
-        component = (labeled_image == label)
-        coords = np.column_stack(np.where(component))
+        component = (labeled_image == label) #the labeled_images labels the connected areas all 1 and then all 2 etc
+        coords = np.column_stack(np.where(component)) #store location
         
+        #calcuating the gird and ensuring it is within hte image bounds
         min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
         max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
         min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
@@ -263,41 +381,45 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
         
         main_cell = None
         max_overlap = 0
+        #counts the total pixels f the blob
         total_area = np.sum(component)
         
+        #finding the main block
         for row in range(min_row, max_row + 1):
             for col in range(min_col, max_col + 1):
+                #boundaries of current cell
                 x1 = int(grid_start_x + col * cell_size)
                 y1 = int(grid_start_y + row * cell_size)
                 x2 = int(x1 + cell_size)
                 y2 = int(y1 + cell_size)
-                
+                #must be within image
                 x1, y1 = max(0, x1), max(0, y1)
                 x2, y2 = min(width, x2), min(height, y2)
                 
+                #this is how much of the CURRENT blob is within the cell
                 cell = component[y1:y2, x1:x2]
                 overlap = np.sum(cell)
                 
+                #this sets the current cell to the main cell if it is the most amount of overlap
                 if overlap > max_overlap:
                     max_overlap = overlap
                     main_cell = (row, col)
-        
+
+        #has a main cell - this will always happen but checking anyway
         if main_cell is not None:
             main_row, main_col = main_cell
+            #mac_overlap is the area within the main cell
             main_area = max_overlap
             outside_area = total_area - main_area
             
+            #checking to see if its 0.4% within its main cell
             if outside_area <= 0.4 * total_area:
-                # Count the entire blob in the main cell and color it light grey
+                #add to counts based on its main cell and colour the area white to show its sucessfully counted
                 counts[main_row, main_col] += total_area
-                marked_image[component] = [255, 255, 255]  # Light grey
-            else:
-
-                pass
-    print ("COUNT 00" + str(counts[0,0]))
-    print("WIDTH: " + str(width))        
+                marked_image[component] = [255, 255, 255]
+     #scale counts to the width of the image
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
-    print ("hopefully After scaling" + str(counts[0,0]))
+    
     #drawing the grid and adding the counts
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = width/1200
@@ -331,186 +453,23 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     return counts, marked_image, ordered_counts
 
 
-def stretch_and_gray(original_image, lower_bound, upper_bound, show_images=False):
-    """Stretch image intensity and convert to grayscale.
-    
-    :param lower_bound: Lower bound for intensity stretching
-    :param upper_bound: Upper bound for intensity stretching"""
-    # stretchedBAD = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
-    # blurredBAD = cv2.GaussianBlur(stretchedBAD, (0, 0), sigmaX=5, sigmaY=5)
-    # gray_imageBAD= cv2.cvtColor(blurredBAD, cv2.COLOR_BGR2GRAY)
-    lower_bound, upper_bound = analyze_tonal_range(original_image)
-
-    # print("Lower and upper bounds" + str(lower_bound) +"       "+  str(upper_bound))
-    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
-    idealContrast = int(-0.1813*(upper_bound -lower_bound)+25.113)
-    idealContrast = max(idealContrast,2)
-    idealContrast = min(idealContrast,20)
-    #stretched = skimage.exposure.rescale_intensity(original_image, in_range=(72, 216), out_range=(0, 255)).astype(np.uint8)
-    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
-    # blurredEdges = cv2.bilateralFilter(stretched, d=9, sigmaColor=75, sigmaSpace=75)
-    # blurred = cv2.fastNlMeansDenoising(stretched, h=10, templateWindowSize=7, searchWindowSize=21)
-    # blurredEdges3 = cv2.edgePreservingFilter(stretched, flags=1, sigma_s=60, sigma_r=0.4)
-    # blurredEdges4 = cv2.medianBlur(stretched, ksize=5)
-    # gray_image_notBlurred = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
-    gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-    #gray_image = cv2.cvtColor(stretched, cv2.COLOR_BGR2GRAY)
-    #cv2.imshow('stretched', resize_for_display(stretched))
-    if show_images:
-        cv2.imshow('original_image', resize_for_display(original_image))
-        #cv2.imshow('stretched', resize_for_display(stretched))
-        # cv2.imshow('GaussianBlur', resize_for_display(blurred))
-        # cv2.imshow('bilateralFilter', resize_for_display(blurredEdges))
-        # cv2.imshow('fastNlMeansDenoising', resize_for_display(blurredEdges2))
-        # cv2.imshow('edgePreservingFilter', resize_for_display(blurredEdges3))
-        # cv2.imshow('medianBlur', resize_for_display(blurredEdges4))
-
-        #cv2.imshow('grayBlur', resize_for_display(gray_image))
-        #cv2.imshow('gray', resize_for_display(gray_image_notBlurred))
-    return stretched, blurred, gray_image, idealContrast
-    
-def binarize_and_overlay(gray_image, gray_imageBAD, original_image, contrastBAD,contrast=20, exclude_small_dots=15, show_images=False):
-    """Binarize the grayscale image using Gaussian and mean thresholding, perform contour detection, and overlay results."""
-    
-    height, width = gray_image.shape
-    block_size, divisor_c = 151, 15
-    c = max(-50, min(int(-contrast), -1))
-
-    
-    # Mean thresholding
-    mean_binary = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                        cv2.THRESH_BINARY, block_size, -18)
-    mean_binaryBAD = cv2.adaptiveThreshold(gray_imageBAD, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                        cv2.THRESH_BINARY, block_size, contrastBAD)                                    
-    
-    # Function to process contours
-    def process_contours(binary_image):
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        exclude_small_dots_area = int((width * (exclude_small_dots / 5000)) ** 2)
-        processed_contours = []
-        for cntr in contours:
-            area = cv2.contourArea(cntr)
-            if area > exclude_small_dots_area:
-                processed_contours.append(cntr)
-        return processed_contours
-
-    # Process contours for both thresholding methods
-
-    mean_contours = process_contours(mean_binary)
-    mean_contoursBAD = process_contours(mean_binaryBAD)
-    # Create masks for each set of contours
-
-    mean_mask = np.zeros(gray_image.shape, dtype=np.uint8)
-    mean_maskBAD = np.zeros(gray_image.shape, dtype=np.uint8)
-    cv2.drawContours(mean_maskBAD, mean_contoursBAD, -1, 255, -1)
-    cv2.drawContours(mean_mask, mean_contours, -1, 255, -1)
-
-    # Find overlapping regions
-    overlap_mask = cv2.bitwise_and(mean_maskBAD, mean_mask)
-
-    # Create overlay image
-    overlay_img = original_image.copy()
-
-    # Draw contours with different colors
-    cv2.drawContours(overlay_img, mean_contoursBAD, -1, (0, 255, 0), 2)  # Green for Gaussian
-    cv2.drawContours(overlay_img, mean_contours, -1, (255, 0, 0), 2)  # Blue for Mean
-
-    # Draw overlapping contours in red
-    overlap_contours, _ = cv2.findContours(overlap_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(overlay_img, overlap_contours, -1, (0, 0, 255), 2)  # Red for overlap
-
-    # Create legend
-    legend_img = np.ones((100, width, 3), dtype=np.uint8) * 255
-    cv2.putText(legend_img, "Adaptive Strech and Contrast", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-    cv2.putText(legend_img, "Constant Strech and Contrast", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 0, 0), 2)
-    cv2.putText(legend_img, "Overlapping Regions", (10, 90), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 255), 2)
-
-    # Combine overlay and legend
-    result_img = np.vstack((overlay_img, legend_img))
-
-    if show_images:
-        plt.figure(figsize=(12, 8))
-        plt.imshow(cv2.cvtColor(result_img, cv2.COLOR_BGR2RGB))
-        plt.title("Thresholding Results Overlay")
-        plt.axis('off')
-        plt.show()
-
-    return gaussian_binary, mean_binary, overlay_img, result_img
-
-    
-
-def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
-    """Binarize the grayscale image and perform contour detection."""
-    
-    block_size, divisor_c = 151, 15
-    c = max(-50, min(int(-contrast), -1))
-    ####CHANGE BACK LATER
-
-    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)   
-    
-    ############################################################################
-    #CHANGE BACK LATER ONLY FOR TESTING GROUND TRUTH
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-        # gray_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
-        # binary_image = cv2.threshold(gray_image, 175, 255, cv2.THRESH_BINARY)[1]
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    ############################################################################
-    contour_img = original_image.copy()
-    final_binary = np.zeros_like(binary_image)
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    height, width = binary_image.shape
-    excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
-    #print(width)
-    #print(excludeSmallDots)
-
-    areas = [cv2.contourArea(cntr) for cntr in contours]
-    median_area = np.median(areas) if areas else 0
-    excludeSmallDots
-    for cntr in contours:
-        area = cv2.contourArea(cntr)
-        if area > excludeSmallDots:
-            cv2.drawContours(contour_img, [cntr], 0, (0,255,255), 2)
-            cv2.drawContours(final_binary, [cntr], 0, 255, -1)
 
 
+#  .d8b.  d8888b. d8888b.  .d8b.  db    db 
+# d8' `8b 88  `8D 88  `8D d8' `8b `8b  d8' 
+# 88ooo88 88oobY' 88oobY' 88ooo88  `8bd8'  
+# 88~~~88 88`8b   88`8b   88~~~88    88    
+# 88   88 88 `88. 88 `88. 88   88    88    
+# YP   YP 88   YD 88   YD YP   YP    YP  
 
-    if show_images:
-        cv2.imshow('threshold', resize_for_display(binary_image))
-        cv2.imshow('contours', resize_for_display(contour_img))
-        cv2.imshow('final_binary', resize_for_display(final_binary))
-        # cv2.imshow('threshold',(binary_image))
-        # cv2.imshow('contours', (contour_img))
-        # cv2.imshow('final_binary',(final_binary))
-
-    return binary_image, contour_img, final_binary,block_size
-
-
-
-#  d888b  d8888b.  .d8b.  d8888b. db   db 
-# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 
-# 88      88oobY' 88ooo88 88oodD' 88ooo88 
-# 88  ooo 88`8b   88~~~88 88~~~   88~~~88 
-# 88. ~8~ 88 `88. 88   88 88      88   88 
-#  Y888P  88   YD YP   YP 88      YP   YP 
 
 def split_and_process(array):
-    # Split the array into three 8x4 arrays
+    #three 8x4 arrays
     strain1 = [row[:4] for row in array]
     strain2 = [row[4:8] for row in array]
     strain3 = [row[8:] for row in array]
 
-    # Dictionary to store processed strains
+    #dictionary
     processed_data = {
         "Strain 1": process_strain(strain1),
         "Strain 2": process_strain(strain2),
@@ -520,6 +479,7 @@ def split_and_process(array):
     return processed_data
 
 def process_strain(strain):
+    #this is based on the dilutions
     order = [
         (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
         (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
@@ -527,7 +487,7 @@ def process_strain(strain):
     ]
 
     processed_list = []
-
+    #getting co-ordinate from speficic part of the array
     for col, row in order:
         if row <= 8 and col <= 4:
             processed_list.append(strain[row-1][col-1])
