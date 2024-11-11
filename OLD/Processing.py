@@ -12,9 +12,8 @@ from scipy.stats import linregress
 import matplotlib.pyplot as plt
 import math
 from scipy import ndimage
-from scipy import stats
+
 COLOUMS = 12
-import seaborn as sns
 
 
 
@@ -87,10 +86,7 @@ def stretch_and_gray(original_image, show_images=False):
     lower_bound, upper_bound = analyze_tonal_range(original_image)
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     #setting contrast as a function of the streach
-    idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
-    print("Streach range diff: " + str(upper_bound - lower_bound))
-
-    
+    idealContrast = int(-0.1813*(upper_bound -lower_bound)+25.113)
     idealContrast = max(idealContrast,2)
     idealContrast = min(idealContrast,20)
 
@@ -123,9 +119,8 @@ def stretch_and_gray(original_image, show_images=False):
 
 def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
     
-    # block_size, divisor_c = 501, 15
-    block_size, divisor_c = 301, 15
-    c = max(-50, min(int(-contrast), -1))-5
+    block_size, divisor_c = 151, 15
+    c = max(-50, min(int(-contrast), -1))
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)   
     
@@ -149,13 +144,12 @@ def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, sh
     excludeSmallDots
 
     #check if the area is big enough before drawing
-    #toDO check if this is needed its redrawing els wear
     for cntr in contours:
         area = cv2.contourArea(cntr)
         if area > excludeSmallDots:
-            cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
+            cv2.drawContours(contour_img, [cntr], 0, (0,255,255), 2)
             cv2.drawContours(final_binary, [cntr], 0, 255, -1)
-            # print("drawing")
+
 
     return binary_image, contour_img, final_binary,block_size
 
@@ -250,24 +244,13 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
 
     def find_clusters(coords, min_count=2):
-        FONT = "Microsoft New Tai Lue"
-        plt.rcParams['font.family'] = FONT
-        sns.set_style("whitegrid")
+
         sorted_coords = np.sort(coords)
         diffs = np.diff(sorted_coords)
-        filtered_diff = diffs[(diffs > 0) & (diffs < 50)] #need to take out the huge and tiny differences
-        median_diff = np.median(filtered_diff) #this is the difference between cluster = cell size
+        median_diff = np.median(diffs) #this is the difference between cluster = cell size
         #need to fiddle with the median_diffs, using median not mean becuse some differences will be double becuse there is an empty row/coloumn
-        #TODO in future i should change this that if its getting too many clusters it should increase this
-        #TODO also what it sould do it be measuring the distance between clusters and clusters that are too close together should be joined as one cluster
-        if (math.isnan(median_diff)):
-            threshold = 2
-        else:    
-            threshold = max(median_diff *3,12) #otherwise if its perfect it threshold will be zero, this is taking out ones that are unrealistic
-            threshold = min(threshold, 50) #TODO i should make this based on the image width or based on how sparse everyhting is
-        # print(median_diff)
-        # print(diffs)
-        # print(threshold)
+        threshold = max(median_diff *1.5,10) #otherwise if its perfect it threshold will be zero, this is taking out ones that are unrealistic
+
         clusters = []
         current_cluster = [sorted_coords[0]]
         
@@ -285,121 +268,21 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         # checks to see if there are enough co-ords in a cluster before adding it (to avoid a bunch of clusters with 1 co-ordnate)
         if len(current_cluster) >= min_count:
             clusters.append(current_cluster)
-
+        
         cluster_means = [np.mean(cluster) for cluster in clusters]
-    
-        #modal difference between cluster means - 
-        mean_diffs = np.diff(cluster_means)
-        if len(mean_diffs) > 0:
-            kde = stats.gaussian_kde(mean_diffs)
-            x_range = np.linspace(mean_diffs.min(), mean_diffs.max(), 100)
-            modal_diff = x_range[np.argmax(kde(x_range))]
-        else:
-            modal_diff = threshold
-
-        print(f"Modal difference between cluster means: {modal_diff}")
-
-        # if (len(clusters) >5):
-        if True:    
-            #combine clusters that are too close to be together
-            combined_clusters = []
-            combined_indices = []  #indicies
-            i = 0
-            while i < len(clusters):
-                current_combined = clusters[i]
-                combined_group = [i]
-                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                    current_combined.extend(clusters[i+1])
-                    combined_group.append(i+1)
-                    i += 1
-                combined_clusters.append(current_combined)
-                if len(combined_group) > 1:
-                    combined_indices.append(combined_group)
-                i += 1
-
-            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-
-        if True:    
-            #combine clusters that are too close to be together
-            combined_clusters = []
-            combined_indices = []  #indicies
-            i = 0
-            while i < len(clusters):
-                current_combined = clusters[i]
-                combined_group = [i]
-                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                    current_combined.extend(clusters[i+1])
-                    combined_group.append(i+1)
-                    i += 1
-                combined_clusters.append(current_combined)
-                if len(combined_group) > 1:
-                    combined_indices.append(combined_group)
-                i += 1
-            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-            if False:
-                FONT = "Microsoft New Tai Lue"
-                plt.rcParams['font.family'] = FONT
-                plt.rcParams['font.weight'] = 'bold'
-                plt.rcParams['font.size'] = 12  # Increase font size
-                sns.set_style("whitegrid")
-                # Create the plot
-                plt.figure(figsize=(8, 6))
-                ax = plt.gca()
-                ax.set_facecolor('#F5F5F5')
-                
-                # Create a color array for the scatter plot
-                colors = ['#073B3A' if any(coord in cluster for cluster in combined_clusters) else '#D24C4A' for coord in coords]
-                
-                plt.scatter(coords, [0] * len(coords), c=colors, alpha=0.5)
-                ax.yaxis.set_ticklabels([])
-                for mean in cluster_means:
-                    plt.axvline(x=mean, color='#D3784A', linestyle='--', alpha=0.5)
-               
-                for i, mean in enumerate(final_cluster_means):
-                    plt.axvline(x=mean, color='green', linestyle='-', linewidth=2)
-                    plt.text(mean, 0.1, f'C{i}', rotation=90, verticalalignment='bottom')
-               
-                for group in combined_indices:
-                    min_x = min(cluster_means[i] for i in group)
-                    max_x = max(cluster_means[i] for i in group)
-                    plt.axvspan(min_x, max_x, facecolor='yellow', alpha=0.3)
-                plt.xticks(final_cluster_means, [f'{coord:.2f}' for coord in final_cluster_means], ha='right', rotation = 45)
-                plt.xlabel('Cluster Coordinates', fontweight='bold', labelpad=15)
-                #plt.title('Clusters (Yellow highlight shows combined clusters)',fontweight='bold', pad = 20)
-                plt.title('Detected Clusters',fontweight='bold', pad = 20)
-                # Update legend to show both colors
-                plt.scatter([], [], c='#073B3A', label='Spots in Clusters', alpha=0.5)
-                plt.scatter([], [], c='#D24C4A', label='Spots not in Clusters', alpha=0.5)
-                
-                plt.legend(prop={'weight': 'bold'})
-                
-                plt.tight_layout()
-                plt.show()
-                print(f"Number of original clusters: {len(clusters)}")
-                print(f"Number of combined clusters: {len(combined_clusters)}")
-                print(f"Combined cluster groups: {combined_indices}")
-            return final_cluster_means
-        
-        else:
-            
-
-            #Debug generated with chatGBT
-            # if debug:
-            #     plt.rcParams['text.usetex'] = False
-            #     plt.rcParams['font.family'] = 'serif'
-            #     plt.rcParams['font.serif'] = ['DejaVu Serif']
-            #     plt.figure(figsize=(10, 5))
-            #     plt.scatter(coords, [0] * len(coords), c='#073B3A', label='Original points')
-            #     print("Length coords: " + str(len(coords)))
-            #     for mean in cluster_means:
-            #         plt.axvline(x=mean, color='green', linestyle='--')
-            #     plt.title(f'Clusters')
-            #     plt.legend()
-            #     plt.show()
         
 
-            return cluster_means
-        # 
+        #Debug generated with chatGBT
+        if debug:
+            plt.figure(figsize=(10, 5))
+            plt.scatter(coords, [0] * len(coords), c='blue', label='Original points')
+            for mean in cluster_means:
+                plt.axvline(x=mean, color='red', linestyle='--')
+            plt.title(f'Clusters')
+            plt.legend()
+            plt.show()
+        
+        return cluster_means
 
 
 
@@ -536,7 +419,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
                 marked_image[component] = [255, 255, 255]
      #scale counts to the width of the image
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
-    
+    print(counts)
     #drawing the grid and adding the counts
     font = cv2.FONT_HERSHEY_SIMPLEX
     font_scale = width/1200

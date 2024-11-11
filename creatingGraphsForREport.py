@@ -11,7 +11,7 @@ from reportlab.lib.pagesizes import letter
 from io import BytesIO
 import cv2
 import sys
-from PIL import Image 
+#from PIL import Image 
 from datetime import datetime
 from tkinter import filedialog, simpledialog
 import os
@@ -20,8 +20,7 @@ import openpyxl
 
 
 
-DILUTIONSERIES = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
-    
+
 FONT = "Microsoft New Tai Lue"
 plt.rcParams['font.family'] = FONT
 sns.set_style("whitegrid")
@@ -52,53 +51,54 @@ def write_image_info_to_file(window, figA, statsA, figB, statsB, figC, statsC, p
     #filepath must now be insdie new solder
     file_path = os.path.join(new_folder_path, f"{folder_name}_rawdata.xlsx")
     
-    #make excel file
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Image Data"
+    # #make excel file
+    # wb = openpyxl.Workbook()
+    # ws = wb.active
+    # ws.title = "Image Data"
     
 
-    #in future this should be variable to account for different experiment values
+    # #in future this should be variable to account for different experiment values
+    # dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+    
+    # headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution", "normalization_value", "normalized_value"]
+    # ws.append(headers)
+    # #normalisation values is the average of the non ATP quantifications
+    # norm_value_A = (window.image_info[0]['QuantificationA'][0] + window.image_info[1]['QuantificationA'][0])/2
+    # norm_value_B = (window.image_info[0]['QuantificationB'][0] + window.image_info[1]['QuantificationB'][0])/2
+    # norm_value_C = (window.image_info[0]['QuantificationC'][0] + window.image_info[1]['QuantificationC'][0])/2
 
-    headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution", "normalization_value", "normalized_value"]
-    ws.append(headers)
-    #normalisation values is the average of the non ATP quantifications
-    norm_value_A = (window.image_info[0]['QuantificationA'][0] + window.image_info[1]['QuantificationA'][0])/2
-    norm_value_B = (window.image_info[0]['QuantificationB'][0] + window.image_info[1]['QuantificationB'][0])/2
-    norm_value_C = (window.image_info[0]['QuantificationC'][0] + window.image_info[1]['QuantificationC'][0])/2
 
-
-    #chatGBT helped with tidy data format
-    for info in window.image_info:
-        current_filename = info.get('filename', 'Unknown')  # Use a default if filename is not available
-        base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
+    # #chatGBT helped with tidy data format
+    # for info in window.image_info:
+    #     current_filename = info.get('filename', 'Unknown')  # Use a default if filename is not available
+    #     base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
         
 
-        def add_strain_rows(strain, quant_list, norm_value):
-            for quant, dilution in zip(quant_list, DILUTIONSERIES[:len(quant_list)]):
-                normalized_value = 100 * quant / norm_value if norm_value else None
-                row = base_row + [strain, quant, dilution, norm_value, normalized_value]
-                ws.append(row)
+    #     def add_strain_rows(strain, quant_list, norm_value):
+    #         for quant, dilution in zip(quant_list, dilutionSeries[:len(quant_list)]):
+    #             normalized_value = 100 * quant / norm_value if norm_value else None
+    #             row = base_row + [strain, quant, dilution, norm_value, normalized_value]
+    #             ws.append(row)
         
 
-        if info['QuantificationA']:
-            add_strain_rows(info['strainA'], info['QuantificationA'], norm_value_A)
-        if info['QuantificationB']:
-            add_strain_rows(info['strainB'], info['QuantificationB'], norm_value_B)
-        if info['QuantificationC']:
-            add_strain_rows(info['strainC'], info['QuantificationC'], norm_value_C)
+    #     if info['QuantificationA']:
+    #         add_strain_rows(info['strainA'], info['QuantificationA'], norm_value_A)
+    #     if info['QuantificationB']:
+    #         add_strain_rows(info['strainB'], info['QuantificationB'], norm_value_B)
+    #     if info['QuantificationC']:
+    #         add_strain_rows(info['strainC'], info['QuantificationC'], norm_value_C)
     
-    #excel
-    wb.save(file_path)
+    # #excel
+    # wb.save(file_path)
     
-    #pdf
-    pdf_filename = os.path.join(new_folder_path, f"{folder_name}_report.pdf")
-    generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, pdf_filename)
+    # #pdf
+    # pdf_filename = os.path.join(new_folder_path, f"{folder_name}_report.pdf")
+    # generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, pdf_filename)
     
     #images
     save_graph_image(figA, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainA']}.png"))
-    save_graph_image(figB, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainB']}.png"))
-    save_graph_image(figC, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainC']}.png"))
+    # save_graph_image(figB, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainB']}.png"))
+    # save_graph_image(figC, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainC']}.png"))
     
     print(f"Files saved successfully in folder: {new_folder_path}")
 
@@ -131,7 +131,6 @@ def calculate_statistics(x, y, color, label):
     valid_y = []
     #only using ones that are above 10% becuse at that point there are a lot of very light ones that arent quantified and otherwise there are a lot of zeros
     for xi, yi in zip(x, y):
-        if xi > 0 and yi > 10:
             #convert it to log 10 becuse of the dilution sequence
             valid_x.append(np.log10(xi))
             valid_y.append(yi)
@@ -163,9 +162,11 @@ def calculate_statistics(x, y, color, label):
     return None
 def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
 
+    dilutionSeries = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+    
     #normalisation value is the average of the first spot of the 2 non ATP
     normValue = (y1[0] + y2[0]) / 2
-    
+    normValue = 1
     y_data =[]
     for arr in [y1, y2, y3, y4]:
         norm_y = normalize_array(arr, normValue)  # Normalize the array
@@ -189,25 +190,25 @@ def plot_logarithmic_graph(y1, y2, y3, y4, title, key1, key2, key3, key4):
 
 
     for y, color, marker, label, ATc in zip(y_data, colors, markers, labels, ATcs):
-        stats = calculate_statistics(DILUTIONSERIES, y, color, label)
+        stats = calculate_statistics(dilutionSeries, y, color, label)
         if stats is not None:
 
             statistics.append(stats)
             label = ATc + " (" + label + " )"  #atc label and then the plate name in brackets
-            sns.scatterplot(x=DILUTIONSERIES, y=y, color=color, marker=marker, label=label, s=80)
-            x_fit = np.logspace(np.log10(min(DILUTIONSERIES)), np.log10(max(DILUTIONSERIES)), num=100)
+            sns.scatterplot(x=dilutionSeries, y=y, color=color, marker=marker, label=label, s=80)
+            x_fit = np.logspace(np.log10(min(dilutionSeries)), np.log10(max(dilutionSeries)), num=100)
             y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
             plt.plot(x_fit, y_fit, color=color, linestyle='--', label=("R² =" + str(round(stats['r_squared'], 3)) + "\n" + stats['formula'] + "\n")) #this is  a seperate plot plotting the line
     
     plt.title(f"Growth Curve for {title}", fontsize=20, fontweight='bold', pad=20)
-    plt.ylim(0, 120)
+    plt.ylim(0, 450000)
     plt.xlabel('Dilution Series', fontsize=16, fontweight='bold')
-    plt.ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+    plt.ylabel('Quantifcation (pixels)', fontsize=16, fontweight='bold')
     plt.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
                ncol=1, frameon=True, facecolor='white', edgecolor='none', framealpha=0.7)
     plt.tick_params(axis='both', which='major', labelsize=14)
     plt.tight_layout()
-
+    plt.show()
 
     return plt.gcf(), statistics
 
@@ -442,120 +443,25 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
 
 def generate_all_outputs(window):
 
-    # plots and statistics from image info
-    figA, statsA = plot_logarithmic_graph(window.image_info[0]['QuantificationA'], window.image_info[1]['QuantificationA'], window.image_info[2]['QuantificationA'], window.image_info[3]['QuantificationA'], window.image_info[0]['strainA'],window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
-    figB, statsB = plot_logarithmic_graph(window.image_info[0]['QuantificationB'], window.image_info[1]['QuantificationB'], window.image_info[2]['QuantificationB'], window.image_info[3]['QuantificationB'], window.image_info[0]['strainB'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
-    figC, statsC = plot_logarithmic_graph(window.image_info[0]['QuantificationC'], window.image_info[1]['QuantificationC'], window.image_info[2]['QuantificationC'], window.image_info[3]['QuantificationC'], window.image_info[0]['strainC'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
+    
+    # figB, statsB = plot_logarithmic_graph(window.image_info[0]['QuantificationB'], window.image_info[1]['QuantificationB'], window.image_info[2]['QuantificationB'], window.image_info[3]['QuantificationB'], window.image_info[0]['strainB'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
+    # figC, statsC = plot_logarithmic_graph(window.image_info[0]['QuantificationC'], window.image_info[1]['QuantificationC'], window.image_info[2]['QuantificationC'], window.image_info[3]['QuantificationC'], window.image_info[0]['strainC'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
 
-    # print(window.image_info[0]['QuantificationA'])
-    # print(window.image_info[1]['QuantificationA'])
-    # print(window.image_info[2]['QuantificationA'])
-    # print(window.image_info[3]['QuantificationA'])
-    # print(window.image_info[0]['strainA'])
-    # print(window.image_info[0]['filename'].split('.')[0])
-    # print(window.image_info[1]['filename'].split('.')[0])
-    # print(window.image_info[2]['filename'].split('.')[0])
-    # print( window.image_info[3]['filename'].split('.')[0])
-    # report
-    output_filename = "growth_curves_report.pdf"
-    write_image_info_to_file(window, figA, statsA, figB, statsB, figC, statsC, output_filename)
+    #report
+
     plt.close('all')
 
 
 
+y1 = [4051, 3050, 2777, 2839, 2227, 2423, 1964, 2248, 1554, 2081, 1955, 1504, 1825, 1813, 1567, 1638, 1301, 1237, 1028, 110, 956, 760, 110, 118, 0, 0, 0, 0, 0, 0, 0, 0]
+y2 =[3355, 2667, 2420, 2370, 1888, 2211, 1685, 2081, 1465, 1715, 1605, 1099, 1406, 1427, 1090, 1343, 770, 782, 701, 0, 444, 198, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+y3=[1699, 1567, 1466, 1462, 402, 1221, 575, 0, 140, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+y4 =[2146, 1901, 1820, 1897, 901, 1267, 988, 541, 0, 3, 0, 0, 2, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0, 0, 0, 127, 0, 0, 0]
+strain = "PDIMminus_NT"
+f1 ="P3211709"
+f2 = "P3211711"
+f3 = "P3211713"
+f4 = "P3211715"
 
-
-#ONLY FOR TESTING: HARD CODED VALUES ARE ALL FAKE AND GENERATED BY CHATGBT
-# class MockWindow:
-#     def __init__(self):
-#         self.image_info = [
-#             {
-#                 'filename': 'test_image.jpg',
-#                 'type': 'Growth Curve',
-#                 'detergent': 'SDS',
-#                 'treatment': 'Heat Shock',
-#                 'repeat': '1',
-#                 'strainA': 'E. coli K-12',
-#                 'strainB': 'E. coli BL21',
-#                 'strainC': 'E. coli DH5α',
-#                 'IMGcontours': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGbinary': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGgrid': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'threshold': 128,
-#                 'smallArea': 50,
-#                 'QuantificationB': [300, 11485, 11504, 11271, 12283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0],
-#                 'QuantificationC': [200, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0],
-#                 'QuantificationA' :[100, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-           
-           
-#             },
-#             {
-#                 'filename': 'experiment2_image.jpg',
-#                 'type': 'Protein Expression',
-#                 'detergent': 'Triton X-100',
-#                 'treatment': 'Cold Shock',
-#                 'repeat': '2',
-#                 'strainA': 'E. coli K-12',
-#                 'strainB': 'E. coli BL21',
-#                 'strainC': 'Pseudomonas aeruginosa',
-#                 'IMGcontours': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGbinary': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGgrid': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'threshold': 140,
-#                 'smallArea': 60,
-#                 'QuantificationC': [400, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0],
-#                 'QuantificationB': [600, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0],
-#                 'QuantificationA' :[200, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-           
-#             },
-#             {
-#                 'filename': 'experiment3_image.jpg',
-#                 'type': 'Biofilm Formation',
-#                 'detergent': 'Tween 20',
-#                 'treatment': 'UV Exposure',
-#                 'repeat': '1',
-#                 'strainA': 'Bacillus subtilis',
-#                 'strainB': 'E. coli K-12',
-#                 'strainC': 'Staphylococcus aureus',
-#                 'IMGcontours': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGbinary': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGgrid': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'threshold': 150,
-#                 'smallArea': 40,
-#                 'QuantificationA': [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0],
-#                 'QuantificationB': [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0],
-#                 'QuantificationC' :[20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-#             },
-#             {
-#                 'filename': 'experiment4_image.jpg',
-#                 'type': 'Antibiotic Resistance',
-#                 'detergent': 'SDS',
-#                 'treatment': 'Heat Shock',
-#                 'repeat': '3',
-#                 'strainA': 'E. coli K-12',
-#                 'strainB': 'Salmonella enterica',
-#                 'strainC': 'Pseudomonas aeruginosa',
-#                 'IMGcontours': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGbinary': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'IMGgrid': np.random.randint(0, 255, (400, 500, 3), dtype=np.uint8),
-#                 'threshold': 135,
-#                 'smallArea': 55,
-#                 'QuantificationB': [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0],
-#                 'QuantificationA': [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0],
-#                 'QuantificationC' :[2644, 1099, 1724, 1425, 1952, 1382, 1310, 1245, 600, 1173, 223, 45, 277, 38, 0, 0, 80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-            
-#             }
-
-#         ]
-
-
-
-# # Mock data
-# y1 = [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0]
-# y2 = [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0]
-# y3 = [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 990, 1650, 590, 662, 0, 203, 0, 161, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 0]
-# y4 = [20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-# root = tk.Tk()
-# root.withdraw() 
-
-# window = MockWindow()
+figA, statsA = plot_logarithmic_graph(y1,y2,y3,y4, strain,f1,f2,f3,f4)
+output_filename = "growth_curves_report.pdf"

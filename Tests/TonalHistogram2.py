@@ -1,3 +1,8 @@
+#####
+#####
+#OLD SYTLING
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
@@ -8,8 +13,8 @@ green_hex= 'ffd166'  # Hex for NEW
 red_hex = 'f18701'  # Hex for OVERLAP
 
 
-DARK = '#0B4D5A'
-LIGHT = '#0F8660'
+DARK = '#'
+LIGHT = '#E8E8E8'
 ACCENT = "#4169E1"
 OVERLAP = "#D3784A"  # Dark magenta for overlap
 
@@ -99,8 +104,8 @@ def create_comparative_tonal_histogram(image_path1, image_path2):
    
     plt.tight_layout()
     plt.show()
-# image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0.jpg"
-# image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0C.jpg"
+image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0.jpg"
+image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0C.jpg"
 
 image_path1 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/DATASET/0C.jpg"
 image_path2 = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Image Segmentation/MiddletonalUnseen.jpg"

@@ -17,7 +17,6 @@ import time
 import math 
 import sys
 
-
 from Processing import *
 from outputs import *
 
@@ -372,8 +371,8 @@ def display_final_image(window, override =False):
         result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
 
         #comment out later, for testing and report
-        path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
-        cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
+        # path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
+        # cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
         # # cv2.imshow("marked", resize_for_display(marked_image))
 
         #checking to see if the window has current into to avoid cracshing
@@ -389,9 +388,9 @@ def display_final_image(window, override =False):
         else:
             print("Error: current_info not initialized")
 
-        # print("TESTER INFORMATION:") 
-        # print("_______________________________________________________________________")
-        # print(window.current_info['filename'])
+        print("TESTER INFORMATION:") 
+        print("_______________________________________________________________________")
+        print(window.current_info['filename'])
         print(ordered_counts["Strain 1"])    
         print(ordered_counts["Strain 2"])   
         print(ordered_counts["Strain 3"])   
@@ -1243,17 +1242,6 @@ def upload_txt_file(window):
             window.current_info = None
 
 
-# #For testing so i can upload anything
-# def upload_images(window):
-#     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-
-#     if file_paths:
-#         window.image_paths = list(file_paths)
-#         window.current_image_index = 0
-#         load_current_image(window)
-#     else:
-#         messagebox.showwarning("Warning", "No images were selected.")
-
 
 def upload_images(window):
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
@@ -1261,7 +1249,7 @@ def upload_images(window):
    #check that there are filepaths and that everything is initilised
     if file_paths and hasattr(window, 'image_info'):
         window.image_paths = []
-        unmatched_filenames = []  #collect unmatched filenames
+        unmatched_filenames = []  # Collect unmatched filenames
 
         #this is looking at the seleted files and seeing if the names match the textfile
         for info in window.image_info:
@@ -1398,7 +1386,7 @@ def display_images(window):
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contour_img = img_np.copy()
             for cntr in contours:
-                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
+                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 2)
             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img 
             # cv2.imshow("contours2345", resize_for_display(contour_img))
@@ -1569,7 +1557,7 @@ def initialize_window_attributes(window):
 
 #creating the frame with title and icon
 window = Tk()
-window.geometry("1440x1000")
+window.geometry("1440x1024")
 window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
