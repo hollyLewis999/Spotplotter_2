@@ -5,7 +5,7 @@
 
 from pathlib import Path
 import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Frame, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
 from tkinter import ttk
 import cv2
 import numpy as np
@@ -452,7 +452,11 @@ def display_final_image(window, override =False):
     window.progress_label.pack(side="left")
     
     update_progress_bar(window)
-    
+
+
+
+
+
 def create_editFrame(window, backToEdit = False):
     global backToEdit2 #have to put this here if i want to edit it within this function
 
@@ -466,7 +470,6 @@ def create_editFrame(window, backToEdit = False):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
-    
 
     image_image_1 = PhotoImage(
         file=relative_to_assets("image_1.png"))
@@ -687,15 +690,74 @@ def create_editFrame(window, backToEdit = False):
 
     total_width = 1295 - 34
     total_height = 783 - 203
-    img_width = total_width // 2 -50 #each must be half the width
+    img_width = total_width // 2 - 50
     img_height = total_height
 
-    window.left_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
-    window.left_canvas.place(x=30, y=303)
-    window.right_canvas = Canvas(window, width=img_width, height=img_height, bg=DARK, highlightthickness=0)
-    window.right_canvas.place(x=690, y=303)
+    # Create frames to hold canvas and scrollbars
+    left_frame = Frame(window, bg=DARK)
+    right_frame = Frame(window, bg=DARK)
+    
+    # Create canvases with scrollbars
+    window.left_canvas = Canvas(
+        left_frame,
+        width=img_width,
+        height=img_height,
+        bg=DARK,
+        highlightthickness=0
+    )
+    left_scroll_y = Scrollbar(left_frame, orient="vertical", command=window.left_canvas.yview)
+    left_scroll_x = Scrollbar(left_frame, orient="horizontal", command=window.left_canvas.xview)
+    window.left_canvas.configure(xscrollcommand=left_scroll_x.set, yscrollcommand=left_scroll_y.set)
 
+    window.right_canvas = Canvas(
+        right_frame,
+        width=img_width,
+        height=img_height,
+        bg=DARK,
+        highlightthickness=0
+    )
+    right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
+    right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
+    window.right_canvas.configure(xscrollcommand=right_scroll_x.set, yscrollcommand=right_scroll_y.set)
 
+    # Grid layout for scrollbars
+    window.left_canvas.grid(row=0, column=0, sticky="nsew")
+    left_scroll_y.grid(row=0, column=1, sticky="ns")
+    left_scroll_x.grid(row=1, column=0, sticky="ew")
+    
+    window.right_canvas.grid(row=0, column=0, sticky="nsew")
+    right_scroll_y.grid(row=0, column=1, sticky="ns")
+    right_scroll_x.grid(row=1, column=0, sticky="ew")
+
+    # Configure grid weights
+    left_frame.grid_rowconfigure(0, weight=1)
+    left_frame.grid_columnconfigure(0, weight=1)
+    right_frame.grid_rowconfigure(0, weight=1)
+    right_frame.grid_columnconfigure(0, weight=1)
+
+    # Position the frames
+    left_frame.place(x=30, y=203, width=img_width + 20, height=img_height + 20)
+    right_frame.place(x=690, y=203, width=img_width + 20, height=img_height + 20)
+
+    # Initialize zoom level
+    window.zoom_level = 1.0
+    
+    # Set up zoom controls and bindings
+    setup_zoom_controls(window)
+    window.left_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
+    window.right_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
+
+    # Synchronize scrolling between canvases
+    def on_left_scroll(*args):
+        window.right_canvas.yview_moveto(args[1])
+    
+    def on_right_scroll(*args):
+        window.left_canvas.yview_moveto(args[1])
+
+    window.left_canvas.configure(yscrollcommand=lambda *args: (left_scroll_y.set(*args), on_left_scroll(*args)))
+    window.right_canvas.configure(yscrollcommand=lambda *args: (right_scroll_y.set(*args), on_right_scroll(*args)))
+    
+    # Display images
     display_images(window)
     
     create_rounded_button(
@@ -763,9 +825,36 @@ def create_editFrame(window, backToEdit = False):
    
     return canvas
 
+def update_zoomed_images(window):
+    """Update both canvases with zoomed images, maintaining scrollable content"""
+    window.left_canvas.delete("all")
+    window.right_canvas.delete("all")
+    
+    left_img = window.current_image
+    right_img = window.processed_image
+    
+    if left_img and right_img:
+        # Calculate zoomed dimensions
+        new_width = int(left_img.width * window.zoom_level)
+        new_height = int(left_img.height * window.zoom_level)
+        
+        # Resize images
+        left_img_zoomed = left_img.resize((new_width, new_height), Image.LANCZOS)
+        right_img_zoomed = right_img.resize((new_width, new_height), Image.LANCZOS)
+        
+        # Convert to PhotoImage
+        window.left_photo = ImageTk.PhotoImage(left_img_zoomed)
+        window.right_photo = ImageTk.PhotoImage(right_img_zoomed)
+        
+        # Set scroll region to the full size of the zoomed image
+        window.left_canvas.config(scrollregion=(0, 0, new_width, new_height))
+        window.right_canvas.config(scrollregion=(0, 0, new_width, new_height))
+        
+        # Display images at (0,0) - scrolling will handle visibility
+        window.left_canvas.create_image(0, 0, anchor=NW, image=window.left_photo)
+        window.right_canvas.create_image(0, 0, anchor=NW, image=window.right_photo)
 
 
-#if the grid is not detectecd correctly then the user can ovverride it 
 def open_grid_override(window):
     for widget in window.winfo_children():
         widget.destroy()
@@ -1373,22 +1462,154 @@ def toggle_image(window):
     window.show_original = not window.show_original
     display_images(window)
 
-def display_images(window):
+# def display_images(window):
 
+#     try:
+#         #right image = editing image
+#         # cv2.imshow("debug image", resize_for_display(window.debug_image))
+#         # cv2.waitKey(0)
+#         # cv2.destroyAllWindows()
+#         img_editing = Image.fromarray(window.debug_image)
+#         img_editing.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
+#         window.photo_editing = ImageTk.PhotoImage(img_editing)
+#         window.right_canvas.config(width=window.photo_editing.width(), height=window.photo_editing.height())
+#         window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
+#         window.display_width = window.photo_editing.width()
+#         window.display_height = window.photo_editing.height()
+
+#         #toggleable left image
+#         if window.show_original:
+#             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
+#         else:
+#             img_np = window.current_image
+#             img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
+#             img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
+#             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+#             contour_img = img_np.copy()
+#             for cntr in contours:
+#                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
+#             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
+#             window.current_info["IMGcontours"] = contour_img 
+#             # cv2.imshow("contours2345", resize_for_display(contour_img))
+#             # # # cv2.imshow("contours", resize_for_display(window.marked_image))
+#             # cv2.waitKey(0)
+#             # cv2.destroyAllWindows()
+#             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
+#         img_left.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
+#         window.photo_left = ImageTk.PhotoImage(img_left)
+#         window.left_canvas.config(width=window.photo_left.width(), height=window.photo_left.height())
+#         window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
+
+
+#     except Exception as e:
+#         print(f"Error in display_images: {e}")
+
+
+def setup_zoom_controls(window):
+    """Set up zoom controls and initialize zoom-related variables"""
+    window.zoom_level = 1.0
+    window.zoom_min = 0.5
+    window.zoom_max = 5.0
+    
+    # Create zoom frame
+    zoom_frame = Frame(window, bg=DARK)
+    zoom_frame.place(x=1376, y=300)
+    
+    # Zoom in button
+    zoom_in_btn = Button(
+        zoom_frame,
+        text="+",
+        command=lambda: adjust_zoom(window, 1.2),
+        font=(FONT, 12, 'bold'),
+        bg=DARK,
+        fg=LIGHT,
+        width=2
+    )
+    zoom_in_btn.pack(pady=2)
+    
+    # Zoom out button
+    zoom_out_btn = Button(
+        zoom_frame,
+        text="-",
+        command=lambda: adjust_zoom(window, 0.8),
+        font=(FONT, 12, 'bold'),
+        bg=DARK,
+        fg=LIGHT,
+        width=2
+    )
+    zoom_out_btn.pack(pady=2)
+    
+    # Add scrollbars for both canvases
+    add_scrollbars(window)
+
+def add_scrollbars(window):
+    """Add scrollbars to both canvases"""
+    # Left canvas scrollbars
+    left_frame = Frame(window)
+    left_frame.place(x=30, y=303)
+    
+    left_scrollbar_y = Scrollbar(left_frame)
+    left_scrollbar_y.pack(side=RIGHT, fill=Y)
+    
+    left_scrollbar_x = Scrollbar(left_frame, orient=HORIZONTAL)
+    left_scrollbar_x.pack(side=BOTTOM, fill=X)
+    
+    window.left_canvas.config(
+        xscrollcommand=left_scrollbar_x.set,
+        yscrollcommand=left_scrollbar_y.set
+    )
+    left_scrollbar_x.config(command=window.left_canvas.xview)
+    left_scrollbar_y.config(command=window.left_canvas.yview)
+    
+    # Right canvas scrollbars
+    right_frame = Frame(window)
+    right_frame.place(x=690, y=303)
+    
+    right_scrollbar_y = Scrollbar(right_frame)
+    right_scrollbar_y.pack(side=RIGHT, fill=Y)
+    
+    right_scrollbar_x = Scrollbar(right_frame, orient=HORIZONTAL)
+    right_scrollbar_x.pack(side=BOTTOM, fill=X)
+    
+    window.right_canvas.config(
+        xscrollcommand=right_scrollbar_x.set,
+        yscrollcommand=right_scrollbar_y.set
+    )
+    right_scrollbar_x.config(command=window.right_canvas.xview)
+    right_scrollbar_y.config(command=window.right_canvas.yview)
+
+def adjust_zoom(window, factor):
+    """Adjust zoom level and trigger display update"""
+    new_zoom = window.zoom_level * factor
+    if window.zoom_min <= new_zoom <= window.zoom_max:
+        window.zoom_level = new_zoom
+        display_images(window)
+
+def display_images(window):
+    """Updated display_images function with zoom support"""
     try:
-        #right image = editing image
-        # cv2.imshow("debug image", resize_for_display(window.debug_image))
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
+        # Calculate zoomed dimensions
+        zoomed_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
+        zoomed_height = int((window.winfo_height() - 200) * window.zoom_level)
+
+        # Right image (editing image)
         img_editing = Image.fromarray(window.debug_image)
-        img_editing.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
+        img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
         window.photo_editing = ImageTk.PhotoImage(img_editing)
-        window.right_canvas.config(width=window.photo_editing.width(), height=window.photo_editing.height())
+        
+        # Configure right canvas
+        window.right_canvas.config(
+            width=window.photo_editing.width(),
+            height=window.photo_editing.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
         window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
+        
+        # Store display dimensions
         window.display_width = window.photo_editing.width()
         window.display_height = window.photo_editing.height()
 
-        #toggleable left image
+        # Left image (toggleable)
         if window.show_original:
             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
         else:
@@ -1400,48 +1621,73 @@ def display_images(window):
             for cntr in contours:
                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
-            window.current_info["IMGcontours"] = contour_img 
-            # cv2.imshow("contours2345", resize_for_display(contour_img))
-            # # # cv2.imshow("contours", resize_for_display(window.marked_image))
-            # cv2.waitKey(0)
-            # cv2.destroyAllWindows()
+            window.current_info["IMGcontours"] = contour_img
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-        img_left.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
-        window.photo_left = ImageTk.PhotoImage(img_left)
-        window.left_canvas.config(width=window.photo_left.width(), height=window.photo_left.height())
-        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
 
+        # Resize left image with zoom
+        img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        window.photo_left = ImageTk.PhotoImage(img_left)
+        
+        # Configure left canvas
+        window.left_canvas.config(
+            width=window.photo_left.width(),
+            height=window.photo_left.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
+        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
 
     except Exception as e:
         print(f"Error in display_images: {e}")
 
+# Update the draw functions to work with zoom
 def start_draw(window, event):
     window.is_drawing = True
-    window.last_x = event.x
-    window.last_y = event.y
+    window.last_x = event.widget.canvasx(event.x)
+    window.last_y = event.widget.canvasy(event.y)
     window.active_canvas = event.widget
     draw(window, event)
 
 def draw(window, event):
     if window.is_drawing:
-        x, y = event.x, event.y
+        # Get current canvas coordinates considering scroll
+        x = window.active_canvas.canvasx(event.x)
+        y = window.active_canvas.canvasy(event.y)
+        
+        # Get actual image dimensions
         img_height, img_width = window.binarized_image.shape[:2]
-        scale_x = img_width / window.display_width
-        scale_y = img_height / window.display_height
-
-        x_img = int(x * scale_x)
-        y_img = int(y * scale_y)
-        last_x_img = int(window.last_x * scale_x)
-        last_y_img = int(window.last_y * scale_y)
-
+        
+        # Calculate scaling factors considering zoom
+        scale_x = img_width / (window.display_width / window.zoom_level)
+        scale_y = img_height / (window.display_height / window.zoom_level)
+        
+        # Convert coordinates
+        x_img = int(x / window.zoom_level * scale_x)
+        y_img = int(y / window.zoom_level * scale_y)
+        last_x_img = int(window.last_x / window.zoom_level * scale_x)
+        last_y_img = int(window.last_y / window.zoom_level * scale_y)
+        
+        # Apply drawing operation
         if window.mode == "flood":
             flood_erase(window, x_img, y_img)
         else:
+            # Scale brush size with zoom
+            original_brush_size = window.brush_size
+            window.brush_size = max(1, int(window.brush_size / window.zoom_level))
             brush_draw(window, last_x_img, last_y_img, x_img, y_img)
-
+            window.brush_size = original_brush_size
+        
         window.last_x = x
         window.last_y = y
         display_images(window)
+
+
+def mouse_zoom(window, event):
+    """Handle mouse wheel zoom"""
+    if event.delta > 0:
+        adjust_zoom(window, 1.1)
+    else:
+        adjust_zoom(window, 0.9)
+
 
 def stop_draw(window, event):
     window.is_drawing = False
