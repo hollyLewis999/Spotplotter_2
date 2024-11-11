@@ -1754,8 +1754,8 @@ def add_to_history(window):
         window.redo_stack.clear()
         update_undo_redo_buttons(window)
 
-def clear_history(window):
-
+def clear_history(window): 
+    print()
     window.history.clear()
     window.redo_stack.clear()
 
