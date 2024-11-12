@@ -453,9 +453,298 @@ def display_final_image(window, override =False):
     
     update_progress_bar(window)
 
+def create_slidersFrame(window):
+    # Create main canvas
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    image_image_1 = PhotoImage(
+        file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: create_editFrame(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "slidersNext" )
+
+    # Main dark rectangle for image area
+    round_rectangle(canvas,
+        17.0,
+        168.0,
+        1100.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+    # Control panel rectangle
+    round_rectangle(canvas,
+        1120.0,
+        168.0,
+        1422.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+    # Create frame for image canvas
+    main_frame = Frame(window, bg=DARK)
+    main_frame.place(x=27, y=178, width=1070, height=638)
+
+    # Create single canvas for image display
+    window.image_canvas = Canvas(
+        main_frame,
+        width=1050,
+        height=580,
+        bg=DARK,
+        highlightthickness=0
+    )
+    window.image_canvas.pack(expand=True, fill='both')
+
+    # Control panel
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+
+    # Sliders setup
+    y_offset = 20
+    spacing = 100
+
+    # Threshold Slider
+    threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    threshold_label.place(x=20, y=y_offset)
+    create_circular_slider(
+        control_frame, 
+        min_val=0, 
+        max_val=40,
+        position=(40, y_offset + 30),
+        command=lambda v: on_contrast_change(window, v, False),
+        initial_value=window.contrast_value
+    )
+
+    # Size Slider
+    size_label = Label(control_frame, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    size_label.place(x=20, y=y_offset + spacing)
+    create_circular_slider(
+        control_frame, 
+        min_val=1, 
+        max_val=100,
+        position=(40, y_offset + spacing + 30),
+        command=lambda v: on_excludeSmallDots(window, v, False),
+        initial_value=window.excludeSmallDots
+    )
+
+    # Block Size Slider
+    block_label = Label(control_frame, text="Block Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    block_label.place(x=20, y=y_offset + spacing * 2)
+    create_circular_slider(
+        control_frame, 
+        min_val=51, 
+        max_val=1001,
+        position=(40, y_offset + spacing * 2 + 30),
+        command=lambda v: on_block_size_change(window, v, False),
+        initial_value=window.block_size if hasattr(window, 'block_size') else 301
+    )
+
+    # Toggle Original/Processed Image
+    create_rounded_button(
+        canvas=canvas,
+        text="Toggle View",
+        command=lambda: toggle_image(window),
+        x=1130,
+        y=y_offset + spacing * 3 + 30,
+        button_tag="Toggle",
+        width=140,
+        height=40,
+        fill=LIGHT,
+        accent=DARK
+    )
+
+    # Next button
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: switch_to_edit_screen(window),
+        x=1130,
+        y=750,
+        button_tag="adjustmentNext"
+    )
+
+    # Progress bar
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(
+        window.progress_frame, 
+        style="styled.Horizontal.TProgressbar", 
+        orient="horizontal",
+        length=150, 
+        mode="determinate", 
+        maximum=100, 
+        value=0
+    )
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    update_progress_bar(window)
+
+    display_image(window)
+    return canvas
+
+def on_contrast_change(window, value, backToEdit = False):
+    global backToEdit2
+    if (backToEdit2 == False):
+        window.contrast_value = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+
+        #save new iamges
+        window.binarized_image = final_binary
+        window.contour_img = contour_img
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+
+        #cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False   
 
 
+def on_excludeSmallDots(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
 
+    if (backToEdit2 == False):
+        window.excludeSmallDots = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+
+def on_block_size_change(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        if int(value)%2 ==0:
+            window.block_size = int(value)+1
+        else:   
+            window.block_size = int(value) 
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+
+def display_image(window):
+    try:
+        # Get original image dimensions
+        original_width = window.debug_image.shape[1]
+        original_height = window.debug_image.shape[0]
+        
+        # Calculate available space
+        canvas_width = 1050  # Fixed canvas width
+        canvas_height = 580  # Fixed canvas height
+        
+        # Calculate scaling factors
+        width_scale = canvas_width / original_width
+        height_scale = canvas_height / original_height
+        scale = min(width_scale, height_scale)
+        
+        # Calculate new dimensions
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+        
+        # Calculate centering offsets
+        x_offset = (canvas_width - new_width) // 2
+        y_offset = (canvas_height - new_height) // 2
+
+
+        img_np = window.debug_image
+        img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+        contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
+        cv2.drawContours(contour_img, contours, -1, (0, 255, 255), 3)
+        
+        window.image_info[window.current_image_index]["IMGcontours"] = contour_img
+        window.current_info["IMGcontours"] = contour_img
+        display_img = contour_img
+
+        # Convert to PIL Image and resize
+        img_pil = Image.fromarray(display_img)
+        img_pil = img_pil.resize((new_width, new_height), Image.LANCZOS)
+        window.photo_image = ImageTk.PhotoImage(img_pil)
+        
+        # Clear canvas and display new image
+        window.image_canvas.delete("all")
+        window.image_canvas.create_image(
+            x_offset,
+            y_offset,
+            anchor="nw",
+            image=window.photo_image
+        )
+
+    except Exception as e:
+        print(f"Error in display_image: {e}")
+
+def on_excludeSmallDots(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        window.excludeSmallDots = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+        #reset history, cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+
+def on_block_size_change(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        if int(value)%2 ==0:
+            window.block_size = int(value)+1
+        else:   
+            window.block_size = int(value) 
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+        #reset history, cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False
 
 def create_editFrame(window, backToEdit = False):
     global backToEdit2 #have to put this here if i want to edit it within this function
@@ -1083,25 +1372,8 @@ def process_image(window):
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
     window.contrast_value = idealContrast
 
-    #For testing 
-    # cv2.imshow("origional", resize_for_display(window.current_image))
-    # cv2.imshow("streached", resize_for_display(stretched))
-    # cv2.imshow("blurred", resize_for_display(blurred))
-    # cv2.imshow("gray_image", resize_for_display(gray_image))
-
-    # stretch_values = [60, 70, 80, 90, 100, 110]
-    # blur_values = [110, 120, 130, 140, 150]
-
-    # for stretch in stretch_values:
-    #     for blur in blur_values:
-    #         stretched, blurred, gray_image = stretch_and_gray(window.current_image, stretch, blur)
-    #         window_name = f"Stretch {stretch} Blur {blur}"
-    #         cv2.imshow(window_name, resize_for_display(stretched))
-
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
     window.gray_image = gray_image
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value)
+    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
 
     window.contour_img = contour_img
     window.binarized_image = final_binary
@@ -1113,8 +1385,8 @@ def process_image(window):
         window.redo_stack = []
     
     update_undo_redo_buttons(window)
-    create_editFrame(window)
-
+    #create_editFrame(window)
+    create_slidersFrame(window)
 
 
 #  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
@@ -1430,7 +1702,7 @@ def on_contrast_change(window, value, backToEdit = False):
 
         #cannot use undo redo buttons to undo this
         clear_history(window)
-        display_images(window)
+        display_image(window)
     else:
         backToEdit2 = False   
  
@@ -1448,7 +1720,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         # print("am i resetting here?")
         #reset history, cannot use undo redo buttons to undo this
         clear_history(window)
-        display_images(window)
+        display_image(window)
     else:
         backToEdit2 = False
 
@@ -1819,6 +2091,7 @@ def initialize_window_attributes(window):
     window.display_images = display_images
     window.excludeSmallDots = 15
     window.contrast_value = 20
+    window.block_size = 301
     window.image_paths = []
     window.current_image_index = 0
     window.next_button = None
