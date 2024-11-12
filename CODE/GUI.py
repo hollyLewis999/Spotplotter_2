@@ -453,229 +453,9 @@ def display_final_image(window, override =False):
     
     update_progress_bar(window)
 
-def display_image(window):
-    """Display images while maintaining original aspect ratio with zoom support"""
-    try:
-        # Get original image dimensions
-        original_width = window.debug_image.shape[1]
-        original_height = window.debug_image.shape[0]
-
-        # Calculate available space
-        max_width = int((window.winfo_width()//2 - 60))
-        max_height = int((window.winfo_height() - 200))
-
-        # Calculate scaling factors for both dimensions
-        width_scale = max_width / original_width
-        height_scale = max_height / original_height
-
-        # Use the smaller scaling factor to maintain aspect ratio
-        scale = min(width_scale, height_scale)
 
 
-        # Display contoured overlayed image
-        img_np = window.current_image
-        img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-        contours, hierarchy = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        contour_img = img_np.copy()
-        for cntr in contours:
-            cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
-        window.current_info["IMGcontours"] = contour_img
 
-        img_contours = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-        img_contours = img_contours.resize((zoomed_width, zoomed_height), Image.LANCZOS)
-        window.photo_contours = ImageTk.PhotoImage(img_contours)
-
-        # Configure canvas
-        window.left_canvas.config(
-            width=window.photo_contours.width(),
-            height=window.photo_contours.height(),
-            scrollregion=(0, 0, zoomed_width, zoomed_height)
-        )
-        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_contours)
-
-        # Store display dimensions
-        window.display_width = window.photo_contours.width()
-        window.display_height = window.photo_contours.height()
-
-    except Exception as e:
-        print(f"Error in display_images: {e}")
-
-def create_slidersFrame(window):
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    # Main dark rectangle for image area
-    round_rectangle(canvas,
-        17.0,
-        168.0,
-        1100.0,  # Reduced width to make room for controls
-        826.0,
-        fill=DARK,
-        outline="")
-
-    # Control panel rectangle
-    round_rectangle(canvas,
-        1120.0,
-        168.0,
-        1422.0,
-        826.0,
-        fill=DARK,
-        outline="")
-
-    # Create frame for image canvas and scrollbars
-    main_frame = Frame(window, bg=DARK)
-
-    # Create canvas with scrollbars
-    window.image_canvas = Canvas(
-        main_frame,
-        width=1050,  # Adjusted width
-        height=580,
-        bg=DARK,
-        highlightthickness=0
-    )
-
-    # Scrollbars
-    # scroll_y = Scrollbar(main_frame, orient="vertical", command=window.image_canvas.yview)
-    # scroll_x = Scrollbar(main_frame, orient="horizontal", command=window.image_canvas.xview)
-
-    # # Configure canvas scroll commands
-    # window.image_canvas.config(
-    #     xscrollcommand=scroll_x.set,
-    #     yscrollcommand=scroll_y.set
-    # )
-
-    # Grid layout
-    window.image_canvas.grid(row=0, column=0, sticky="nsew")
-    # scroll_y.grid(row=0, column=1, sticky="ns")
-    # scroll_x.grid(row=1, column=0, sticky="ew")
-
-    # Configure grid weights
-    main_frame.grid_rowconfigure(0, weight=1)
-    main_frame.grid_columnconfigure(0, weight=1)
-
-    # Position the frame
-    main_frame.place(
-        x=27,
-        y=178,
-        width=1070,
-        height=638
-    )
-
-    # Initialize zoom level and controls
-    # window.zoom_level = 1.0
-    # setup_zoom_controls(window)
-
-    # Create control panel
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-
-    # Sliders with labels above them
-    y_offset = 20
-    spacing = 100
-
-    # Threshold Slider
-    threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    threshold_label.place(x=20, y=y_offset)
-    create_circular_slider(
-        control_frame, 
-        min_val=0, 
-        max_val=40,
-        position=(40, y_offset + 30),
-        command=lambda v: on_contrast_change(window, v, False),
-        initial_value=window.contrast_value
-    )
-
-    # Size Slider
-    size_label = Label(control_frame, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    size_label.place(x=20, y=y_offset + spacing)
-    create_circular_slider(
-        control_frame, 
-        min_val=1, 
-        max_val=100,
-        position=(40, y_offset + spacing + 30),
-        command=lambda v: on_excludeSmallDots(window, v, False),
-        initial_value=window.excludeSmallDots
-    )
-
-    # Block Size Slider
-    block_label = Label(control_frame, text="Block Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    block_label.place(x=20, y=y_offset + spacing * 2)
-    create_circular_slider(
-        control_frame, 
-        min_val=51, 
-        max_val=1001,
-        position=(40, y_offset + spacing * 2 + 30),
-        command=lambda v: on_block_size_change(window, v, False),
-        initial_value=window.block_size if hasattr(window, 'block_size') else 301
-    )
-
-    # Toggle Original/Processed Image
-    create_rounded_button(
-        canvas=canvas,
-        text="Toggle View",
-        command=lambda: toggle_image(window),
-        x=1130,
-        y=y_offset + spacing * 3 + 30,
-        button_tag="Toggle",
-        width=140,
-        height=40,
-        fill=LIGHT,
-        accent=DARK
-    )
-
-    # Next button
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: switch_to_edit_screen(window),
-        x=1130,
-        y=750,
-        button_tag="adjustmentNext"
-    )
-
-    # # Display metadata
-    # if hasattr(window, 'current_info'):
-    #     current_info = window.current_info
-    #     metadata_text = f"Filename: {current_info['filename']}\n"
-    #     metadata_text += f"StrainA: {current_info['strainA']}\n"
-    #     metadata_text += f"StrainB: {current_info['strainB']}\n"
-    #     metadata_text += f"StrainC: {current_info['strainC']}"
-    # else:
-    #     metadata_text = "No metadata available"
-
-    # if hasattr(window, 'metadata_label'):
-    #     window.metadata_label.destroy()
-
-    # window.metadata_label = Label(window, text=metadata_text, font=(FONT, 16 * -1, 'bold'), bg=LIGHT, fg=DARK, justify=LEFT)
-    # window.metadata_label.place(x=50, y=850)
-
-    # Progress bar
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(
-        window.progress_frame, 
-        style="styled.Horizontal.TProgressbar", 
-        orient="horizontal",
-        length=150, 
-        mode="determinate", 
-        maximum=100, 
-        value=0
-    )
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
-
-    display_image(window)
-    return canvas
 
 def create_editFrame(window, backToEdit = False):
     global backToEdit2 #have to put this here if i want to edit it within this function
@@ -1333,10 +1113,6 @@ def process_image(window):
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
-    #create_slidersFrame(window)
-
-
-
 
 
 
@@ -1419,8 +1195,6 @@ def apply_crop(window):
         process_image(window)
     else:
         messagebox.showwarning("Warning", "Please select an area to crop.")
-
-
 
 
 def create_cropFrame(window):
@@ -1646,7 +1420,7 @@ def on_contrast_change(window, value, backToEdit = False):
     global backToEdit2
     if (backToEdit2 == False):
         window.contrast_value = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
 
         #save new iamges
         window.binarized_image = final_binary
@@ -1655,7 +1429,7 @@ def on_contrast_change(window, value, backToEdit = False):
 
         #cannot use undo redo buttons to undo this
         clear_history(window)
-        display_image(window)
+        display_images(window)
     else:
         backToEdit2 = False   
  
@@ -1665,7 +1439,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
 
     if (backToEdit2 == False):
         window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
 
         #save new images
         window.binarized_image = final_binary
@@ -1673,29 +1447,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         # print("am i resetting here?")
         #reset history, cannot use undo redo buttons to undo this
         clear_history(window)
-        display_image(window)
-    else:
-        backToEdit2 = False
-
-
-def on_block_size_change(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        if int(value)%2 ==0:
-            window.block_size = int(value)+1
-        else:   
-            window.block_size = int(value) 
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        clear_history(window)
-        display_image(window)
+        display_images(window)
     else:
         backToEdit2 = False
 
@@ -1831,11 +1583,7 @@ def adjust_zoom(window, factor):
     new_zoom = window.zoom_level * factor
     if window.zoom_min <= new_zoom <= window.zoom_max:
         window.zoom_level = new_zoom
-    # if frame == 0:    
-    #     display_image(window)
-    # if frame == 1:    
-    #     display_images(window)    
-      
+        display_images(window)
 
 def display_images(window):
     """Updated display_images function with zoom support"""
@@ -1974,7 +1722,11 @@ def add_to_history(window):
         update_undo_redo_buttons(window)
 
 def clear_history(window): 
+<<<<<<< HEAD
 
+=======
+    print()
+>>>>>>> parent of 725adea (trying with sliders)
     window.history.clear()
     window.redo_stack.clear()
 
@@ -2054,10 +1806,9 @@ def initialize_window_attributes(window):
     window.last_x = None
     window.last_y = None
     window.update_undo_redo_buttons = update_undo_redo_buttons
-    # window.display_images = display_images
+    window.display_images = display_images
     window.excludeSmallDots = 15
     window.contrast_value = 20
-    window.block_size =301
     window.image_paths = []
     window.current_image_index = 0
     window.next_button = None
