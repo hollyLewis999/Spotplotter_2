@@ -121,10 +121,9 @@ def stretch_and_gray(original_image, show_images=False):
     
  
 
-def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, show_images=False):
+def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, block_size = 301, show_images=False):
     
-    # block_size, divisor_c = 501, 15
-    block_size, divisor_c = 301, 15
+
     c = max(-50, min(int(-contrast), -1))-5
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)   
