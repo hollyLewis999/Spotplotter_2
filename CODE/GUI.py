@@ -689,8 +689,8 @@ def create_editFrame(window, backToEdit = False):
     window.redo_button = redo_button
 
     total_width = 1295 - 34
-    total_height = 783 - 203
-    img_width = total_width // 2 - 50
+    total_height = 783 - 203 - 100
+    img_width = total_width // 2
     img_height = total_height
 
     # Create frames to hold canvas and scrollbars
@@ -735,9 +735,10 @@ def create_editFrame(window, backToEdit = False):
     right_frame.grid_rowconfigure(0, weight=1)
     right_frame.grid_columnconfigure(0, weight=1)
 
+    yposFrames= 300
     # Position the frames
-    left_frame.place(x=30, y=203, width=img_width + 20, height=img_height + 20)
-    right_frame.place(x=690, y=203, width=img_width + 20, height=img_height + 20)
+    left_frame.place(x=30, y=yposFrames, width=img_width + 20, height=img_height + 20)
+    right_frame.place(x=690, y=yposFrames, width=img_width + 20, height=img_height + 20)
 
     # Initialize zoom level
     window.zoom_level = 1.0
@@ -764,33 +765,33 @@ def create_editFrame(window, backToEdit = False):
         canvas=canvas,
         text="Toggle",
         command=lambda: toggle_image(window),
-        x=40,
+        x=1200,
         y=205,
         button_tag = "Toggle",
-        width = 140, 
+        width = 100, 
         height = 60,
         fill = LIGHT,
         accent = DARK)
 
 
-    #sliders
-    smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    smallDots_label.place(x=665, y=223)
-    smallDots_slider = create_circular_slider(
-        window, min_val=1, max_val=100,
-        position=(700, 190),
-        command=lambda v: on_excludeSmallDots(window, v, False),
-        initial_value=window.excludeSmallDots
-    )
+    # #sliders
+    # smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    # smallDots_label.place(x=665, y=223)
+    # smallDots_slider = create_circular_slider(
+    #     window, min_val=1, max_val=100,
+    #     position=(700, 190),
+    #     command=lambda v: on_excludeSmallDots(window, v, False),
+    #     initial_value=window.excludeSmallDots
+    # )
 
-    contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    contrast_label.place(x=220, y=223)
-    contrast_slider = create_circular_slider(
-        window, min_val=0, max_val=40,
-        position=(300, 190),
-        command=lambda v: on_contrast_change(window, v, False),
-        initial_value=window.contrast_value
-    )
+    # contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    # contrast_label.place(x=220, y=223)
+    # contrast_slider = create_circular_slider(
+    #     window, min_val=0, max_val=40,
+    #     position=(300, 190),
+    #     command=lambda v: on_contrast_change(window, v, False),
+    #     initial_value=window.contrast_value
+    # )
 
 
 
@@ -1540,43 +1541,43 @@ def setup_zoom_controls(window):
     zoom_out_btn.pack(pady=2)
     
     # Add scrollbars for both canvases
-    add_scrollbars(window)
+    # add_scrollbars(window)
 
-def add_scrollbars(window):
-    """Add scrollbars to both canvases"""
-    # Left canvas scrollbars
-    left_frame = Frame(window)
-    left_frame.place(x=30, y=303)
+# def add_scrollbars(window):
+#     """Add scrollbars to both canvases"""
+#     # Left canvas scrollbars
+#     left_frame = Frame(window)
+#     left_frame.place(x=30, y=303)
     
-    left_scrollbar_y = Scrollbar(left_frame)
-    left_scrollbar_y.pack(side=RIGHT, fill=Y)
+#     left_scrollbar_y = Scrollbar(left_frame)
+#     left_scrollbar_y.pack(side=RIGHT, fill=Y)
     
-    left_scrollbar_x = Scrollbar(left_frame, orient=HORIZONTAL)
-    left_scrollbar_x.pack(side=BOTTOM, fill=X)
+#     left_scrollbar_x = Scrollbar(left_frame, orient=HORIZONTAL)
+#     left_scrollbar_x.pack(side=BOTTOM, fill=X)
     
-    window.left_canvas.config(
-        xscrollcommand=left_scrollbar_x.set,
-        yscrollcommand=left_scrollbar_y.set
-    )
-    left_scrollbar_x.config(command=window.left_canvas.xview)
-    left_scrollbar_y.config(command=window.left_canvas.yview)
+#     window.left_canvas.config(
+#         xscrollcommand=left_scrollbar_x.set,
+#         yscrollcommand=left_scrollbar_y.set
+#     )
+#     left_scrollbar_x.config(command=window.left_canvas.xview)
+#     left_scrollbar_y.config(command=window.left_canvas.yview)
     
-    # Right canvas scrollbars
-    right_frame = Frame(window)
-    right_frame.place(x=690, y=303)
+#     # Right canvas scrollbars
+#     right_frame = Frame(window)
+#     right_frame.place(x=690, y=303)
     
-    right_scrollbar_y = Scrollbar(right_frame)
-    right_scrollbar_y.pack(side=RIGHT, fill=Y)
+#     right_scrollbar_y = Scrollbar(right_frame)
+#     right_scrollbar_y.pack(side=RIGHT, fill=Y)
     
-    right_scrollbar_x = Scrollbar(right_frame, orient=HORIZONTAL)
-    right_scrollbar_x.pack(side=BOTTOM, fill=X)
+#     right_scrollbar_x = Scrollbar(right_frame, orient=HORIZONTAL)
+#     right_scrollbar_x.pack(side=BOTTOM, fill=X)
     
-    window.right_canvas.config(
-        xscrollcommand=right_scrollbar_x.set,
-        yscrollcommand=right_scrollbar_y.set
-    )
-    right_scrollbar_x.config(command=window.right_canvas.xview)
-    right_scrollbar_y.config(command=window.right_canvas.yview)
+#     window.right_canvas.config(
+#         xscrollcommand=right_scrollbar_x.set,
+#         yscrollcommand=right_scrollbar_y.set
+#     )
+#     right_scrollbar_x.config(command=window.right_canvas.xview)
+#     right_scrollbar_y.config(command=window.right_canvas.yview)
 
 def adjust_zoom(window, factor):
     """Adjust zoom level and trigger display update"""
@@ -1586,12 +1587,27 @@ def adjust_zoom(window, factor):
         display_images(window)
 
 def display_images(window):
-    """Updated display_images function with zoom support"""
+    """Display images while maintaining original aspect ratio with zoom support"""
     try:
-        # Calculate zoomed dimensions
-        zoomed_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
-        zoomed_height = int((window.winfo_height() - 200) * window.zoom_level)
-
+        # Get original image dimensions
+        original_width = window.debug_image.shape[1]
+        original_height = window.debug_image.shape[0]
+        
+        # Calculate available space
+        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
+        max_height = int((window.winfo_height() - 200) * window.zoom_level)
+        
+        # Calculate scaling factors for both dimensions
+        width_scale = max_width / original_width
+        height_scale = max_height / original_height
+        
+        # Use the smaller scaling factor to maintain aspect ratio
+        scale = min(width_scale, height_scale)
+        
+        # Calculate new dimensions
+        zoomed_width = int(original_width * scale)
+        zoomed_height = int(original_height * scale)
+        
         # Right image (editing image)
         img_editing = Image.fromarray(window.debug_image)
         img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
@@ -1608,7 +1624,7 @@ def display_images(window):
         # Store display dimensions
         window.display_width = window.photo_editing.width()
         window.display_height = window.photo_editing.height()
-
+        
         # Left image (toggleable)
         if window.show_original:
             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
@@ -1623,8 +1639,8 @@ def display_images(window):
             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-
-        # Resize left image with zoom
+            
+        # Resize left image with zoom while maintaining aspect ratio
         img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
         window.photo_left = ImageTk.PhotoImage(img_left)
         
@@ -1635,7 +1651,6 @@ def display_images(window):
             scrollregion=(0, 0, zoomed_width, zoomed_height)
         )
         window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
-
     except Exception as e:
         print(f"Error in display_images: {e}")
 
@@ -1722,11 +1737,6 @@ def add_to_history(window):
         update_undo_redo_buttons(window)
 
 def clear_history(window): 
-<<<<<<< HEAD
-
-=======
-    print()
->>>>>>> parent of 725adea (trying with sliders)
     window.history.clear()
     window.redo_stack.clear()
 
