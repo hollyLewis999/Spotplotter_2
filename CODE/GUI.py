@@ -1973,12 +1973,8 @@ def add_to_history(window):
         window.redo_stack.clear()
         update_undo_redo_buttons(window)
 
-<<<<<<< HEAD
-def clear_history(window): 
-=======
-def clear_history(window):
 
->>>>>>> parent of a554a42 (trying to improve the draw speed starting HERE)
+def clear_history(window): 
     window.history.clear()
     window.redo_stack.clear()
 
