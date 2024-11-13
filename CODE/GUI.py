@@ -996,7 +996,7 @@ def create_editFrame(window, backToEdit = False):
     )
     left_scroll_y = Scrollbar(left_frame, orient="vertical", command=window.left_canvas.yview)
     left_scroll_x = Scrollbar(left_frame, orient="horizontal", command=window.left_canvas.xview)
-    window.left_canvas.configure(xscrollcommand=left_scroll_x.set, yscrollcommand=left_scroll_y.set)
+
 
     window.right_canvas = Canvas(
         right_frame,
@@ -1007,13 +1007,43 @@ def create_editFrame(window, backToEdit = False):
     )
     right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
     right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
-    window.right_canvas.configure(xscrollcommand=right_scroll_x.set, yscrollcommand=right_scroll_y.set)
+
+
+    # Synchronization functions
+    def sync_scroll_y_left(*args):
+        window.right_canvas.yview_moveto(args[0])
+
+    def sync_scroll_y_right(*args):
+        window.left_canvas.yview_moveto(args[0])
+
+    def sync_scroll_x_left(*args):
+        window.right_canvas.xview_moveto(args[0])
+
+    def sync_scroll_x_right(*args):
+        window.left_canvas.xview_moveto(args[0])
+
+    # Configure scrollbar synchronization
+    window.left_canvas.configure(
+        xscrollcommand=lambda *args: (left_scroll_x.set(*args), sync_scroll_x_left(*args)),
+        yscrollcommand=lambda *args: (left_scroll_y.set(*args), sync_scroll_y_left(*args))
+    )
+
+    window.right_canvas.configure(
+        xscrollcommand=lambda *args: (right_scroll_x.set(*args), sync_scroll_x_right(*args)),
+        yscrollcommand=lambda *args: (right_scroll_y.set(*args), sync_scroll_y_right(*args))
+    )
+
+    # Configure scrollbar commands to update both canvases
+    left_scroll_y.configure(command=lambda *args: (window.left_canvas.yview(*args), window.right_canvas.yview(*args)))
+    left_scroll_x.configure(command=lambda *args: (window.left_canvas.xview(*args), window.right_canvas.xview(*args)))
+    right_scroll_y.configure(command=lambda *args: (window.right_canvas.yview(*args), window.left_canvas.yview(*args)))
+    right_scroll_x.configure(command=lambda *args: (window.right_canvas.xview(*args), window.left_canvas.xview(*args)))
 
     # Grid layout for scrollbars
     window.left_canvas.grid(row=0, column=0, sticky="nsew")
     left_scroll_y.grid(row=0, column=1, sticky="ns")
     left_scroll_x.grid(row=1, column=0, sticky="ew")
-    
+        
     window.right_canvas.grid(row=0, column=0, sticky="nsew")
     right_scroll_y.grid(row=0, column=1, sticky="ns")
     right_scroll_x.grid(row=1, column=0, sticky="ew")

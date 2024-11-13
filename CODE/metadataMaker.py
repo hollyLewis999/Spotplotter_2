@@ -253,7 +253,7 @@ class PlateAssignmentScreen:
             self.column_assignments = {}
             
             self.update_plate_display()
-            messagebox.showinfo("Success", f"Created new plate: {name}")
+           
     def unselect_position(self, event):
         if not self.plates:
             return
@@ -364,8 +364,7 @@ class PlateAssignmentScreen:
         self.update_plate_display()    
     def update_plate_display(self):
         self.plate_canvas.delete('all')
-        
-        # Get canvas dimensions
+
         width = self.plate_canvas.winfo_width()
         height = self.plate_canvas.winfo_height()
         if width <= 1 or height <= 1:
@@ -390,7 +389,13 @@ class PlateAssignmentScreen:
         
         if self.plates:
             plate = self.plates[self.current_plate]
-            
+            self.plate_canvas.create_text(
+                width // 2,  # Center horizontally
+                20,         # Position from top
+                text=f"Current Plate: {plate['name']}{'  (ATC)' if plate['atc'] else ''}",
+                fill=LIGHT,
+                font=(FONT, 16, 'bold')
+             )
             # Draw position labels and spots
             current_x = margin_left
             for position_idx in range(self.num_strains):
@@ -665,6 +670,8 @@ class PlateAssignmentScreen:
                  x1, y1+radius,
                  x1, y1]
         return self.canvas.create_polygon(points, smooth=True, **kwargs)
+
+
 class PlateLayoutDesigner:
     def __init__(self, root):
         self.root = root
