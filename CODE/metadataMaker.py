@@ -6,10 +6,11 @@ from datetime import datetime
 import random
 # Constants
 DARK = "#2B2B2B"
+DARK = "#092934"
 LIGHT = "#FFFFFF"
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
-FONT = "Helvetica"
+FONT = "Microsoft New Tai Lue"
 
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 
@@ -19,7 +20,7 @@ class PlateAssignmentScreen:
             self.layout_data = layout_data
             self.plates = []
             self.strains = []
-            self.strain_colors = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
+            self.strain_colors = COLORS
             self.current_color_index = 0
             self.current_plate = 0
             self.strain_buttons = []
@@ -683,7 +684,7 @@ class PlateLayoutDesigner:
         self.rows = tk.IntVar(value=8)
         self.columns = tk.IntVar(value=12)
         self.strains = tk.IntVar(value=2)
-        self.x_dilution = tk.IntVar(value=2)
+        self.x_dilution = tk.IntVar(value=10)
         self.y_dilution = tk.IntVar(value=2)
         self.gap_between_strains = tk.BooleanVar(value=False)
         self.removed_positions = set()
@@ -848,7 +849,7 @@ class PlateLayoutDesigner:
             self.plate_canvas.create_text(
                 margin - 20,
                 margin + row * cell_height + cell_height/2,
-                text=f"1/{y_value}",
+                text=y_value,
                 fill=LIGHT,
                 font=(FONT, 8)
             )
@@ -865,7 +866,7 @@ class PlateLayoutDesigner:
                 self.plate_canvas.create_text(
                     x_pos,
                     margin - 20,
-                    text=f"1/{x_value}",
+                    text=x_value,
                     fill=LIGHT,
                     font=(FONT, 8)
                 )
