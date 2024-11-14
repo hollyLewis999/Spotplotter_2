@@ -643,20 +643,86 @@ class PlateAssignmentScreen:
             self.current_plate += 1
             self.update_plate_display()
 
+
+
     def export_data(self):
-        export_data = {
-            'layout': self.layout_data,
-            'plates': self.plates,
-            'strains': self.strains,
-            'strain_colors': self.strain_colors,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        with open("plate_assignment_data.json", "w") as f:
-            json.dump(export_data, f, indent=2)
-
-        messagebox.showinfo("Success", "Data exported successfully!")
+        all_plate_info = []
         
+        for plate in self.plates:
+            # Initialize empty 2D array for unordered quantifications
+            rows = self.layout_data['rows']
+            cols = self.layout_data['columns']
+            unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
+            
+            # Get ordered strains and their column assignments for this specific plate
+            ordered_assignments = []
+            plate_assignments = plate.get('assignments', {})
+            
+            # Create a mapping of columns to strains for this plate
+            column_to_strain = {}
+            for pos_key, strain in plate_assignments.items():
+                row, col = map(int, pos_key.split('-'))
+                column_to_strain[col] = strain
+            
+            # Process assignments in order of positions
+            for pos_idx in range(self.num_strains):
+                start_col, end_col = self.strain_positions[pos_idx]
+                
+                # Find the strain assigned to this position by checking any row
+                strain = None
+                for col in range(start_col, end_col + 1):
+                    test_key = f"0-{col}"  # Check first row
+                    if test_key in plate_assignments:
+                        strain = plate_assignments[test_key]
+                        break
+                
+                # If a strain is found for this position, add it to ordered assignments
+                if strain:
+                    ordered_assignments.append({
+                        'strain': strain,
+                        'columns': list(range(start_col, end_col + 1))
+                    })
+            
+            # Extract ordered strains and their column indexes
+            strains = [assignment['strain'] for assignment in ordered_assignments]
+            column_indexes = [assignment['columns'] for assignment in ordered_assignments]
+                    
+            # Calculate dilutions array based on x and y dilutions
+            x_dilution = self.layout_data['x_dilution']
+            y_dilution = self.layout_data['y_dilution']
+            dilutions = []  # You may want to add dilution calculation logic here
+            
+            # Create info dictionary for this plate
+            plate_info = {
+                'filename': plate['name'],
+                'atc': plate['atc'],
+                'dilutions': dilutions,
+                'unorderedquantifications': unordered_quantifications,
+                'IMGcontours': None,
+                'IMGbinary': None,
+                'IMGgrid': None,
+                'threshold': 0,
+                'smallArea': 0,
+                'blocksize': 0,
+                'strains': strains,  # List of strain names in order of appearance
+                'column_indexes': column_indexes,  # List of column indexes for each strain
+                'ordered_quantifications': {},
+                'strain_positions': self.strain_positions,
+                'removed_positions': list(self.removed_positions),
+                'layout': {
+                    'rows': rows,
+                    'columns': cols,
+                    'x_dilution': x_dilution,
+                    'y_dilution': y_dilution,
+                    'gap_between_strains': self.layout_data['gap_between_strains']
+                }
+            }
+            
+            all_plate_info.append(plate_info)
+        print(all_plate_info)
+        return all_plate_info
+
+
     def round_rectangle(self, x1, y1, x2, y2, radius=25, **kwargs):
         points = [x1+radius, y1,
                  x2-radius, y1,

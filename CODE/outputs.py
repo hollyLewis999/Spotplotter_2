@@ -21,6 +21,8 @@ import openpyxl
 
 
 DILUTIONSERIES = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+ATCcolours = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"]
+nonATCcolours = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"]
     
 FONT = "Microsoft New Tai Lue"
 plt.rcParams['font.family'] = FONT

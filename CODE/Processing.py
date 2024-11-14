@@ -13,7 +13,8 @@ import matplotlib.pyplot as plt
 import math
 from scipy import ndimage
 from scipy import stats
-COLOUMS = 12
+COLOUMS = 11
+ROWS = 6
 import seaborn as sns
 
 
@@ -205,12 +206,12 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
 
 def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
     height, width = binary_image.shape
-    max_radius = int(width/24) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
+    max_radius = int(width/(COLOUMS*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
 
-    counts = np.zeros((8, 12))
+    counts = np.zeros((ROWS, COLOUMS))
 
     x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     grid_calculated = False
@@ -299,24 +300,24 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         print(f"Modal difference between cluster means: {modal_diff}")
 
         # if (len(clusters) >5):
-        if True:    
-            #combine clusters that are too close to be together
-            combined_clusters = []
-            combined_indices = []  #indicies
-            i = 0
-            while i < len(clusters):
-                current_combined = clusters[i]
-                combined_group = [i]
-                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                    current_combined.extend(clusters[i+1])
-                    combined_group.append(i+1)
-                    i += 1
-                combined_clusters.append(current_combined)
-                if len(combined_group) > 1:
-                    combined_indices.append(combined_group)
-                i += 1
+        # if True:    
+        #     #combine clusters that are too close to be together
+        #     combined_clusters = []
+        #     combined_indices = []  #indicies
+        #     i = 0
+        #     while i < len(clusters):
+        #         current_combined = clusters[i]
+        #         combined_group = [i]
+        #         while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
+        #             current_combined.extend(clusters[i+1])
+        #             combined_group.append(i+1)
+        #             i += 1
+        #         combined_clusters.append(current_combined)
+        #         if len(combined_group) > 1:
+        #             combined_indices.append(combined_group)
+        #         i += 1
 
-            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
+        #     final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
 
         if True:    
             #combine clusters that are too close to be together
@@ -454,8 +455,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     grid_start_x = min(x_clusters) - cell_size / 2
     grid_start_y = min(y_clusters) - cell_size / 2
     
-    grid_width = cell_size * 12
-    grid_height = cell_size * 8
+    grid_width = cell_size * COLOUMS
+    grid_height = cell_size * ROWS
     
     #making sure its startin within the bounds
     if grid_start_x + grid_width > width:
@@ -468,7 +469,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
 
     height, width = binary_image.shape
-    rows, cols = 8, 12  #8x12 grid
+    rows, cols = ROWS, COLOUMS  #8x12 grid
 
     #https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
     #checks how many spots there are, takes into account the touching white pixels are one area
@@ -564,8 +565,18 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             
             #place text
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-     
+    counts = [
+    [3678, 2090, 1426,    0, 3569, 2125, 1421,    0, 3174, 1687,  605,    0],
+    [2738, 1857, 1451,    0, 2774, 1927, 1315,    0, 2544, 1647,  550,    0],
+    [2520, 1489, 1165,    0, 2790, 1616, 1206,    0, 2466, 1503,   73,    0],
+    [2570, 1873,  829,    0, 2616, 1781, 1038,   29, 2342, 1493,   63,    0],
+    [2235, 1731,  266,    0, 2521, 1631,   90,    0, 2240, 1357,    0,   16],
+    [2103, 1568,   73,    0, 2324, 1554,  113,    0, 1898, 1232,    0,    0],
+    [2020,  938,    0,    0, 2136, 1292,   18,    0, 1850,  232,    0,    0],
+    [   0,  434,    0,    0, 1956,  667,    0,    0, 1532,   71,    0,    0]
+]
     ordered_counts = split_and_process(counts)
+    
     return counts, marked_image, ordered_counts
 
 
@@ -610,6 +621,38 @@ def process_strain(strain):
 
     return processed_list
 
+
+
+def split_and_process(array):
+    #three 8x4 arrays
+    strain1 = [row[:4] for row in array]
+    strain2 = [row[4:8] for row in array]
+    strain3 = [row[8:] for row in array]
+
+    #dictionary
+    processed_data = {
+        "Strain 1": process_strain(strain1),
+        "Strain 2": process_strain(strain2),
+        "Strain 3": process_strain(strain3)
+    }
+
+    return processed_data
+
+def process_strain(strain):
+    #this is based on the dilutions
+    order = [
+        (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
+        (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
+        (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
+    ]
+
+    processed_list = []
+    #getting co-ordinate from speficic part of the array
+    for col, row in order:
+        if row <= 8 and col <= 4:
+            processed_list.append(strain[row-1][col-1])
+
+    return processed_list
 
 
 

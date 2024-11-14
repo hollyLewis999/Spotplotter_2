@@ -25,6 +25,9 @@ sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packag
 
 import openpyxl
 
+ROWS = 6
+COLOUMS = 11
+
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
@@ -1224,7 +1227,7 @@ def open_grid_override(window):
    
     #find the blobs so the centerpoints are displayed if the user tries to override the grid. Finding blobs is based on the size of the image incase the image is much bigger/smaller it cant be a set pixel size
     height, width = window.binary_image.shape
-    max_radius = int(width/24)
+    max_radius = int(width/COLOUMS*2)
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
