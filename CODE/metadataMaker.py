@@ -706,7 +706,7 @@ class PlateAssignmentScreen:
                 'blocksize': 0,
                 'strains': strains,  # List of strain names in order of appearance
                 'column_indexes': column_indexes,  # List of column indexes for each strain
-                'ordered_quantifications': {},
+                'ordered_quantifications': [],
                 'strain_positions': self.strain_positions,
                 'removed_positions': list(self.removed_positions),
                 'layout': {

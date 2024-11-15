@@ -379,36 +379,7 @@ y3 = [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 99
 y4 = [20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
 y5 = [30000, 20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0]
 # Example usage:
-data_series = [
-    {
-        'y_values': y1,
-        'label': 'Series 1',
-        'color': '#073B3A',  # optional
-        'marker': 'o',       # optional
-        'atc': False       # optional
-    },
-    {
-        'y_values': y2,
-        'label': 'Series 2',
-        'atc': False
-    },
-    {
-        'y_values': y3,
-        'label': 'Series 3',
-        'atc': True
-    },
-    {
-        'y_values': y4,
-        'label': 'Series 4',
-        'atc': True
-    },
-    {
-        'y_values': y5,
-        'label': 'Series 2',
-        'atc': False
-    }
-    # Add as many series as needed...
-]
+
 
 fig, stats = plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=10)
 
