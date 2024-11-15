@@ -896,7 +896,6 @@ def update_plate_display(window):
     draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                    margin_bottom, grid_width, grid_height)
 
-
 def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                    margin_bottom, grid_width, grid_height):
     if not window.plates:
@@ -1205,11 +1204,13 @@ def prev_plate(window):
     if window.current_plate > 0:
         window.current_plate -= 1
         update_plate_display(window)
+        window.plate_canvas.focus_set()  # Set focus to the plate canvas
 
 def next_plate(window):
     if window.current_plate < len(window.plates) - 1:
         window.current_plate += 1
         update_plate_display(window)
+        window.plate_canvas.focus_set() 
 
 
 
