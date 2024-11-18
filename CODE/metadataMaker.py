@@ -16,13 +16,14 @@ import json
 import os
 from datetime import datetime
 
+from Style import *
 
-from Processing import *
-from outputs import *
-
-
-
-
+DARK = "#092934"
+LIGHT = "#FFFFFF"
+COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
+GRAY1 = "#F0F0F0"
+GRAY2 = "#E0E0E0"
+GRAY = "#B0B0B0"
 
 
 # d8888b. db       .d8b.  d888888b d88888b .d8888. 
@@ -80,9 +81,7 @@ def create_plate_designer(window):
     
     control_frame = Frame(window, bg=DARK)
     control_frame.place(x=1130, y=178, width=282, height=638)
-    image_path_10 = relative_to_assets("image_10.png")
-    img_logobig = Image.open(image_path_10)
-    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
+
     create_controls(control_frame, window)
     create_plate_display(plate_frame, window)
 
@@ -872,6 +871,8 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'strains': strains,
         'column_indexes': [list(indexes) for indexes in column_indexes],  # Ensure column indexes are lists
         'strain_positions': window.plate_layout['strain_positions'],  # Use as-is if integers or tuples
+        'split_quantifications':[],
+	    'ordered_quantifications':[],
         'removed_positions': list(window.plate_layout['removed_positions']),  # Convert sets to lists
         'layout': {
             'rows': rows,

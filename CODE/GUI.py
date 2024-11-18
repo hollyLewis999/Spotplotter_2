@@ -25,13 +25,12 @@ from datetime import datetime
 from Processing import *
 from outputs import *
 from metadataMaker import *
-
+from Style import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 import openpyxl
 
-GRAY1 = "#F0F0F0"
-GRAY2 = "#E0E0E0"
+
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
@@ -63,140 +62,6 @@ def relative_to_assets(path: str) -> Path:
 #################################################################
 # The functions create_circular_slider, create_round_button and round_rectabgle were created by Chatgbt, Tkinter did not have very asthetic sliders or buttons
 #                                       
-def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
-    frame = Frame(master, width=300, height=70, bg=DARK)
-    frame.place(x=position[0], y=position[1])
-    canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
-    canvas.pack()
-    
-    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
-    last_update_time = 0
-    update_interval = 100  # Update interval in milliseconds
-
-    def draw_slider(update_label=False):
-        canvas.delete("all")
-        filled_x = value_to_position(current_value.get())
-        canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
-        canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
-        
-        knob_x = value_to_position(current_value.get())
-        canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
-        
-        if update_label:
-            canvas.delete("value_text")
-            label_x = max(10, min(knob_x, 270))
-            canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
-                               font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
-
-    def value_to_position(value):
-        return (value - min_val) / (max_val - min_val) * 280 + 10
-
-    def position_to_value(x):
-        return (x - 10) / 280 * (max_val - min_val) + min_val
-
-    def on_drag(event):
-        nonlocal last_update_time
-        current_time = event.time
-        if 35 <= event.y <= 55:
-            new_value = position_to_value(event.x)
-            current_value.set(max(min_val, min(max_val, new_value)))
-            
-            if current_time - last_update_time >= update_interval:
-                draw_slider(update_label=True)
-                last_update_time = current_time
-            else:
-                draw_slider(update_label=False)
-            
-            if command:
-                command(int(current_value.get()))
-
-    def on_release(event):
-        draw_slider(update_label=True)
-        if command:
-            command(int(current_value.get()))
-
-    canvas.bind("<B1-Motion>", on_drag)
-    canvas.bind("<ButtonRelease-1>", on_release)
-
-    def set_value(value):
-        current_value.set(max(min_val, min(max_val, value)))
-        draw_slider(update_label=True)
-
-    draw_slider(update_label=True)
-    frame.set = set_value
-    frame.get = lambda: int(current_value.get())
-    return frame
-        
-def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
-    # Calculate radius
-    rad = 2 * cornerradius
-
-    # Ensure each button has a unique tag if not provided
-    if button_tag is None:
-        button_tag = f"button_{x}_{y}"  # Unique tag based on position
-
-    # Draw the rounded rectangle shape at (x, y) position and give it a tag
-    canvas.create_polygon(
-        (x + padding, y + height - cornerradius - padding,
-         x + padding, y + cornerradius + padding,
-         x + padding + cornerradius, y + padding,
-         x + width - padding - cornerradius, y + padding,
-         x + width - padding, y + cornerradius + padding,
-         x + width - padding, y + height - cornerradius - padding,
-         x + width - padding - cornerradius, y + height - padding,
-         x + padding + cornerradius, y + height - padding),
-        fill=fill, outline=fill, tags=button_tag
-    )
-
-    # Draw rounded corners using arcs and add the same tag
-    canvas.create_arc(
-        (x + padding, y + padding + rad, x + padding + rad, y + padding),
-        start=90, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
-        start=0, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
-        start=270, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
-        start=180, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-
-    # Add text in the middle of the button and tag it
-    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=accent, font=(FONT, 12, "bold"), tags=button_tag)
-
-    # Bind the click event to the entire button with the unique tag
-    canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
-
-
-def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
-        
-    points = [x1+radius, y1,
-              x1+radius, y1,
-              x2-radius, y1,
-              x2-radius, y1,
-              x2, y1,
-              x2, y1+radius,
-              x2, y1+radius,
-              x2, y2-radius,
-              x2, y2-radius,
-              x2, y2,
-              x2-radius, y2,
-              x2-radius, y2,
-              x1+radius, y2,
-              x1+radius, y2,
-              x1, y2,
-              x1, y2-radius,
-              x1, y2-radius,
-              x1, y1+radius,
-              x1, y1+radius,
-              x1, y1]
-
-    return canvas.create_polygon(points, **kwargs, smooth=True)
 
 ######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
 ##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
@@ -387,7 +252,7 @@ def display_final_image(window, override =False):
     if (override):#ie if the user has over ridden the grid
         marked_image = window.marked_image
         result_grid = window.result_grid
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
         # print(f"Debug: CURRENT INDEX {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
@@ -397,7 +262,7 @@ def display_final_image(window, override =False):
         rows = window.all_plate_info[window.current_image_index]['layout']['rows']
         result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
         window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-        print(window.all_plate_info)
+        #print(window.all_plate_info)
         # #comment out later, for testing and report
         # path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
         # cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
@@ -713,7 +578,7 @@ def display_image(window):
         contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
-        cv2.drawContours(contour_img, contours, -1, (0, 255, 255), 3)
+        cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
         
         window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img
         window.current_info["IMGcontours"] = contour_img
@@ -1255,11 +1120,10 @@ def open_grid_override(window):
     height, width = window.binary_image.shape
     coloums = window.all_plate_info[window.current_image_index]['layout']['columns']
 
-    max_radius = int(width/coloums*2)
+    max_radius = int(width/(coloums*2))
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
-    x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     # cv2.imshow("marked image1244443", resize_for_display(marked_image))
     # cv2.waitKey(0)
     # cv2.destroyAllWindows()
@@ -1267,6 +1131,8 @@ def open_grid_override(window):
     window.center_points = list(zip(x_coords, y_coords))
 
     window.blob_points = list(zip(x_coords, y_coords))
+    print("window.blob_points")
+    print(window.blob_points)
     window.clicked_points = []
 
     #allows the user to add points
@@ -1382,8 +1248,11 @@ def recalculate_grid(window):
     window.clicked_pointsy = [point[1] for point in all_points]
     height, width = window.gray_image.shape
     #new grid using user clicked AND previously detected
-    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
-    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+    columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+    rows = window.all_plate_info[window.current_image_index]['layout']['rows']
+    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows)
+
+    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size,columns, rows)
 
     window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
     # #SAVING INFO
@@ -1775,7 +1644,105 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        display_results(window)
+        processResults(window)
+  
+def processResults(window):
+
+
+    process_split_order_quantifications(window)
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print(window.all_plate_info)
+    data_series , dilution_series = generate_data_series(window.all_plate_info)
+    fig, stats = plot_multiadditive_graph(data_series, dilution_series, "Test Graphs")
+
+
+    #display_results(window)
+
+
+def process_split_order_quantifications(window):
+    """
+    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
+    into split_quantifications based on strain_positions, and saving ordered quantifications.
+
+    Parameters:
+    window (object): The window object containing all_plate_info
+    """
+    for plate in window.all_plate_info:
+        # Extract plate layout and dilution factors
+        rows = plate['layout']['rows']
+        cols = len(plate['column_indexes'])
+        x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
+        y_dilution_factor = plate['layout']['y_dilution']
+        
+        # Calculate the dilution series
+        dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
+        
+        # Get sorted positions based on dilution series
+        sorted_positions = get_sorted_positions(dilution_array)
+        
+        # Split unorderedquantifications into split_quantifications
+        unordered_quantifications = np.array(plate['unorderedquantifications'])
+        strain_positions = plate['strain_positions']
+        
+        split_quantifications = []
+        for strain, pos_range in strain_positions.items():
+            start, end = pos_range
+            split_quantifications.append(unordered_quantifications[:, start:end + 1])
+        
+        # Save split_quantifications to the plate
+        plate['split_quantifications'] = split_quantifications
+        
+        # Create ordered_quantifications based on sorted positions
+        ordered_quantifications = []
+        for strain_data in split_quantifications:
+            ordered_strain_values = extract_values_at_positions(strain_data, sorted_positions)
+            ordered_quantifications.append(ordered_strain_values)
+        
+        # Save ordered_quantifications to the plate
+        plate['ordered_quantifications'] = ordered_quantifications
+
+def generate_data_series(all_plate_info):
+    from collections import defaultdict
+
+    # Dictionary to store data series for each strain
+    strain_data = defaultdict(list)
+    dilution_series = window.all_plate_info[0]['dilutions'] 
+    # Iterate over all plates
+    for plate in all_plate_info:
+        additive = plate.get('additive', 'none')
+        strains = plate['strains']
+        ordered_quantifications = plate['ordered_quantifications']
+        column_indexes = plate['column_indexes']
+
+        # Ensure ordered_quantifications and column_indexes match strain count
+        if len(ordered_quantifications) != len(strains):
+            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
+
+        # For each strain in the plate
+        for strain_idx, strain in enumerate(strains):
+            # Extract y_values for this strain
+            y_values = ordered_quantifications[strain_idx]
+
+            # Generate a label for this series
+            label = f"{additive} {len([series for series in strain_data[strain] if series['additive'] == additive]) + 1}"
+
+            # Append data series to the strain's list
+            strain_data[strain].append({
+                'y_values': y_values,
+                'additive': additive,
+                'label': label
+            })
+
+    # Convert strain_data to a list of series
+    data_series = []
+    for strain, series in strain_data.items():
+        data_series.extend(series)
+
+    return data_series, dilution_series
+
+
+# Example usage
+
 
 
 
@@ -1792,7 +1759,7 @@ def on_contrast_change(window, value, backToEdit = False):
     global backToEdit2
     if (backToEdit2 == False):
         window.contrast_value = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size )
 
         #save new iamges
         window.binarized_image = final_binary
@@ -1811,7 +1778,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
 
     if (backToEdit2 == False):
         window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size)
 
         #save new images
         window.binarized_image = final_binary
@@ -2006,7 +1973,7 @@ def display_images(window):
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             contour_img = img_np.copy()
             for cntr in contours:
-                cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
+                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
             window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))

@@ -26,6 +26,11 @@ import openpyxl
 #DILUTIONSERIES = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
 ATCCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"]
 NOATCCOLORS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"]
+
+GREENCOLOURS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"] #https://coolors.co/073b3a-0b614d-0f8660-7db46f
+REDCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"] #https://coolors.co/d24c4a-d3784a-dfa24f-ebcb53
+BLUECOLOURS = ["#0C546B", "#0F7D87", "#46A2A2", "#7CC7BC"] #https://coolors.co/0c546b-0f7d87-46a2a2-7cc7bc
+PURPLESCOLOURS =["#591C5F", "#81377E", "#A9599C", "#D07BB9"] #https://coolors.co/591c5f-81377e-a9599c-d07bb9
     
 FONT = "Microsoft New Tai Lue"
 plt.rcParams['font.family'] = FONT
@@ -34,10 +39,6 @@ import numpy as np
 from scipy import stats
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-# Define color schemes
-ATCCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"]
-NOATCCOLORS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"]
 
 
 def normalize_array(arr, norm_value):
@@ -76,201 +77,325 @@ def calculate_statistics(x_values, y_values, label, log_base=10):
         'formula': formula
     }
 
-def plot_logarithmic_graph(data_series, dilution_series, title, log_base=10):
+# def plot_logarithmic_graph(data_series, dilution_series, title, log_base=10):
+#     """
+#     Plot two graphs: individual series and averaged ATC vs non-ATC comparison
+#     Handles different numbers of series for each condition safely.
+#     """
+#     # Calculate normalization value
+#     non_atp_first_values = [series['y_values'][0] for series in data_series
+#                            if not series['atc']][:2]
+#     norm_value = sum(non_atp_first_values) / len(non_atp_first_values)
+    
+#     # Create figure with two subplots
+#     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 8))
+#     sns.set_context("notebook", font_scale=1.2)
+    
+#     # Set custom log base for both axes
+#     ax1.set_xscale('log', base=log_base)
+#     ax2.set_xscale('log', base=log_base)
+    
+#     ax1.set_facecolor('#F5F5F5')
+    
+#     series_statistics = []
+#     atc_count = 0
+#     no_atc_count = 0
+#     default_markers = ['o', 's', '^', 'D']
+    
+#     # Initialize dictionaries to store data for each dilution point
+#     atc_data = {x: [] for x in dilution_series}
+#     no_atc_data = {x: [] for x in dilution_series}
+    
+#     # First pass: collect data for each dilution point
+#     for series in data_series:
+#         y_norm = normalize_array(series['y_values'], norm_value)
+        
+#         for x, y in zip(dilution_series, y_norm):
+#             if x > 0 and y > 10:  # Only include valid points
+#                 if series['atc']:
+#                     atc_data[x].append(y)
+#                 else:
+#                     no_atc_data[x].append(y)
+    
+#     # Plot individual series
+#     for idx, series in enumerate(data_series):
+#         y_norm = normalize_array(series['y_values'], norm_value)
+        
+#         if series['atc']:
+#             color = ATCCOLOURS[atc_count % len(ATCCOLOURS)]
+#             atc_count += 1
+#             atc_label = '+ATc'
+#         else:
+#             color = NOATCCOLORS[no_atc_count % len(NOATCCOLORS)]
+#             no_atc_count += 1
+#             atc_label = '-ATc'
+        
+#         marker = series.get('marker', default_markers[idx % len(default_markers)])
+        
+#         # Pass log_base to calculate_statistics
+#         stats = calculate_statistics(dilution_series, y_norm, series['label'], log_base)
+#         if stats is not None:
+#             series_statistics.append(stats)
+#             plot_label = f"{atc_label} ({series['label']})"
+            
+#             ax1.scatter(dilution_series, y_norm, color=color, 
+#                        marker=marker, label=plot_label, s=80)
+            
+#             x_fit = np.logspace(np.log(min(dilution_series))/np.log(log_base),
+#                               np.log(max(dilution_series))/np.log(log_base),
+#                               num=100, base=log_base)
+#             y_fit = stats['slope'] * np.log(x_fit)/np.log(log_base) + stats['intercept']
+#             ax1.plot(x_fit, y_fit, color=color, linestyle='--',
+#                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
+    
+#     # Style first subplot
+#     ax1.set_title(f"Individual Growth Curves for {title}", 
+#                  fontsize=20, fontweight='bold', pad=20)
+#     ax1.set_ylim(0, 120)
+#     ax1.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
+#     ax1.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+#     ax1.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
+#               ncol=1, frameon=True, facecolor='white', edgecolor='none',
+#               framealpha=0.7)
+#     ax1.tick_params(axis='both', which='major', labelsize=14)
+    
+#     # Second subplot - Averaged comparison
+#     ax2.set_facecolor('#F5F5F5')
+    
+#     # Calculate averages and error bars
+#     valid_x_atc = []
+#     valid_means_atc = []
+#     valid_stds_atc = []
+#     valid_x_no_atc = []
+#     valid_means_no_atc = []
+#     valid_stds_no_atc = []
+    
+#     # Process ATC data
+#     for x in dilution_series:
+#         if atc_data[x]:  # If there are valid points for this x
+#             valid_x_atc.append(x)
+#             valid_means_atc.append(np.mean(atc_data[x]))
+#             valid_stds_atc.append(np.std(atc_data[x]) if len(atc_data[x]) > 1 else 0)
+            
+#     # Process no-ATC data
+#     for x in dilution_series:
+#         if no_atc_data[x]:  # If there are valid points for this x
+#             valid_x_no_atc.append(x)
+#             valid_means_no_atc.append(np.mean(no_atc_data[x]))
+#             valid_stds_no_atc.append(np.std(no_atc_data[x]) if len(no_atc_data[x]) > 1 else 0)
+    
+#     # Plot averaged data with error bars and trend lines
+#     if valid_x_atc:
+#         log_x_atc = np.log(valid_x_atc) / np.log(log_base)
+#         slope_atc, intercept_atc, r_value_atc, _, _ = scipy_stats.linregress(log_x_atc, valid_means_atc)
+#         r_squared_atc = r_value_atc ** 2
+        
+#         x_fit_atc = np.logspace(np.log(min(valid_x_atc))/np.log(log_base),
+#                                np.log(max(valid_x_atc))/np.log(log_base),
+#                                num=100, base=log_base)
+#         y_fit_atc = slope_atc * np.log(x_fit_atc)/np.log(log_base) + intercept_atc
+        
+#         # Update formula based on log base
+#         if log_base == 10:
+#             formula_atc = f"y = {slope_atc:.2f}log(x) + {intercept_atc:.2f}"
+#         elif log_base == np.e:
+#             formula_atc = f"y = {slope_atc:.2f}ln(x) + {intercept_atc:.2f}"
+#         else:
+#             formula_atc = f"y = {slope_atc:.2f}log_{log_base}(x) + {intercept_atc:.2f}"
+        
+#         ax2.errorbar(valid_x_atc, valid_means_atc, yerr=valid_stds_atc,
+#                     color=ATCCOLOURS[0], marker='o', 
+#                     label=f'+ATc (Average)\nError bars = ±1 SD\nR² = {r_squared_atc:.3f}\n{formula_atc}',
+#                     capsize=5, capthick=1, markersize=8, linewidth=2,
+#                     ls='none')
+#         ax2.plot(x_fit_atc, y_fit_atc, color=ATCCOLOURS[0], linestyle='--')
+    
+#     if valid_x_no_atc:
+#         log_x_no_atc = np.log(valid_x_no_atc) / np.log(log_base)
+#         slope_no_atc, intercept_no_atc, r_value_no_atc, _, _ = scipy_stats.linregress(log_x_no_atc, valid_means_no_atc)
+#         r_squared_no_atc = r_value_no_atc ** 2
+        
+#         x_fit_no_atc = np.logspace(np.log(min(valid_x_no_atc))/np.log(log_base),
+#                                   np.log(max(valid_x_no_atc))/np.log(log_base),
+#                                   num=100, base=log_base)
+#         y_fit_no_atc = slope_no_atc * np.log(x_fit_no_atc)/np.log(log_base) + intercept_no_atc
+        
+#         # Update formula based on log base
+#         if log_base == 10:
+#             formula_no_atc = f"y = {slope_no_atc:.2f}log(x) + {intercept_no_atc:.2f}"
+#         elif log_base == np.e:
+#             formula_no_atc = f"y = {slope_no_atc:.2f}ln(x) + {intercept_no_atc:.2f}"
+#         else:
+#             formula_no_atc = f"y = {slope_no_atc:.2f}log_{log_base}(x) + {intercept_no_atc:.2f}"
+        
+#         ax2.errorbar(valid_x_no_atc, valid_means_no_atc, yerr=valid_stds_no_atc,
+#                     color=NOATCCOLORS[0], marker='s', 
+#                     label=f'-ATc (Average)\nError bars = ±1 SD\nR² = {r_squared_no_atc:.3f}\n{formula_no_atc}',
+#                     capsize=5, capthick=1, markersize=8, linewidth=2,
+#                     ls='none')
+#         ax2.plot(x_fit_no_atc, y_fit_no_atc, color=NOATCCOLORS[0], linestyle='--')
+    
+#     # Style second subplot
+#     ax2.set_title(f"Average Growth Curves for {title}",
+#                  fontsize=20, fontweight='bold', pad=20)
+#     ax2.set_ylim(0, 120)
+#     ax2.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
+#     ax2.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+#     ax2.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
+#               ncol=1, frameon=True, facecolor='white', edgecolor='none',
+#               framealpha=0.7)
+#     ax2.tick_params(axis='both', which='major', labelsize=14)
+    
+#     plt.tight_layout()
+#     plt.show()
+    
+#     return fig, series_statistics
+
+
+
+def plot_multiadditive_graph(data_series, dilution_series, title, log_base=10):
     """
-    Plot two graphs: individual series and averaged ATC vs non-ATC comparison
-    Handles different numbers of series for each condition safely.
+    Plot two graphs: individual series and averaged comparisons for multiple additives
+    Parameters:
+    - data_series: list of dictionaries containing:
+        - y_values: list of measurements
+        - additive: string ('none', 'ATC', or other additives)
+        - label: string (series label)
+        - marker: optional marker style
+    - dilution_series: list of x-axis values
+    - title: string
+    - log_base: logarithm base for x-axis
     """
-    # Calculate normalization value
-    non_atp_first_values = [series['y_values'][0] for series in data_series
-                           if not series['atc']][:2]
-    norm_value = sum(non_atp_first_values) / len(non_atp_first_values)
+    # Find normalization value from 'none' additive series
+    none_series = [series['y_values'][0] for series in data_series 
+                  if series['additive'] is None]
+    if not none_series:
+        raise ValueError("Must have at least one series with additive='none' for normalization")
+    norm_value = sum(none_series) / len(none_series)
     
     # Create figure with two subplots
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 8))
     sns.set_context("notebook", font_scale=1.2)
     
-    # Set custom log base for both axes
-    ax1.set_xscale('log', base=log_base)
-    ax2.set_xscale('log', base=log_base)
+    # Set log scale and style
+    for ax in [ax1, ax2]:
+        ax.set_xscale('log', base=log_base)
+        ax.set_facecolor('#F5F5F5')
     
-    ax1.set_facecolor('#F5F5F5')
+    # Get unique additives and assign colors
+    additives = sorted(set(series['additive'] for series in data_series))
+    color_map = {}
+    for additive in additives:
+        if additive.lower() == 'none':
+            color_map[additive] = BLUECOLOURS
+        elif additive.lower() == 'atc':
+            color_map[additive] = GREENCOLOURS
+        elif len(color_map) % 2 == 0:
+            color_map[additive] = REDCOLOURS
+        else:
+            color_map[additive] = PURPLESCOLOURS
     
+    # Initialize data collection for averaging
+    averaged_data = {additive: {x: [] for x in dilution_series} for additive in additives}
+    
+    # Plot individual series and collect data for averaging
     series_statistics = []
-    atc_count = 0
-    no_atc_count = 0
+    additive_counts = {additive: 0 for additive in additives}
     default_markers = ['o', 's', '^', 'D']
     
-    # Initialize dictionaries to store data for each dilution point
-    atc_data = {x: [] for x in dilution_series}
-    no_atc_data = {x: [] for x in dilution_series}
-    
-    # First pass: collect data for each dilution point
-    for series in data_series:
-        y_norm = normalize_array(series['y_values'], norm_value)
-        
-        for x, y in zip(dilution_series, y_norm):
-            if x > 0 and y > 10:  # Only include valid points
-                if series['atc']:
-                    atc_data[x].append(y)
-                else:
-                    no_atc_data[x].append(y)
-    
-    # Plot individual series
     for idx, series in enumerate(data_series):
         y_norm = normalize_array(series['y_values'], norm_value)
+        additive = series['additive']
         
-        if series['atc']:
-            color = ATCCOLOURS[atc_count % len(ATCCOLOURS)]
-            atc_count += 1
-            atc_label = '+ATc'
-        else:
-            color = NOATCCOLORS[no_atc_count % len(NOATCCOLORS)]
-            no_atc_count += 1
-            atc_label = '-ATc'
+        # Plot individual series
+        color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
+        additive_counts[additive] += 1
         
         marker = series.get('marker', default_markers[idx % len(default_markers)])
         
-        # Pass log_base to calculate_statistics
+        # Calculate and store statistics
         stats = calculate_statistics(dilution_series, y_norm, series['label'], log_base)
         if stats is not None:
             series_statistics.append(stats)
-            plot_label = f"{atc_label} ({series['label']})"
+            plot_label = f"{additive} ({series['label']})"
             
+            # Plot points
             ax1.scatter(dilution_series, y_norm, color=color, 
                        marker=marker, label=plot_label, s=80)
             
+            # Plot trend line
             x_fit = np.logspace(np.log(min(dilution_series))/np.log(log_base),
                               np.log(max(dilution_series))/np.log(log_base),
                               num=100, base=log_base)
             y_fit = stats['slope'] * np.log(x_fit)/np.log(log_base) + stats['intercept']
             ax1.plot(x_fit, y_fit, color=color, linestyle='--',
                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
+        
+        # Collect data for averaging
+        for x, y in zip(dilution_series, y_norm):
+            if x > 0 and y > 0:
+                averaged_data[additive][x].append(y)
     
-    # Style first subplot
-    ax1.set_title(f"Individual Growth Curves for {title}", 
-                 fontsize=20, fontweight='bold', pad=20)
-    ax1.set_ylim(0, 120)
-    ax1.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
-    ax1.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
-    ax1.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
-              ncol=1, frameon=True, facecolor='white', edgecolor='none',
-              framealpha=0.7)
-    ax1.tick_params(axis='both', which='major', labelsize=14)
-    
-    # Second subplot - Averaged comparison
-    ax2.set_facecolor('#F5F5F5')
-    
-    # Calculate averages and error bars
-    valid_x_atc = []
-    valid_means_atc = []
-    valid_stds_atc = []
-    valid_x_no_atc = []
-    valid_means_no_atc = []
-    valid_stds_no_atc = []
-    
-    # Process ATC data
-    for x in dilution_series:
-        if atc_data[x]:  # If there are valid points for this x
-            valid_x_atc.append(x)
-            valid_means_atc.append(np.mean(atc_data[x]))
-            valid_stds_atc.append(np.std(atc_data[x]) if len(atc_data[x]) > 1 else 0)
+    # Plot averaged data
+    for additive in additives:
+        valid_x = []
+        valid_means = []
+        valid_stds = []
+        
+        for x in dilution_series:
+            if averaged_data[additive][x]:
+                valid_x.append(x)
+                valid_means.append(np.mean(averaged_data[additive][x]))
+                valid_stds.append(np.std(averaged_data[additive][x]) 
+                                if len(averaged_data[additive][x]) > 1 else 0)
+        
+        if valid_x:
+            # Calculate regression for averaged data
+            log_x = np.log(valid_x) / np.log(log_base)
+            slope, intercept, r_value, _, _ = scipy_stats.linregress(log_x, valid_means)
+            r_squared = r_value ** 2
             
-    # Process no-ATC data
-    for x in dilution_series:
-        if no_atc_data[x]:  # If there are valid points for this x
-            valid_x_no_atc.append(x)
-            valid_means_no_atc.append(np.mean(no_atc_data[x]))
-            valid_stds_no_atc.append(np.std(no_atc_data[x]) if len(no_atc_data[x]) > 1 else 0)
+            if log_base == 10:
+                formula = f"y = {slope:.2f}log(x) + {intercept:.2f}"
+            elif log_base == np.e:
+                formula = f"y = {slope:.2f}ln(x) + {intercept:.2f}"
+            else:
+                formula = f"y = {slope:.2f}log_{log_base}(x) + {intercept:.2f}"
+            
+            # Plot averaged points with error bars
+            ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
+                        color=color_map[additive][0], marker='o',
+                        label=f'{additive} (Average)\nError bars = ±1 SD\nR² = {r_squared:.3f}\n{formula}',
+                        capsize=5, capthick=1, markersize=8, linewidth=2,
+                        ls='none')
+            
+            # Plot trend line
+            x_fit = np.logspace(np.log(min(valid_x))/np.log(log_base),
+                              np.log(max(valid_x))/np.log(log_base),
+                              num=100, base=log_base)
+            y_fit = slope * np.log(x_fit)/np.log(log_base) + intercept
+            ax2.plot(x_fit, y_fit, color=color_map[additive][0], linestyle='--')
     
-    # Plot averaged data with error bars and trend lines
-    if valid_x_atc:
-        log_x_atc = np.log(valid_x_atc) / np.log(log_base)
-        slope_atc, intercept_atc, r_value_atc, _, _ = scipy_stats.linregress(log_x_atc, valid_means_atc)
-        r_squared_atc = r_value_atc ** 2
-        
-        x_fit_atc = np.logspace(np.log(min(valid_x_atc))/np.log(log_base),
-                               np.log(max(valid_x_atc))/np.log(log_base),
-                               num=100, base=log_base)
-        y_fit_atc = slope_atc * np.log(x_fit_atc)/np.log(log_base) + intercept_atc
-        
-        # Update formula based on log base
-        if log_base == 10:
-            formula_atc = f"y = {slope_atc:.2f}log(x) + {intercept_atc:.2f}"
-        elif log_base == np.e:
-            formula_atc = f"y = {slope_atc:.2f}ln(x) + {intercept_atc:.2f}"
-        else:
-            formula_atc = f"y = {slope_atc:.2f}log_{log_base}(x) + {intercept_atc:.2f}"
-        
-        ax2.errorbar(valid_x_atc, valid_means_atc, yerr=valid_stds_atc,
-                    color=ATCCOLOURS[0], marker='o', 
-                    label=f'+ATc (Average)\nError bars = ±1 SD\nR² = {r_squared_atc:.3f}\n{formula_atc}',
-                    capsize=5, capthick=1, markersize=8, linewidth=2,
-                    ls='none')
-        ax2.plot(x_fit_atc, y_fit_atc, color=ATCCOLOURS[0], linestyle='--')
+    # Style plots
+    for ax in [ax1, ax2]:
+        ax.set_ylim(0, 120)
+        ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
+        ax.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+        ax.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
+                 ncol=1, frameon=True, facecolor='white', edgecolor='none',
+                 framealpha=0.7)
+        ax.tick_params(axis='both', which='major', labelsize=14)
     
-    if valid_x_no_atc:
-        log_x_no_atc = np.log(valid_x_no_atc) / np.log(log_base)
-        slope_no_atc, intercept_no_atc, r_value_no_atc, _, _ = scipy_stats.linregress(log_x_no_atc, valid_means_no_atc)
-        r_squared_no_atc = r_value_no_atc ** 2
-        
-        x_fit_no_atc = np.logspace(np.log(min(valid_x_no_atc))/np.log(log_base),
-                                  np.log(max(valid_x_no_atc))/np.log(log_base),
-                                  num=100, base=log_base)
-        y_fit_no_atc = slope_no_atc * np.log(x_fit_no_atc)/np.log(log_base) + intercept_no_atc
-        
-        # Update formula based on log base
-        if log_base == 10:
-            formula_no_atc = f"y = {slope_no_atc:.2f}log(x) + {intercept_no_atc:.2f}"
-        elif log_base == np.e:
-            formula_no_atc = f"y = {slope_no_atc:.2f}ln(x) + {intercept_no_atc:.2f}"
-        else:
-            formula_no_atc = f"y = {slope_no_atc:.2f}log_{log_base}(x) + {intercept_no_atc:.2f}"
-        
-        ax2.errorbar(valid_x_no_atc, valid_means_no_atc, yerr=valid_stds_no_atc,
-                    color=NOATCCOLORS[0], marker='s', 
-                    label=f'-ATc (Average)\nError bars = ±1 SD\nR² = {r_squared_no_atc:.3f}\n{formula_no_atc}',
-                    capsize=5, capthick=1, markersize=8, linewidth=2,
-                    ls='none')
-        ax2.plot(x_fit_no_atc, y_fit_no_atc, color=NOATCCOLORS[0], linestyle='--')
-    
-    # Style second subplot
+    ax1.set_title(f"Individual Growth Curves for {title}",
+                 fontsize=20, fontweight='bold', pad=20)
     ax2.set_title(f"Average Growth Curves for {title}",
                  fontsize=20, fontweight='bold', pad=20)
-    ax2.set_ylim(0, 120)
-    ax2.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
-    ax2.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
-    ax2.legend(fontsize=14, loc='upper right', bbox_to_anchor=(0.98, 0.98),
-              ncol=1, frameon=True, facecolor='white', edgecolor='none',
-              framealpha=0.7)
-    ax2.tick_params(axis='both', which='major', labelsize=14)
     
     plt.tight_layout()
     plt.show()
     
     return fig, series_statistics
 
-
-
-
-def split_and_process(array):
-    #three 8x4 arrays
-    strain1 = [row[:4] for row in array]
-    strain2 = [row[4:8] for row in array]
-    strain3 = [row[8:] for row in array]
-
-    #dictionary
-    processed_data = {
-        "Strain 1": process_strain(strain1),
-        "Strain 2": process_strain(strain2),
-        "Strain 3": process_strain(strain3)
-    }
-
-    return processed_data
-
-
-
-import numpy as np
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
 
@@ -288,6 +413,16 @@ def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
     
     return result
 
+def print_dilution_series(dilution_array):
+    """
+    Print the dilution series in a formatted way.
+    
+    Parameters:
+    dilution_array (numpy.ndarray): 2D array of dilution values
+    """
+    print("\nDilution Series:")
+    for row in dilution_array:
+        print([f"{x:.6g}" for x in row])
 
 def get_sorted_positions(dilution_array):
     """
@@ -321,15 +456,16 @@ def extract_values_at_positions(array, positions):
     Returns:
     list: Values from the array at the specified positions
     """
+    print('extract_values_at_positions')
+    print(array)
+    print(positions)
     return [array[row, col] for row, col in positions]  
 
 
-dilution_array = calculate_dilution_series(8,4,np.e,2)   
-sorted_positions = get_sorted_positions(dilution_array)
-DILUTIONSERIES = extract_values_at_positions(dilution_array, sorted_positions)
-print(DILUTIONSERIES)
-
-
+# dilution_array = calculate_dilution_series(8,12,10,2)   
+# sorted_positions = get_sorted_positions(dilution_array)
+# ordered_values = extract_values_at_positions(dilution_array, sorted_positions)
+# print(ordered_values)
 
 
 
@@ -381,10 +517,4 @@ y5 = [30000, 20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173
 # Example usage:
 
 
-fig, stats = plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=10)
-
-# For base 2
-fig, stats =  plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=np.e)
-
-# For base 4
-fig, stats =  plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=4)
+# fig, stats = plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=10)

@@ -565,17 +565,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             
             #place text
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-#     counts = [
-#     [3678, 2090, 1426,    0, 3569, 2125, 1421,    0, 3174, 1687,  605,    0],
-#     [2738, 1857, 1451,    0, 2774, 1927, 1315,    0, 2544, 1647,  550,    0],
-#     [2520, 1489, 1165,    0, 2790, 1616, 1206,    0, 2466, 1503,   73,    0],
-#     [2570, 1873,  829,    0, 2616, 1781, 1038,   29, 2342, 1493,   63,    0],
-#     [2235, 1731,  266,    0, 2521, 1631,   90,    0, 2240, 1357,    0,   16],
-#     [2103, 1568,   73,    0, 2324, 1554,  113,    0, 1898, 1232,    0,    0],
-#     [2020,  938,    0,    0, 2136, 1292,   18,    0, 1850,  232,    0,    0],
-#     [   0,  434,    0,    0, 1956,  667,    0,    0, 1532,   71,    0,    0]
-# ]
-#     ordered_counts = split_and_process(counts)
+
     
     return counts, marked_image
 
@@ -590,20 +580,20 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
 # YP   YP 88   YD 88   YD YP   YP    YP  
 
 
-def split_and_process(array):
-    #three 8x4 arrays
-    strain1 = [row[:4] for row in array]
-    strain2 = [row[4:8] for row in array]
-    strain3 = [row[8:] for row in array]
+# def split_and_process(array):
+#     #three 8x4 arrays
+#     strain1 = [row[:4] for row in array]
+#     strain2 = [row[4:8] for row in array]
+#     strain3 = [row[8:] for row in array]
 
-    #dictionary
-    processed_data = {
-        "Strain 1": process_strain(strain1),
-        "Strain 2": process_strain(strain2),
-        "Strain 3": process_strain(strain3)
-    }
+#     #dictionary
+#     processed_data = {
+#         "Strain 1": process_strain(strain1),
+#         "Strain 2": process_strain(strain2),
+#         "Strain 3": process_strain(strain3)
+#     }
 
-    return processed_data
+#     return processed_data
 
 
 # def split_and_process_variable(array, strain_positions, ):
@@ -628,54 +618,54 @@ def split_and_process(array):
 
 
 
-def process_strain(strain):
-    #this is based on the dilutions
-    order = [
-        (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
-        (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
-        (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
-    ]
+# def process_strain(strain):
+#     #this is based on the dilutions
+#     order = [
+#         (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
+#         (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
+#         (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
+#     ]
 
-    processed_list = []
-    #getting co-ordinate from speficic part of the array
-    for col, row in order:
-        if row <= 8 and col <= 4:
-            processed_list.append(strain[row-1][col-1])
+#     processed_list = []
+#     #getting co-ordinate from speficic part of the array
+#     for col, row in order:
+#         if row <= 8 and col <= 4:
+#             processed_list.append(strain[row-1][col-1])
 
-    return processed_list
+#     return processed_list
 
 
 
-def split_and_process(array):
-    #three 8x4 arrays
-    strain1 = [row[:4] for row in array]
-    strain2 = [row[4:8] for row in array]
-    strain3 = [row[8:] for row in array]
+# def split_and_process(array):
+#     #three 8x4 arrays
+#     strain1 = [row[:4] for row in array]
+#     strain2 = [row[4:8] for row in array]
+#     strain3 = [row[8:] for row in array]
 
-    #dictionary
-    processed_data = {
-        "Strain 1": process_strain(strain1),
-        "Strain 2": process_strain(strain2),
-        "Strain 3": process_strain(strain3)
-    }
+#     #dictionary
+#     processed_data = {
+#         "Strain 1": process_strain(strain1),
+#         "Strain 2": process_strain(strain2),
+#         "Strain 3": process_strain(strain3)
+#     }
 
-    return processed_data
+#     return processed_data
 
-def process_strain(strain):
-    #this is based on the dilutions
-    order = [
-        (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
-        (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
-        (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
-    ]
+# def process_strain(strain):
+#     #this is based on the dilutions
+#     order = [
+#         (1,1), (1,2), (1,3), (1,4), (2,1), (1,5), (2,2), (1,6), (2,3), (1,7), (2,4), (3,1),
+#         (1,8), (2,5), (3,2), (2,6), (3,3), (2,7), (3,4), (4,1), (2,8), (3,5), (4,2), (3,6),
+#         (4,3), (3,7), (4,4), (3,8), (4,5), (4,6), (4,7), (4,8)
+#     ]
 
-    processed_list = []
-    #getting co-ordinate from speficic part of the array
-    for col, row in order:
-        if row <= 8 and col <= 4:
-            processed_list.append(strain[row-1][col-1])
+#     processed_list = []
+#     #getting co-ordinate from speficic part of the array
+#     for col, row in order:
+#         if row <= 8 and col <= 4:
+#             processed_list.append(strain[row-1][col-1])
 
-    return processed_list
+#     return processed_list
 
 
 
