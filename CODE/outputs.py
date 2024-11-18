@@ -252,28 +252,13 @@ def calculate_statistics(x_values, y_values, label, log_base=10):
 #     return fig, series_statistics
 
 
-
 def plot_multiadditive_graph(data_series, dilution_series, title, log_base=10):
-    """
-    Plot two graphs: individual series and averaged comparisons for multiple additives
-    Parameters:
-    - data_series: list of dictionaries containing:
-        - y_values: list of measurements
-        - additive: string ('none', 'ATC', or other additives)
-        - label: string (series label)
-        - marker: optional marker style
-    - dilution_series: list of x-axis values
-    - title: string
-    - log_base: logarithm base for x-axis
-    """
-    # Find normalization value from 'none' additive series
-    none_series = [series['y_values'][0] for series in data_series 
-                  if series['additive'] is None]
-    if not none_series:
-        raise ValueError("Must have at least one series with additive='none' for normalization")
-    norm_value = sum(none_series) / len(none_series)
-    
-    # Create figure with two subplots
+
+    sorted_positions = get_sorted_positions(dilution_series)
+    dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
+    print(dilution_series)
+
+        # Create figure and axes HERE
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(24, 8))
     sns.set_context("notebook", font_scale=1.2)
     
@@ -281,31 +266,54 @@ def plot_multiadditive_graph(data_series, dilution_series, title, log_base=10):
     for ax in [ax1, ax2]:
         ax.set_xscale('log', base=log_base)
         ax.set_facecolor('#F5F5F5')
+
+    # Get unique additives, replacing None with 'None' for sorting
+     # Modify additive handling
+    def safe_additive(series):
+        additive = series.get('additive')
+        return 'None' if additive is None else str(additive)
+
+    # Get unique additives, ensuring None is handled consistently
+    additives = sorted(set(safe_additive(series) for series in data_series))
+
+    # Initialize averaged data with correct key types
+    averaged_data = {str(additive): {float(x): [] for x in dilution_series} for additive in additives}
     
-    # Get unique additives and assign colors
-    additives = sorted(set(series['additive'] for series in data_series))
+    # Modify normalization to handle None consistently
+    none_series = [series['y_values'][0] for series in data_series 
+                   if safe_additive(series) == 'None']
+    if not none_series:
+        raise ValueError("Must have at least one series with additive='none' for normalization")
+    norm_value = sum(none_series) / len(none_series)
+    
+    # Modify color mapping to handle None
     color_map = {}
     for additive in additives:
         if additive.lower() == 'none':
             color_map[additive] = BLUECOLOURS
         elif additive.lower() == 'atc':
-            color_map[additive] = GREENCOLOURS
-        elif len(color_map) % 2 == 0:
             color_map[additive] = REDCOLOURS
+        elif len(color_map) % 2 == 0:
+            color_map[additive] = GREENCOLOURS
         else:
             color_map[additive] = PURPLESCOLOURS
     
     # Initialize data collection for averaging
-    averaged_data = {additive: {x: [] for x in dilution_series} for additive in additives}
-    
-    # Plot individual series and collect data for averaging
     series_statistics = []
     additive_counts = {additive: 0 for additive in additives}
     default_markers = ['o', 's', '^', 'D']
     
     for idx, series in enumerate(data_series):
         y_norm = normalize_array(series['y_values'], norm_value)
-        additive = series['additive']
+        additive = safe_additive(series)
+        
+        # Debugging: print out additive and its type
+        print(f"Current series additive: {additive}, type: {type(additive)}")
+        
+        # Ensure the additive is in color_map
+        if additive not in color_map:
+            print(f"Warning: Additive '{additive}' not in color_map. Using default color.")
+            color_map[additive] = BLUECOLOURS  # Default color
         
         # Plot individual series
         color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
@@ -350,6 +358,7 @@ def plot_multiadditive_graph(data_series, dilution_series, title, log_base=10):
                                 if len(averaged_data[additive][x]) > 1 else 0)
         
         if valid_x:
+
             # Calculate regression for averaged data
             log_x = np.log(valid_x) / np.log(log_base)
             slope, intercept, r_value, _, _ = scipy_stats.linregress(log_x, valid_means)
@@ -395,6 +404,8 @@ def plot_multiadditive_graph(data_series, dilution_series, title, log_base=10):
     plt.show()
     
     return fig, series_statistics
+
+
 
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
@@ -456,9 +467,9 @@ def extract_values_at_positions(array, positions):
     Returns:
     list: Values from the array at the specified positions
     """
-    print('extract_values_at_positions')
-    print(array)
-    print(positions)
+    # print('extract_values_at_positions')
+    # print(array)
+    # print(positions)
     return [array[row, col] for row, col in positions]  
 
 

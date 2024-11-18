@@ -297,7 +297,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         else:
             modal_diff = threshold
 
-        print(f"Modal difference between cluster means: {modal_diff}")
+        # print(f"Modal difference between cluster means: {modal_diff}")
 
         # if (len(clusters) >5):
         # if True:    

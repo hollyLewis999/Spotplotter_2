@@ -20,6 +20,8 @@ import sys
 import json
 import os
 from datetime import datetime
+from collections import defaultdict
+import pickle
 
 
 from Processing import *
@@ -132,9 +134,6 @@ def create_titleFrame(window):
 
 
     return canvas
-
-
-
 
 
 def display_results(window):
@@ -1303,17 +1302,17 @@ def validate_and_proceed(window):
         all_filenames = {info['filename'].lower() for info in window.all_plate_info}
         
         # Debugging: Print out expected filenames from the metadata
-        print("Expected filenames from metadata:")
-        for filename in all_filenames:
-            print(f"- {filename}")
+        # print("Expected filenames from metadata:")
+        # for filename in all_filenames:
+        #     print(f"- {filename}")
         
         # if unmatched:
         #     messagebox.showwarning(
         #         "Warning",
         #         f"The following filenames do not match metadata entries:\n{', '.join(unmatched)}"
         #     )
-        else:
-            create_cropFrame(window)
+       # else:
+        create_cropFrame(window)
     else:
         messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
 
@@ -1645,15 +1644,26 @@ def next_image(window):
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
         processResults(window)
-  
+
+
 def processResults(window):
 
 
     process_split_order_quantifications(window)
+
+    strain_data , dilution_series = generate_data_series(window)
     print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print(window.all_plate_info)
-    data_series , dilution_series = generate_data_series(window.all_plate_info)
-    fig, stats = plot_multiadditive_graph(data_series, dilution_series, "Test Graphs")
+    print(strain_data)
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    print(dilution_series)
+    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    for strain, series in strain_data.items():
+        print("_______________________________________________________________")
+        print(series)
+        fig, stats = plot_multiadditive_graph(series, dilution_series, strain)
+        
+        print("_______________________________________________________________")
+
 
 
     #display_results(window)
@@ -1676,7 +1686,7 @@ def process_split_order_quantifications(window):
         
         # Calculate the dilution series
         dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
-        
+        plate['dilutions'] = dilution_array 
         # Get sorted positions based on dilution series
         sorted_positions = get_sorted_positions(dilution_array)
         
@@ -1701,14 +1711,14 @@ def process_split_order_quantifications(window):
         # Save ordered_quantifications to the plate
         plate['ordered_quantifications'] = ordered_quantifications
 
-def generate_data_series(all_plate_info):
-    from collections import defaultdict
 
+def generate_data_series(window):
     # Dictionary to store data series for each strain
     strain_data = defaultdict(list)
     dilution_series = window.all_plate_info[0]['dilutions'] 
+    
     # Iterate over all plates
-    for plate in all_plate_info:
+    for plate in window.all_plate_info:
         additive = plate.get('additive', 'none')
         strains = plate['strains']
         ordered_quantifications = plate['ordered_quantifications']
@@ -1730,15 +1740,16 @@ def generate_data_series(all_plate_info):
             strain_data[strain].append({
                 'y_values': y_values,
                 'additive': additive,
-                'label': label
+                'label': label,
+                'strain': strain
             })
 
-    # Convert strain_data to a list of series
+    # Convert strain_data to a list of series if needed
     data_series = []
     for strain, series in strain_data.items():
         data_series.extend(series)
 
-    return data_series, dilution_series
+    return strain_data, dilution_series
 
 
 # Example usage
