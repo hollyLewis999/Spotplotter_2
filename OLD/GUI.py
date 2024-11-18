@@ -1287,6 +1287,7 @@ def load_current_image(window):
 
         # print("AFTER")
         window.current_info = window.image_info[window.current_image_index].copy()
+        print(window.current_info)
         # print(f"Debug: Loading image {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
     else:

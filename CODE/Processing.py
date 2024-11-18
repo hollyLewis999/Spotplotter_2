@@ -13,8 +13,7 @@ import matplotlib.pyplot as plt
 import math
 from scipy import ndimage
 from scipy import stats
-COLOUMS = 11
-ROWS = 6
+
 import seaborn as sns
 
 
@@ -204,14 +203,15 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     y_coords.append(cY)
     return x_coords,y_coords,result_image
 
-def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28):
+def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28, columns = 12, rows=8):
+    
     height, width = binary_image.shape
-    max_radius = int(width/(COLOUMS*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
+    max_radius = int(width/(columns*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
 
-    counts = np.zeros((ROWS, COLOUMS))
+    counts = np.zeros((rows, columns))
 
     x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     grid_calculated = False
@@ -220,7 +220,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     #keep trying to get the grid -TODO need to add a stop condition here
     while not grid_calculated:
         try:
-            grid_start_x, grid_start_y, cell_size = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, debug=False)
+            grid_start_x, grid_start_y, cell_size = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, debug=False)
             grid_calculated = True
         except ValueError as e:
             print(f"Error in grid calculation: {e}")
@@ -235,8 +235,8 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 
 
 
-    counts, marked_image, ordered_counts = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size)
-    return counts, marked_image,ordered_counts
+    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows)
+    return counts, marked_image
 
 
 # d888b  d8888b. d888888b d8888b. 
@@ -247,7 +247,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 #  Y888P  88   YD Y888888P Y8888D' 
 # 
 
-def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, debug=False):
+def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, debug=False):
 
     def find_clusters(coords, min_count=2):
         FONT = "Microsoft New Tai Lue"
@@ -455,8 +455,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     grid_start_x = min(x_clusters) - cell_size / 2
     grid_start_y = min(y_clusters) - cell_size / 2
     
-    grid_width = cell_size * COLOUMS
-    grid_height = cell_size * ROWS
+    grid_width = cell_size * columns
+    grid_height = cell_size * rows
     
     #making sure its startin within the bounds
     if grid_start_x + grid_width > width:
@@ -466,15 +466,15 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     
     return grid_start_x, grid_start_y, cell_size 
 
-def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size):
+def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows):
 
     height, width = binary_image.shape
-    rows, cols = ROWS, COLOUMS  #8x12 grid
+
 
     #https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
     #checks how many spots there are, takes into account the touching white pixels are one area
     labeled_image, num_features = ndimage.label(binary_image) 
-    counts = np.zeros((rows, cols), dtype=int) #place holder to quantifications
+    counts = np.zeros((rows, columns), dtype=int) #place holder to quantifications
 
 
     #needs to be in colour to add markings
@@ -494,7 +494,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
         min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
         max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
         min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
-        max_col = min(cols - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+        max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
         
         main_cell = None
         max_overlap = 0
@@ -543,7 +543,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     thickness = int(width**(0.125)) #scaling the thickness so that it looks normal on smaller images
 
     for row in range(rows):
-        for col in range(cols):
+        for col in range(columns):
             x1 = int(grid_start_x + col * cell_size)
             y1 = int(grid_start_y + row * cell_size)
             x2 = int(x1 + cell_size)
@@ -565,19 +565,19 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
             
             #place text
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-    counts = [
-    [3678, 2090, 1426,    0, 3569, 2125, 1421,    0, 3174, 1687,  605,    0],
-    [2738, 1857, 1451,    0, 2774, 1927, 1315,    0, 2544, 1647,  550,    0],
-    [2520, 1489, 1165,    0, 2790, 1616, 1206,    0, 2466, 1503,   73,    0],
-    [2570, 1873,  829,    0, 2616, 1781, 1038,   29, 2342, 1493,   63,    0],
-    [2235, 1731,  266,    0, 2521, 1631,   90,    0, 2240, 1357,    0,   16],
-    [2103, 1568,   73,    0, 2324, 1554,  113,    0, 1898, 1232,    0,    0],
-    [2020,  938,    0,    0, 2136, 1292,   18,    0, 1850,  232,    0,    0],
-    [   0,  434,    0,    0, 1956,  667,    0,    0, 1532,   71,    0,    0]
-]
-    ordered_counts = split_and_process(counts)
+#     counts = [
+#     [3678, 2090, 1426,    0, 3569, 2125, 1421,    0, 3174, 1687,  605,    0],
+#     [2738, 1857, 1451,    0, 2774, 1927, 1315,    0, 2544, 1647,  550,    0],
+#     [2520, 1489, 1165,    0, 2790, 1616, 1206,    0, 2466, 1503,   73,    0],
+#     [2570, 1873,  829,    0, 2616, 1781, 1038,   29, 2342, 1493,   63,    0],
+#     [2235, 1731,  266,    0, 2521, 1631,   90,    0, 2240, 1357,    0,   16],
+#     [2103, 1568,   73,    0, 2324, 1554,  113,    0, 1898, 1232,    0,    0],
+#     [2020,  938,    0,    0, 2136, 1292,   18,    0, 1850,  232,    0,    0],
+#     [   0,  434,    0,    0, 1956,  667,    0,    0, 1532,   71,    0,    0]
+# ]
+#     ordered_counts = split_and_process(counts)
     
-    return counts, marked_image, ordered_counts
+    return counts, marked_image
 
 
 
@@ -604,6 +604,29 @@ def split_and_process(array):
     }
 
     return processed_data
+
+
+# def split_and_process_variable(array, strain_positions, ):
+#     #three 8x4 arrays
+#     strain1 = [row[:4] for row in array]
+#     strain2 = [row[4:8] for row in array]
+#     strain3 = [row[8:] for row in array]
+
+#     #dictionary
+#     processed_data = {
+#         "Strain 1": process_strain(strain1),
+#         "Strain 1 data": process_strain(strain1),
+#         "Strain 2": process_strain(strain2),
+#         "Strain 2 data": 0,
+#         "Strain 3": process_strain(strain3),
+#         "Strain 3 data":0
+#     }
+
+#     return processed_data
+#     'strains': ['fxdfdf', 'stsjsfd'], 'column_indexes': [[0, 1, 2, 3], [10, 11, 12, 13]]
+
+
+
 
 def process_strain(strain):
     #this is based on the dilutions

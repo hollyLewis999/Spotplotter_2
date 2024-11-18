@@ -29,8 +29,6 @@ sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packag
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 import openpyxl
 
-ROWS = 6
-COLOUMS = 11
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 
@@ -1111,7 +1109,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
     return {
         'filename': plate['name'],
-        'additive': plate['additive'],
+        'additive': plate.get('additive', None),
         'dilutions': [],
         'unorderedquantifications': unordered_quantifications,
         'IMGcontours': None,
@@ -1121,9 +1119,9 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'smallArea': 0,
         'blocksize': 0,
         'strains': strains,
-        'column_indexes': column_indexes,
-        'strain_positions': window.plate_layout['strain_positions'],
-        'removed_positions': window.plate_layout['removed_positions'],
+        'column_indexes': [list(indexes) for indexes in column_indexes],  # Ensure column indexes are lists
+        'strain_positions': window.plate_layout['strain_positions'],  # Use as-is if integers or tuples
+        'removed_positions': list(window.plate_layout['removed_positions']),  # Convert sets to lists
         'layout': {
             'rows': rows,
             'columns': cols,
@@ -1132,7 +1130,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
             'gap_between_strains': window.layout_data['gap_between_strains']
         }
     }
-    
+
 def preview_all_plates(window):
     if not window.plates:
         messagebox.showinfo("Info", "No plates to preview")
@@ -1295,11 +1293,10 @@ def next_plate(window):
 
 
 
-
 def export_data(window):
     """
-    Export plate data and save to both memory and file
-    Returns: List of plate info and saves to a JSON file
+    Export plate data and allow the user to choose the file location and name.
+    Returns: List of plate info and saves to a user-specified JSON file.
     """
     all_plate_info = []
     
@@ -1335,10 +1332,18 @@ def export_data(window):
                                      strains, column_indexes)
         all_plate_info.append(plate_info)
     
-    # Save to file with timestamp
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = f"plate_data_{timestamp}.json"
+    # Ask the user for the file name and location
+    filename = filedialog.asksaveasfilename(
+        title="Save Plate Data",
+        defaultextension=".json",
+        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+    )
     
+    # Check if the user canceled the file dialog
+    if not filename:
+        print("Export canceled by the user.")
+        return None
+
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
     
@@ -1346,7 +1351,7 @@ def export_data(window):
 
 def save_to_file(data, filename):
     """
-    Save plate data to a JSON file
+    Save plate data to a JSON file.
     """
     try:
         with open(filename, 'w') as f:
@@ -1552,38 +1557,41 @@ def display_final_image(window, override =False):
     if (override):#ie if the user has over ridden the grid
         marked_image = window.marked_image
         result_grid = window.result_grid
-        window.image_info[window.current_image_index] = window.current_info.copy()
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
         # print(f"Debug: CURRENT INDEX {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
     else:   
         gray_image = window.gray_image  
-        result_grid, marked_image, ordered_counts = detect_and_draw_circles(window.binarized_image, gray_image, False)
+        columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+        rows = window.all_plate_info[window.current_image_index]['layout']['rows']
+        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+        print(window.all_plate_info)
+        # #comment out later, for testing and report
+        # path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
+        # cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
+        # # # cv2.imshow("marked", resize_for_display(marked_image))
 
-        #comment out later, for testing and report
-        path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
-        cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
-        # # cv2.imshow("marked", resize_for_display(marked_image))
+        # #checking to see if the window has current into to avoid cracshing
+        # if hasattr(window, 'current_info'):
+        #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+        #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+        #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
 
-        #checking to see if the window has current into to avoid cracshing
-        if hasattr(window, 'current_info'):
-            window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-            window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-            window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+        #     window.image_info[window.current_image_index] = window.current_info
+        #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # #     # print(f"Debug: Current image info: {window.current_info}")
+        # #     # print(f"Debug:098765 ALL INFO : {window.image_info}" )
+        # else:
+        #     print("Error: current_info not initialized")
 
-            window.image_info[window.current_image_index] = window.current_info
-            # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-            # print(f"Debug: Current image info: {window.current_info}")
-            # print(f"Debug:098765 ALL INFO : {window.image_info}" )
-        else:
-            print("Error: current_info not initialized")
-
-        # print("TESTER INFORMATION:") 
-        # print("_______________________________________________________________________")
-        # print(window.current_info['filename'])
-        print(ordered_counts["Strain 1"])    
-        print(ordered_counts["Strain 2"])   
-        print(ordered_counts["Strain 3"])   
+        # # print("TESTER INFORMATION:") 
+        # # print("_______________________________________________________________________")
+        # # print(window.current_info['filename'])
+        # print(ordered_counts["Strain 1"])    
+        # print(ordered_counts["Strain 2"])   
+        # print(ordered_counts["Strain 3"])   
 
     #make sure its the correct type
     if isinstance(marked_image, Image.Image):
@@ -1602,10 +1610,11 @@ def display_final_image(window, override =False):
 
 
     #saving what values and images to be used in the PDF reort
-    window.image_info[window.current_image_index]["threshold"] = window.contrast_value
-    window.image_info[window.current_image_index]["smallArea"] = window.excludeSmallDots
-    window.image_info[window.current_image_index]["IMGgrid"] = marked_image
-    window.image_info[window.current_image_index]["IMGbinary"] = window.binarized_image
+    window.all_plate_info [window.current_image_index]["threshold"] = window.contrast_value
+    window.all_plate_info [window.current_image_index]["smallArea"] = window.excludeSmallDots
+    window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
+    window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
+    window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
     
     
     ###HERE ABC
@@ -1876,7 +1885,7 @@ def display_image(window):
         contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
         cv2.drawContours(contour_img, contours, -1, (0, 255, 255), 3)
         
-        window.image_info[window.current_image_index]["IMGcontours"] = contour_img
+        window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img
         window.current_info["IMGcontours"] = contour_img
         display_img = contour_img
 
@@ -1984,22 +1993,23 @@ def create_editFrame(window, backToEdit = False):
         fill=DARK,
         outline="")
 
-    #displaying metadata fro mthe textfile, checking if current_info is initilised
-    if hasattr(window, 'current_info'):
-        current_info = window.current_info
-        metadata_text = f"Filename: {current_info['filename']}\n"
-        metadata_text += f"StrainA: {current_info['strainA']}\n"
-        metadata_text += f"StrainB: {current_info['strainB']}\n"
-        metadata_text += f"StrainC: {current_info['strainC']}"
-    else:
-        metadata_text = "No metadata available1"
+    # #displaying metadata fro mthe textfile, checking if current_info is initilised
+    # #TODO HERE
+    # if hasattr(window, 'current_info'):
+    #     current_info = window.current_info
+    #     metadata_text = f"Filename: {current_info['filename']}\n"
+    #     metadata_text += f"StrainA: {current_info['strainA']}\n"
+    #     metadata_text += f"StrainB: {current_info['strainB']}\n"
+    #     metadata_text += f"StrainC: {current_info['strainC']}"
+    # else:
+    #     metadata_text = "No metadata available1"
 
-    #fixing issue of only metadata displaying
-    if hasattr(window, 'metadata_label'):
-        window.metadata_label.destroy()  # Destroy the old label
+    # #fixing issue of only metadata displaying
+    # if hasattr(window, 'metadata_label'):
+    #     window.metadata_label.destroy()  # Destroy the old label
 
-    window.metadata_label = Label(window, text=metadata_text, font=(FONT, 16 * -1, 'bold'), bg=LIGHT, fg=DARK, justify=LEFT)
-    window.metadata_label.place(x=50, y=850)
+    # window.metadata_label = Label(window, text=metadata_text, font=(FONT, 16 * -1, 'bold'), bg=LIGHT, fg=DARK, justify=LEFT)
+    # window.metadata_label.place(x=50, y=850)
 
 
     canvas.create_text(
@@ -2413,7 +2423,9 @@ def open_grid_override(window):
    
     #find the blobs so the centerpoints are displayed if the user tries to override the grid. Finding blobs is based on the size of the image incase the image is much bigger/smaller it cant be a set pixel size
     height, width = window.binary_image.shape
-    max_radius = int(width/COLOUMS*2)
+    coloums = window.all_plate_info[window.current_image_index]['layout']['columns']
+
+    max_radius = int(width/coloums*2)
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
@@ -2541,29 +2553,29 @@ def recalculate_grid(window):
     height, width = window.gray_image.shape
     #new grid using user clicked AND previously detected
     grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image)
-    counts, marked_image, ordered_counts= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
+    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size)
 
-    
-    #SAVING INFO
-    if hasattr(window, 'current_info'):
-        window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-        window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-        window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
-        # Update the window.image_info with the modified current_info
-        window.image_info[window.current_image_index] = window.current_info.copy()
+    window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
+    # #SAVING INFO
+    # if hasattr(window, 'current_info'):
+    #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+    #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+    #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+    #     # Update the window.image_info with the modified current_info
+    #     window.image_info[window.current_image_index] = window.current_info.copy()
         
-        # print("RECALCULATED:      TESTER INFORMATION:") 
-        # print("_______________________________________________________________________")
-        # print(ordered_counts["Strain 1"])    
-        # print(ordered_counts["Strain 2"])   
-        # print(ordered_counts["Strain 3"])   
+    #     # print("RECALCULATED:      TESTER INFORMATION:") 
+    #     # print("_______________________________________________________________________")
+    #     # print(ordered_counts["Strain 1"])    
+    #     # print(ordered_counts["Strain 2"])   
+    #     # print(ordered_counts["Strain 3"])   
 
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
+    #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+    #     # print(f"Debug: Current image info: {window.current_info}")
+    #     # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
 
-    else:
-        print("Error: current_info not initialized")
+    # else:
+    #     print("Error: current_info not initialized")
 
     #update so the new override one is used
     window.result_grid= counts
@@ -2578,13 +2590,33 @@ def update_progress_bar(window):
         window.progress_bar['value'] = progress
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
 
-
 def validate_and_proceed(window):
-    #first checks if there is attribute and there are valiv paths and there is image info and image info it proergated
-    if hasattr(window, 'image_paths') and window.image_paths and hasattr(window, 'image_info') and window.image_info:
-        create_cropFrame(window)
+    """
+    Validates if the image paths and image info are properly initialized and match entries in window.all_plate_info.
+    Proceeds to create the crop frame if valid, otherwise shows a warning.
+    """
+    # Ensure `window.image_paths`, `window.all_plate_info`, and `window.image_info` are initialized
+    if (
+        hasattr(window, 'image_paths') and window.image_paths
+        and hasattr(window, 'all_plate_info') and window.all_plate_info
+    ):
+        # Check if all filenames in `window.image_info` exist in `window.all_plate_info`
+        all_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        
+        # Debugging: Print out expected filenames from the metadata
+        print("Expected filenames from metadata:")
+        for filename in all_filenames:
+            print(f"- {filename}")
+        
+        # if unmatched:
+        #     messagebox.showwarning(
+        #         "Warning",
+        #         f"The following filenames do not match metadata entries:\n{', '.join(unmatched)}"
+        #     )
+        else:
+            create_cropFrame(window)
     else:
-        messagebox.showwarning("Warning", "Please upload both text file and images")
+        messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
 
 
 def process_image(window):
@@ -2776,52 +2808,52 @@ def create_cropFrame(window):
 # 88b  d88 88      88booo. `8b  d8' 88   88 88  .8D db   8D 
 # ~Y8888P' 88      Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
 
-def upload_txt_file(window):
-    file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
-    if file_path:
+# def upload_txt_file(window):
+#     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
+#     if file_path:
 
-        window.image_info = []
-        window.image_paths = []
-        skipped_lines = []#store which liens where skipped
+#         window.image_info = []
+#         window.image_paths = []
+#         skipped_lines = []#store which liens where skipped
 
-        with open(file_path, 'r') as file:
-            lines = file.readlines()
-            if len(lines) > 1:  #must be more than just header
-                header = lines[0].strip().split(',') #split based on comma
-                #print(f"Debug: Header: {header}")
-                for i, line in enumerate(lines[1:], start=2):#start from second line (header in first)
-                    parts = line.strip().split(',')
-                    if len(parts) == 8:  # check correct number of parts
-                        info = {
-                            'filename': parts[0],
-                            'type': parts[1],
-                            'detergent': parts[2],
-                            'treatment': parts[3],
-                            'repeat': parts[4],
-                            'strainA': parts[5],
-                            'QuantificationA': None,
-                            'strainB': parts[6],
-                            'QuantificationB': None,
-                            'strainC': parts[7],
-                            'QuantificationC': None,
-                            'IMGcontours': None,  
-                            'IMGbinary': None,   
-                            'IMGgrid': None, 
-                            'threshold': 0,
-                            'smallArea': 0   
-                        }
-                        window.image_info.append(info) 
-                    else:
-                        skipped_lines.append(i)  #line number for skipped line
-        #display skipped lines
-        if skipped_lines:
-            messagebox.showwarning("Warning", f"Skipping {len(skipped_lines)} line(s) due to incorrect format.\nLine numbers: {', '.join(map(str, skipped_lines))} \nCorrect Format: FileName,Type,Detergent,Treatment,Repeat,StrainA_Name,StrainB_Name,StrainC_Name")
-         #initialize info
-        window.current_image_index = 0
-        if window.image_info:
-            window.current_info = window.image_info[0].copy() 
-        else:
-            window.current_info = None
+#         with open(file_path, 'r') as file:
+#             lines = file.readlines()
+#             if len(lines) > 1:  #must be more than just header
+#                 header = lines[0].strip().split(',') #split based on comma
+#                 #print(f"Debug: Header: {header}")
+#                 for i, line in enumerate(lines[1:], start=2):#start from second line (header in first)
+#                     parts = line.strip().split(',')
+#                     if len(parts) == 8:  # check correct number of parts
+#                         info = {
+#                             'filename': parts[0],
+#                             'type': parts[1],
+#                             'detergent': parts[2],
+#                             'treatment': parts[3],
+#                             'repeat': parts[4],
+#                             'strainA': parts[5],
+#                             'QuantificationA': None,
+#                             'strainB': parts[6],
+#                             'QuantificationB': None,
+#                             'strainC': parts[7],
+#                             'QuantificationC': None,
+#                             'IMGcontours': None,  
+#                             'IMGbinary': None,   
+#                             'IMGgrid': None, 
+#                             'threshold': 0,
+#                             'smallArea': 0   
+#                         }
+#                         window.image_info.append(info) 
+#                     else:
+#                         skipped_lines.append(i)  #line number for skipped line
+#         #display skipped lines
+#         if skipped_lines:
+#             messagebox.showwarning("Warning", f"Skipping {len(skipped_lines)} line(s) due to incorrect format.\nLine numbers: {', '.join(map(str, skipped_lines))} \nCorrect Format: FileName,Type,Detergent,Treatment,Repeat,StrainA_Name,StrainB_Name,StrainC_Name")
+#          #initialize info
+#         window.current_image_index = 0
+#         if window.image_info:
+#             window.current_info = window.image_info[0].copy() 
+#         else:
+#             window.current_info = None
 
 
 # #For testing so i can upload anything
@@ -2834,36 +2866,52 @@ def upload_txt_file(window):
 #         load_current_image(window)
 #     else:
 #         messagebox.showwarning("Warning", "No images were selected.")
-
-
 def upload_images(window):
+    """
+    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
+    """
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
    
-   #check that there are filepaths and that everything is initilised
-    if file_paths and hasattr(window, 'image_info'):
+    # Ensure file_paths are selected and window.all_plate_info is initialized
+    if file_paths and hasattr(window, 'all_plate_info'):
         window.image_paths = []
-        unmatched_filenames = []  #collect unmatched filenames
+        unmatched_filenames = []  # Collect unmatched filenames
 
-        #this is looking at the seleted files and seeing if the names match the textfile
-        for info in window.image_info:
-            filename = info['filename'].lower()
-            matching_path = None 
-            for path in file_paths:
-                if os.path.basename(path).lower() == filename:
-                    matching_path = path
-                    break  # exit if match is found
-            if matching_path:
-                window.image_paths.append(matching_path)
+        # Get the list of filenames from window.all_plate_info
+        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        
+        # Debugging: Print out expected filenames from the metadata
+        print("Expected filenames from metadata:")
+        for filename in valid_filenames:
+            print(f"- {filename}")
+
+        # Check the selected files for matches
+        for path in file_paths:
+            filename = os.path.basename(path).lower()
+            if filename in valid_filenames:
+                window.image_paths.append(path)
             else:
-                unmatched_filenames.append(info['filename']) 
-                
+                unmatched_filenames.append(filename)
+
+        # Handle matching and unmatched files
         if window.image_paths:
             window.current_image_index = 0
-            load_current_image(window)
-            if unmatched_filenames:
-                messagebox.showwarning("Warning", f"No matching images found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}")
+            load_current_image(window)  # Load the first matching image
+            # if unmatched_filenames:
+            #     messagebox.showwarning(
+            #         "Warning",
+            #         f"No matching entries found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}"
+            #     )
         else:
-            messagebox.showwarning("Warning", "No matching images found for all entries")
+            messagebox.showwarning(
+                "Warning",
+                "No matching images found for any entries in the metadata."
+            )
+    else:
+        messagebox.showwarning(
+            "Warning",
+            "No files selected or metadata not initialized."
+        )
 
 def load_current_image(window):
     #within correct bounds
@@ -2879,7 +2927,9 @@ def load_current_image(window):
         # print("IS IT HERE??????")
 
         # print("AFTER")
-        window.current_info = window.image_info[window.current_image_index].copy()
+
+        #TODO NEED TO FIX HERE TO LOAD THE INFO
+        window.current_info = window.all_plate_info[window.current_image_index].copy()
         # print(f"Debug: Loading image {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
     else:
@@ -3127,7 +3177,7 @@ def display_images(window):
             contour_img = img_np.copy()
             for cntr in contours:
                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
-            window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
+            window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
             
