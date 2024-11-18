@@ -17,6 +17,9 @@ from functools import partial
 import time
 import math 
 import sys
+import json
+import os
+from datetime import datetime
 
 
 from Processing import *
@@ -242,7 +245,6 @@ def create_titleFrame(window):
         x=510.0,
         y=670.0,)
 
-
     create_rounded_button(
         canvas=canvas,
         text="Next",
@@ -256,6 +258,15 @@ def create_titleFrame(window):
     command=lambda: create_plate_designer(window),
     x=290.0,
     y=670.0)    
+
+    create_rounded_button(
+    canvas=canvas,
+    text="Upload MetaData NEW",
+    command=lambda: upload_metadata_handler(window),
+    x=950.0,
+    y=670.0,
+)
+
 
     return canvas
 
@@ -307,6 +318,8 @@ def create_plate_designer(window):
         relief="ridge"
     )
     canvas.place(x=0, y=0)
+
+    
     
     # Main dark rectangles
     round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
@@ -318,7 +331,9 @@ def create_plate_designer(window):
     
     control_frame = Frame(window, bg=DARK)
     control_frame.place(x=1130, y=178, width=282, height=638)
-    
+    image_path_10 = relative_to_assets("image_10.png")
+    img_logobig = Image.open(image_path_10)
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
     create_controls(control_frame, window)
     create_plate_display(plate_frame, window)
 
@@ -530,16 +545,116 @@ def go_to_assignment_screen(window):
 # db   8D    88    88 `88. 88   88   .88.   88  V888 db   8D 
 # `8888Y'    YP    88   YD YP   YP Y888888P VP   V8P `8888Y' 
 
+def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_height):
+    # Calculate cell dimensions
+    cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+    total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+    total_width = window.layout_data['columns'] + total_gaps
+    cell_width = grid_width / total_width
+    cell_height = grid_height / window.layout_data['rows']
+
+    # Draw position labels and spots
+    current_x = margin_left
+    for position_idx in range(window.layout_data['strains']):
+        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+        position_width = (end_col - start_col + 1) * cell_width
+
+        # Find if this position is assigned to a strain
+        assigned_strain = None
+        for pos_key, assignment in plate.get('assignments', {}).items():
+            row, col = map(int, pos_key.split('-'))
+            if start_col <= col <= end_col:
+                assigned_strain = assignment
+                break
+
+        # Draw position label
+        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+        canvas.create_text(
+            current_x + position_width/2,
+            margin_top - 10,
+            text=label_text,
+            font=(FONT, 10, 'bold'),
+            fill=DARK
+        )
+
+        # Draw spots
+        for col_offset in range(end_col - start_col + 1):
+            col = start_col + col_offset
+            x_pos = current_x + col_offset * cell_width + cell_width/2
+
+            for row in range(window.layout_data['rows']):
+                pos_key = f"{row}-{col}"
+                if pos_key not in window.layout_data['removed_positions']:
+                    y_pos = margin_top + row * cell_height + cell_height/2
+
+                    # Determine spot color
+                    spot_color = GRAY1
+                    if pos_key in plate['assignments']:
+                        strain = plate['assignments'][pos_key]
+                        strain_index = window.strains.index(strain)
+                        spot_color = window.strain_colors[strain_index]
+
+                    # Draw spot
+                    canvas.create_oval(
+                        x_pos-8, y_pos-8, x_pos+8, y_pos+8,
+                        fill=spot_color,
+                        outline=spot_color,
+                        tags=(pos_key, "spot")
+                    )
+
+                    # Add strain label if assigned
+                    if pos_key in plate['assignments']:
+                        canvas.create_text(
+                            x_pos, y_pos-12,
+                            text=plate['assignments'][pos_key],
+                            font=(FONT, 6),
+                            fill=DARK
+                        )
+
+        # Update x position for next group
+        current_x += position_width
+
+        # Add gap after each position except the last one
+        if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+            current_x += cell_width
+
+def update_plate_display(window):
+    window.plate_canvas.delete('all')
+
+    width = window.plate_canvas.winfo_width()
+    height = window.plate_canvas.winfo_height()
+    if width <= 1 or height <= 1:
+        window.plate_canvas.after(100, lambda: update_plate_display(window))
+        return
+
+    # Calculate dimensions
+    margin_left = 30
+    margin_right = 30
+    margin_top = 70
+    margin_bottom = 30
+
+    grid_width = width - margin_left - margin_right
+    grid_height = height - margin_top - margin_bottom
+
+    # Draw the actual plate, not just a preview
+    draw_plate(window, window.plate_canvas, window.plates[window.current_plate], 
+               margin_left, margin_top, grid_width, grid_height)
+
+    # Update the plate display title
+    draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
+                    margin_bottom, grid_width, grid_height)
 
 def create_strain_designer(window):
     # Clear window
     for widget in window.winfo_children():
         widget.destroy()
+        #logo
+
         
-    # Initialize window properties
-    window.title("Plate Layout Designer")
-    window.geometry("1440x1024")
-    window.configure(bg=LIGHT)
+    # # Initialize window properties
+    # window.title("Plate Layout Designer")
+    # window.geometry("1440x1024")
+    # window.configure(bg=LIGHT)
     
     # Store all state as window attributes
     window.plates = []
@@ -563,10 +678,11 @@ def create_strain_designer(window):
     )
     window.canvas.place(x=0, y=0)
 
+
     # Main dark rectangles
     round_rectangle(window.canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
     round_rectangle(window.canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-
+    
     # Create frames
     window.plate_frame = tk.Frame(window, bg=DARK)
     window.plate_frame.place(x=27, y=178, width=1070, height=638)
@@ -594,21 +710,36 @@ def create_plate_controls(window):
     plate_entry_frame = tk.Frame(window.control_frame, bg=DARK)
     plate_entry_frame.pack(fill=tk.X, padx=10)
 
+    # Plate name entry
     window.plate_entry = ttk.Entry(plate_entry_frame, width=20)
     window.plate_entry.pack(side=tk.LEFT, padx=(0, 5))
 
-    window.atc_var = tk.BooleanVar()
-    atc_check = tk.Checkbutton(
+    # Additive controls
+    window.additive_var = tk.BooleanVar()
+    additive_check = tk.Checkbutton(
         plate_entry_frame,
-        text="ATC",
-        variable=window.atc_var,
+        text="Additive",
+        variable=window.additive_var,
         bg=DARK,
         fg=LIGHT,
         selectcolor=DARK,
         font=(FONT, 10)
     )
-    atc_check.pack(side=tk.LEFT)
+    additive_check.pack(side=tk.LEFT, padx=(5, 5))
 
+    window.additive_entry = ttk.Entry(plate_entry_frame, width=15, state=tk.DISABLED)
+    window.additive_entry.pack(side=tk.LEFT)
+
+    # Enable/disable additive entry based on checkbox
+    def toggle_additive_entry():
+        if window.additive_var.get():
+            window.additive_entry.config(state=tk.NORMAL)
+        else:
+            window.additive_entry.config(state=tk.DISABLED)
+
+    window.additive_var.trace_add("write", lambda *args: toggle_additive_entry())
+
+    # Add plate button
     add_plate_btn = tk.Button(
         window.control_frame,
         text="Add Plate",
@@ -748,15 +879,17 @@ def add_strain(window):
 def add_plate(window):
     name = window.plate_entry.get().strip()
     if name:
+        additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
         new_plate = {
             'name': name,
-            'atc': window.atc_var.get(),
+            'additive': additive_name,
             'assignments': {},
             'column_assignments': {}
         }
         window.plates.append(new_plate)
         window.plate_entry.delete(0, tk.END)
-        window.atc_var.set(False)
+        window.additive_var.set(False)
+        window.additive_entry.delete(0, tk.END)
         window.current_plate = len(window.plates) - 1
         window.column_assignments = {}
         update_plate_display(window)
@@ -875,27 +1008,6 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
                 
     update_plate_display(window)
 
-def update_plate_display(window):
-    window.plate_canvas.delete('all')
-    
-    width = window.plate_canvas.winfo_width()
-    height = window.plate_canvas.winfo_height()
-    if width <= 1 or height <= 1:
-        window.plate_canvas.after(100, lambda: update_plate_display(window))
-        return
-        
-    # Calculate dimensions
-    margin_left = 30
-    margin_right = 30
-    margin_top = 70
-    margin_bottom = 30
-    
-    grid_width = width - margin_left - margin_right
-    grid_height = height - margin_top - margin_bottom
-    
-    draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
-                   margin_bottom, grid_width, grid_height)
-
 def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                    margin_bottom, grid_width, grid_height):
     if not window.plates:
@@ -903,12 +1015,15 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
         
     plate = window.plates[window.current_plate]
     num_strains = window.layout_data['strains']
-    
+
     # Draw plate header
+    additive_display = f"  (Additive: {plate['additive_name']})" if plate.get('has_additive') and plate.get('additive_name') else ''
+    
+    # Draw plate header with corrected syntax
     window.plate_canvas.create_text(
         width // 2,
         20,
-        text=f"Current Plate: {plate['name']}{'  (ATC)' if plate['atc'] else ''}",
+        text=f"Current Plate: {window.current_plate + 1} - {plate['name']}{additive_display}",
         fill=LIGHT,
         font=(FONT, 16, 'bold')
     )
@@ -991,48 +1106,12 @@ def draw_position_group(window, plate, x_pos, y_pos, position_width, position_id
                         font=(FONT, 6),
                         fill=LIGHT
                     )
-def export_data(window):
-    all_plate_info = []
-    
-    for plate in window.plates:
-        rows = window.layout_data['rows']
-        cols = window.layout_data['columns']
-        unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
-        
-        ordered_assignments = []
-        plate_assignments = plate.get('assignments', {})
-        
-        # Process assignments in order of positions
-        for pos_idx in range(window.layout_data['strains']):
-            start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
-            
-            strain = None
-            for col in range(start_col, end_col + 1):
-                test_key = f"0-{col}"
-                if test_key in plate_assignments:
-                    strain = plate_assignments[test_key]
-                    break
-            
-            if strain:
-                ordered_assignments.append({
-                    'strain': strain,
-                    'columns': list(range(start_col, end_col + 1))
-                })
-        
-        strains = [assignment['strain'] for assignment in ordered_assignments]
-        column_indexes = [assignment['columns'] for assignment in ordered_assignments]
-        
-        plate_info = create_plate_info(window, plate, rows, cols, unordered_quantifications,
-                                     strains, column_indexes)
-        all_plate_info.append(plate_info)
-    
-    return all_plate_info
 
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
-                     strains, column_indexes):
+                      strains, column_indexes):
     return {
         'filename': plate['name'],
-        'atc': plate['atc'],
+        'additive': plate['additive'],
         'dilutions': [],
         'unorderedquantifications': unordered_quantifications,
         'IMGcontours': None,
@@ -1044,7 +1123,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'strains': strains,
         'column_indexes': column_indexes,
         'strain_positions': window.plate_layout['strain_positions'],
-        'removed_positions': list(window.removed_positions),
+        'removed_positions': window.plate_layout['removed_positions'],
         'layout': {
             'rows': rows,
             'columns': cols,
@@ -1053,34 +1132,28 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
             'gap_between_strains': window.layout_data['gap_between_strains']
         }
     }
-
-
+    
 def preview_all_plates(window):
     if not window.plates:
         messagebox.showinfo("Info", "No plates to preview")
         return
-
+    
     preview_window = tk.Toplevel(window)
     preview_window.title("All Plates Preview")
     preview_window.geometry("1200x800")
 
-    # Create a frame with scrollbar
     main_frame = tk.Frame(preview_window, bg=DARK)
     main_frame.pack(fill='both', expand=True)
-
     canvas = tk.Canvas(main_frame, bg=DARK, highlightthickness=0)
     scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
     scrollable_frame = tk.Frame(canvas, bg=DARK)
-
     scrollable_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
     )
-
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    # Calculate dimensions
     plates_per_row = 2
     plate_width = 400
     plate_height = 300
@@ -1089,21 +1162,24 @@ def preview_all_plates(window):
     for i, plate in enumerate(window.plates):
         row = i // plates_per_row
         col = i % plates_per_row
-
-        # Create frame for each plate
         plate_frame = tk.Frame(scrollable_frame, bg=LIGHT, bd=2, relief='raised')
         plate_frame.grid(row=row, column=col, padx=margin, pady=margin)
-
-        # Plate header
+        
+        # Safely get additive information using .get() method with default values
+        has_additive = plate.get('has_additive', False)
+        additive_name = plate.get('additive_name', '')
+        
+        # Create additive text only if both conditions are met
+        additive_text = f" with {additive_name}" if has_additive and additive_name else ""
+        
         header = tk.Label(
             plate_frame,
-            text=f"{plate['name']} ({'ATC' if plate['atc'] else 'No ATC'})",
+            text=f"{plate.get('name', 'Unnamed')}{additive_text}",
             font=(FONT, 12, 'bold'),
             bg=LIGHT
         )
         header.pack(pady=5)
 
-        # Create canvas for plate visualization
         plate_canvas = tk.Canvas(
             plate_frame,
             width=plate_width - 40,
@@ -1112,14 +1188,10 @@ def preview_all_plates(window):
             highlightthickness=1
         )
         plate_canvas.pack(padx=10, pady=5)
-
-        # Draw spots
         draw_plate_preview(window, plate_canvas, plate)
 
-    # Configure scrollbar
     scrollbar.pack(side="right", fill="y")
     canvas.pack(side="left", fill="both", expand=True)
-
 def draw_plate_preview(window, canvas, plate):
     # Calculate cell dimensions
     canvas_width = canvas.winfo_reqwidth()
@@ -1201,17 +1273,159 @@ def draw_plate_preview(window, canvas, plate):
             current_x += cell_width
 
 def prev_plate(window):
-    if window.current_plate > 0:
+    if window.plates and window.current_plate > 0:
         window.current_plate -= 1
+        window.plate_entry.delete(0, tk.END)
+        window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
+        window.atc_var.set(window.plates[window.current_plate]['atc'])
         update_plate_display(window)
-        window.plate_canvas.focus_set()  # Set focus to the plate canvas
+        window.plate_canvas.focus_set()
 
 def next_plate(window):
-    if window.current_plate < len(window.plates) - 1:
+    if window.plates and window.current_plate < len(window.plates) - 1:
         window.current_plate += 1
+        window.plate_entry.delete(0, tk.END)
+        window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
+        window.atc_var.set(window.plates[window.current_plate]['atc'])
         update_plate_display(window)
-        window.plate_canvas.focus_set() 
+        window.plate_canvas.focus_set()
 
+
+
+
+
+
+
+def export_data(window):
+    """
+    Export plate data and save to both memory and file
+    Returns: List of plate info and saves to a JSON file
+    """
+    all_plate_info = []
+    
+    for plate in window.plates:
+        rows = window.layout_data['rows']
+        cols = window.layout_data['columns']
+        unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
+        
+        ordered_assignments = []
+        plate_assignments = plate.get('assignments', {})
+        
+        # Process assignments in order of positions
+        for pos_idx in range(window.layout_data['strains']):
+            start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
+            
+            strain = None
+            for col in range(start_col, end_col + 1):
+                test_key = f"0-{col}"
+                if test_key in plate_assignments:
+                    strain = plate_assignments[test_key]
+                    break
+            
+            if strain:
+                ordered_assignments.append({
+                    'strain': strain,
+                    'columns': list(range(start_col, end_col + 1))
+                })
+        
+        strains = [assignment['strain'] for assignment in ordered_assignments]
+        column_indexes = [assignment['columns'] for assignment in ordered_assignments]
+        
+        plate_info = create_plate_info(window, plate, rows, cols, unordered_quantifications,
+                                     strains, column_indexes)
+        all_plate_info.append(plate_info)
+    
+    # Save to file with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f"plate_data_{timestamp}.json"
+    
+    save_to_file(all_plate_info, filename)
+    print(f"Data exported successfully to {filename}")
+    
+    return all_plate_info
+
+def save_to_file(data, filename):
+    """
+    Save plate data to a JSON file
+    """
+    try:
+        with open(filename, 'w') as f:
+            json.dump(data, f, indent=4)
+    except Exception as e:
+        print(f"Error saving file: {str(e)}")
+        raise
+
+def load_from_file(filename):
+    """
+    Load plate data from a JSON file
+    Returns: List of plate info loaded from file
+    """
+    try:
+        if not os.path.exists(filename):
+            raise FileNotFoundError(f"File not found: {filename}")
+            
+        with open(filename, 'r') as f:
+            data = json.load(f)
+            print(f"Data loaded successfully from {filename}")
+            return data
+            
+    except Exception as e:
+        print(f"Error loading file: {str(e)}")
+        raise
+
+def get_available_data_files():
+    """
+    Get list of available plate data files in current directory
+    Returns: List of filenames matching the plate data pattern
+    """
+    files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
+    return sorted(files, reverse=True)
+
+
+def upload_metadata_handler(window):
+    """
+    Handler for the Upload MetaData button.
+    Opens file dialog, loads data, and displays it.
+    """
+    try:
+        # Open file dialog for selecting the JSON file
+        filename = filedialog.askopenfilename(
+            title="Select Metadata File",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if not filename:  # User cancelled
+            return
+            
+        # Load the data
+        with open(filename, 'r') as file:
+            loaded_data = json.load(file)
+            
+        # Update the global data structure
+        window.all_plate_info = loaded_data
+        
+        # Print the loaded data in a formatted way
+        print("\nUploaded Metadata Contents:")
+        print("-" * 50)
+        
+        for idx, plate in enumerate(loaded_data, 1):
+            print(f"\nPlate {idx}:")
+            print("  Strains:", ", ".join(plate.get('strains', [])))
+            print("  Columns:", plate.get('column_indexes', []))
+            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
+            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
+            
+        print("-" * 50)
+        print(f"Successfully loaded data from: {filename}")
+        
+        return loaded_data
+        
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON file format")
+        return None
+    except Exception as e:
+        print(f"Error loading metadata: {str(e)}")
+        return None
 
 
 
