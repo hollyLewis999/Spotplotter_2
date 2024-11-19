@@ -34,78 +34,158 @@ def relative_to_assets(path: str) -> Path:
 # 88      88booo. 88   88    88    88.     db   8D 
 # 88      Y88888P YP   YP    YP    Y88888P `8888Y' 
 
-
-
-def create_plate_designer(window):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
+class RoundedEntry(tk.Frame):
+    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
+        super().__init__(parent, bg=DARK)
         
-    # Initialize window properties
-    # window.title("Plate Layout Designer")
-    # window.geometry("1440x1024")
-    # window.configure(bg=LIGHT)
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        # Create rounded canvas background
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=height,
+            bg=DARK,
+            highlightthickness=0
+        )
+        self.canvas.grid(row=0, column=0)
+        
+        # Draw rounded rectangle
+        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
+            x1+r, y1,
+            x1+r, y1,
+            x2-r, y1,
+            x2-r, y1,
+            x2, y1,
+            x2, y1+r,
+            x2, y2-r,
+            x2, y2,
+            x2-r, y2,
+            x1+r, y2,
+            x1, y2,
+            x1, y2-r,
+            x1, y1+r,
+            x1, y1,
+            smooth=True,
+            **kwargs
+        )
+        
+        bg_box = self.canvas.create_rounded_rectangle(
+            2, 2, width-2, height-2,
+            corner_radius,
+            fill="white",
+            outline="#cccccc"
+        )
+        
+        self.entry = tk.Entry(
+            self,
+            bg="white",
+            bd=0,
+            highlightthickness=0,
+            **kwargs
+        )
+        self.entry.place(
+            x=10,
+            y=height//2,
+            width=width-20,
+            anchor="w"
+        )
+
+class RoundedCheckbox(tk.Canvas):
+    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
+        super().__init__(
+            parent,
+            width=24,
+            height=24,
+            highlightthickness=0,
+            bg=DARK,
+            **kwargs
+        )
+        self.variable = variable
+        self.command = command
+        
+        # Create the rounded rectangle for the checkbox
+        self.box = self.create_rounded_rectangle(
+            2, 2, 22, 22,
+            5,  # corner radius
+            outline="#cccccc",
+            fill="white",
+            width=2
+        )
+        
+        # Create the checkmark (hidden initially)
+        self.checkmark = self.create_line(
+            6, 12, 10, 16, 18, 8,
+            fill=DARK,
+            width=3,
+            state="hidden"
+        )
+        
+        # Bind click event
+        self.bind("<Button-1>", self.toggle)
+        
+        # Create label
+        self.label = Label(
+            parent,
+            text=text,
+            bg=DARK,
+            fg=LIGHT,
+            font=(FONT, 12)
+        )
+        
+    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
+        points = [
+            x1+radius, y1,
+            x2-radius, y1,
+            x2, y1,
+            x2, y1+radius,
+            x2, y2-radius,
+            x2, y2,
+            x2-radius, y2,
+            x1+radius, y2,
+            x1, y2,
+            x1, y2-radius,
+            x1, y1+radius,
+            x1, y1
+        ]
+        return self.create_polygon(points, smooth=True, **kwargs)
     
-    # Initialize plate layout attributes
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=2),
-        'x_dilution': tk.IntVar(value=10),
-        'y_dilution': tk.IntVar(value=2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-
+    def toggle(self, event=None):
+        if self.variable:
+            self.variable.set(not self.variable.get())
+            self.update_state()
+            if self.command:
+                self.command()
     
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
-    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    # Main dark rectangles
-    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
-    # Create frames
-    plate_frame = Frame(window, bg=DARK)
-    plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-
-    create_controls(control_frame, window)
-    create_plate_display(plate_frame, window)
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        x=buttonPosX,
-        y=buttonPosY
-    )
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Cancel",
-        command=lambda: cancel_callback if cancel_callback else lambda: None,
-        x=17.0,
-        y=buttonPosY
-    )
-
+    def update_state(self):
+        if self.variable and self.variable.get():
+            self.itemconfigure(self.checkmark, state="normal")
+        else:
+            self.itemconfigure(self.checkmark, state="hidden")
 
 def create_controls(control_frame, window):
+
+    if not hasattr(window, 'plates'):
+        window.plates = []
+    if not hasattr(window, 'current_plate'):
+        window.current_plate = 0
+    if not hasattr(window, 'plate_layout'):
+        window.plate_layout = {
+            'rows': tk.IntVar(value=8),
+            'columns': tk.IntVar(value=12),
+            'strains': tk.IntVar(value=1),
+            'x_dilution': tk.IntVar(value=2),
+            'y_dilution': tk.IntVar(value=2),
+            'gap_between_strains': tk.BooleanVar(value=False),
+            'removed_positions': set(),
+            'strain_positions': {}
+        }
+
+
     y_offset = 20
     spacing = 80
+    label_width = 100  # Width for right-aligned labels
     
     # Create a canvas for the controls
     control_canvas = tk.Canvas(
@@ -117,55 +197,52 @@ def create_controls(control_frame, window):
     )
     control_canvas.pack(fill="both", expand=True)
     
-    # Row input
-    row_label = Label(control_frame, text="Rows", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    row_label.place(x=20, y=y_offset)
-    row_entry = ttk.Entry(control_frame, textvariable=window.plate_layout['rows'], width=10)
-    row_entry.place(x=20, y=y_offset + 30)
+    # Function to create styled input row
+    def create_input_row(label_text, variable, y_pos):
+        # Right-aligned label
+        label = Label(
+            control_frame,
+            text=label_text,
+            font=(FONT, 12, 'bold'),
+            fg=LIGHT,
+            bg=DARK,
+            width=10,  # Fixed width for alignment
+            anchor="e"  # Right alignment
+        )
+        label.place(x=10, y=y_pos)
+        
+        # Custom rounded entry box
+        entry_frame = RoundedEntry(control_frame, width=100, height=35)
+        entry_frame.place(x=140, y=y_pos - 5)
+        entry_frame.entry.config(textvariable=variable, font=(FONT, 11))
+        
+        return entry_frame.entry
     
-    # Column input
-    col_label = Label(control_frame, text="Columns", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    col_label.place(x=20, y=y_offset + spacing)
-    col_entry = ttk.Entry(control_frame, textvariable=window.plate_layout['columns'], width=10)
-    col_entry.place(x=20, y=y_offset + spacing + 30)
+    # Create all input rows
+    entries = {
+        'rows': create_input_row("Rows:", window.plate_layout['rows'], y_offset),
+        'columns': create_input_row("Columns:", window.plate_layout['columns'], y_offset + spacing),
+        'strains': create_input_row("Strains:", window.plate_layout['strains'], y_offset + spacing * 2),
+        'x_dilution': create_input_row("X-Dilution:", window.plate_layout['x_dilution'], y_offset + spacing * 3),
+        'y_dilution': create_input_row("Y-Dilution:", window.plate_layout['y_dilution'], y_offset + spacing * 4)
+    }
     
-    # Strains input
-    strain_label = Label(control_frame, text="Strains", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    strain_label.place(x=20, y=y_offset + spacing * 2)
-    strain_entry = ttk.Entry(control_frame, textvariable=window.plate_layout['strains'], width=10)
-    strain_entry.place(x=20, y=y_offset + spacing * 2 + 30)
-    
-    # X Dilution input
-    x_dil_label = Label(control_frame, text="X-Dilution", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    x_dil_label.place(x=20, y=y_offset + spacing * 3)
-    x_dil_entry = ttk.Entry(control_frame, textvariable=window.plate_layout['x_dilution'], width=10)
-    x_dil_entry.place(x=20, y=y_offset + spacing * 3 + 30)
-    
-    # Y Dilution input
-    y_dil_label = Label(control_frame, text="Y-Dilution", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    y_dil_label.place(x=20, y=y_offset + spacing * 4)
-    y_dil_entry = ttk.Entry(control_frame, textvariable=window.plate_layout['y_dilution'], width=10)
-    y_dil_entry.place(x=20, y=y_offset + spacing * 4 + 30)
-    
-    # Gap checkbox
-    gap_check = Checkbutton(
+    # Create custom checkbox
+    checkbox = RoundedCheckbox(
         control_frame,
         text="Gap Between Strains",
         variable=window.plate_layout['gap_between_strains'],
-        bg=DARK,
-        fg=LIGHT,
-        selectcolor=DARK,
-        font=(FONT, 12),
-        command=lambda: update_plate_display(window)
+        command=lambda: update_plate_display_layout_designer(window)
     )
-    gap_check.place(x=20, y=y_offset + spacing * 5)
-    
-    # Create the Next button using the control_canvas
-
+    checkbox.place(x=20, y=y_offset + spacing * 5)
+    checkbox.label.place(x=50, y=y_offset + spacing * 5)
     
     # Bind all variables to update function
     for var_name in ['rows', 'columns', 'strains', 'x_dilution', 'y_dilution']:
-        window.plate_layout[var_name].trace_add("write", lambda *args: update_plate_display_layout_designer(window))
+        window.plate_layout[var_name].trace_add(
+            "write",
+            lambda *args: update_plate_display_layout_designer(window)
+        )
 
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
@@ -313,6 +390,72 @@ def go_to_assignment_screen(window):
 # db   8D    88    88 `88. 88   88   .88.   88  V888 db   8D 
 # `8888Y'    YP    88   YD YP   YP Y888888P VP   V8P `8888Y' 
 
+def create_strain_designer(window):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    # Initialize window properties
+    # Store all state as window attributes
+    window.plates = []
+    window.strains = []
+    window.strain_colors = COLORS
+    window.current_color_index = 0
+    window.current_plate = 0
+    window.strain_buttons = []
+    window.position_labels = {i: chr(65 + i) for i in range(window.layout_data['strains'])}
+    window.column_assignments = {}
+
+    # Create main canvas
+    window.canvas = tk.Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    window.canvas.place(x=0, y=0)
+
+    # Load the image using PhotoImage (or Pillow for more formats)
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    window.canvas.image_image_1 = image_image_1  # Keep a reference to prevent garbage collection
+
+    # Place the image on the canvas
+    image_1 = window.canvas.create_image(719.0, 57.0, image=image_image_1)
+
+    # Main dark rectangles
+    round_rectangle(window.canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
+    round_rectangle(window.canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+
+    # Create frames
+    window.plate_frame = tk.Frame(window, bg=DARK)
+    window.plate_frame.place(x=27, y=178, width=1070, height=638)
+
+    window.control_frame = tk.Frame(window, bg=DARK)
+    window.control_frame.place(x=1130, y=178, width=282, height=638)
+
+    # Create subframes
+    window.strains_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.strains_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+
+    create_plate_controls(window)
+    create_strain_controls(window)
+    create_navigation_controls(window)
+    create_plate_canvas(window)
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: print("processMetadata"),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+
 def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_height):
     # Calculate cell dimensions
     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
@@ -411,64 +554,6 @@ def update_plate_display(window):
     # Update the plate display title
     draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                     margin_bottom, grid_width, grid_height)
-
-def create_strain_designer(window):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    # Initialize window properties
-    # Store all state as window attributes
-    window.plates = []
-    window.strains = []
-    window.strain_colors = COLORS
-    window.current_color_index = 0
-    window.current_plate = 0
-    window.strain_buttons = []
-    window.position_labels = {i: chr(65 + i) for i in range(window.layout_data['strains'])}
-    window.column_assignments = {}
-
-    # Create main canvas
-    window.canvas = tk.Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    window.canvas.place(x=0, y=0)
-
-    # Load the image using PhotoImage (or Pillow for more formats)
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
-    window.canvas.image_image_1 = image_image_1  # Keep a reference to prevent garbage collection
-
-    # Place the image on the canvas
-    image_1 = window.canvas.create_image(719.0, 57.0, image=image_image_1)
-
-    # Main dark rectangles
-    round_rectangle(window.canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(window.canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-
-    # Create frames
-    window.plate_frame = tk.Frame(window, bg=DARK)
-    window.plate_frame.place(x=27, y=178, width=1070, height=638)
-
-    window.control_frame = tk.Frame(window, bg=DARK)
-    window.control_frame.place(x=1130, y=178, width=282, height=638)
-
-    # Create subframes
-    window.strains_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.strains_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
-
-    create_plate_controls(window)
-    create_strain_controls(window)
-    create_navigation_controls(window)
-    create_plate_canvas(window)
 
 
 def create_plate_controls(window):

@@ -59,72 +59,82 @@ def relative_to_assets(path: str) -> Path:
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# .88b  d88. d88888b d888888b  .d8b.  d8888b.  .d8b.  d888888b  .d8b.  
+# 88'YbdP`88 88'     `~~88~~' d8' `8b 88  `8D d8' `8b `~~88~~' d8' `8b 
+# 88  88  88 88ooooo    88    88ooo88 88   88 88ooo88    88    88ooo88 
+# 88  88  88 88~~~~~    88    88~~~88 88   88 88~~~88    88    88~~~88 
+# 88  88  88 88.        88    88   88 88  .8D 88   88    88    88   88 
+# YP  YP  YP Y88888P    YP    YP   YP Y8888D' YP   YP    YP    YP   YP 
+
+
+
+
+
+def create_plate_designer(window):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
+        
+    # Initialize window properties
+    # window.title("Plate Layout Designer")
+    # window.geometry("1440x1024")
+    # window.configure(bg=LIGHT)
+    
+    # Initialize plate layout attributes
+    window.plate_layout = {
+        'rows': tk.IntVar(value=8),
+        'columns': tk.IntVar(value=12),
+        'strains': tk.IntVar(value=2),
+        'x_dilution': tk.IntVar(value=10),
+        'y_dilution': tk.IntVar(value=2),
+        'gap_between_strains': tk.BooleanVar(value=False),
+        'removed_positions': set(),
+        'strain_positions': {}
+    }
+
+    
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
+    # Main dark rectangles
+    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
+    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+    
+    # Create frames
+    plate_frame = Frame(window, bg=DARK)
+    plate_frame.place(x=27, y=178, width=1070, height=638)
+    
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+
+    create_controls(control_frame, window)
+    create_plate_display(plate_frame, window)
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_titleFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )
 
 
 
