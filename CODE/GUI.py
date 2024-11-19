@@ -1643,11 +1643,13 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        processResults(window)
+        save_window_state(window, 'window_state.pkl')
+        print("saved")
+        # processResults(window)
 
 
 def processResults(window):
-
+    # restore_window_state(window, 'window_state.pkl')
 
     process_split_order_quantifications(window)
 
@@ -1668,6 +1670,21 @@ def processResults(window):
 
     #display_results(window)
 
+def save_window_state(window, filename):
+    # Extract the all_plate_info from the window object
+    all_plate_info = window.all_plate_info
+    
+    # Serialize and save it to a file using pickle
+    with open(filename, 'wb') as file:
+        pickle.dump(all_plate_info, file)
+
+def restore_window_state(window, filename):
+    # Deserialize the state from the pickle file
+    with open(filename, 'rb') as file:
+        all_plate_info = pickle.load(file)
+    
+    # Restore the all_plate_info attribute in the window object
+    window.all_plate_info = all_plate_info
 
 def process_split_order_quantifications(window):
     """
@@ -1715,40 +1732,41 @@ def process_split_order_quantifications(window):
 def generate_data_series(window):
     # Dictionary to store data series for each strain
     strain_data = defaultdict(list)
-    dilution_series = window.all_plate_info[0]['dilutions'] 
-    
+    dilution_series = window.all_plate_info[0]['dilutions']
+   
     # Iterate over all plates
     for plate in window.all_plate_info:
         additive = plate.get('additive', 'none')
+        plate_name = plate.get('plate_name', 'Unnamed Plate')
         strains = plate['strains']
         ordered_quantifications = plate['ordered_quantifications']
-        column_indexes = plate['column_indexes']
-
+        
         # Ensure ordered_quantifications and column_indexes match strain count
         if len(ordered_quantifications) != len(strains):
             raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
-
+        
         # For each strain in the plate
         for strain_idx, strain in enumerate(strains):
             # Extract y_values for this strain
             y_values = ordered_quantifications[strain_idx]
-
+            
             # Generate a label for this series
-            label = f"{additive} {len([series for series in strain_data[strain] if series['additive'] == additive]) + 1}"
-
+            label = f"{plate_name} ({'Control' if additive == 'none' else additive})"
+            
             # Append data series to the strain's list
             strain_data[strain].append({
                 'y_values': y_values,
                 'additive': additive,
                 'label': label,
-                'strain': strain
+                'strain': strain,
+                'plate_name': plate_name
             })
-
+    
     # Convert strain_data to a list of series if needed
     data_series = []
     for strain, series in strain_data.items():
         data_series.extend(series)
-
+    
     return strain_data, dilution_series
 
 
@@ -2184,11 +2202,16 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
 
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+# initialize_window_attributes(window)
+# title_frame_widgets = create_titleFrame(window)
 
-window.resizable(False, False)
-window.mainloop()
+# window.resizable(False, False)
+# window.mainloop()
+
+restore_window_state(window, 'window_state.pkl')
+processResults(window)
+
+
 
 
 
