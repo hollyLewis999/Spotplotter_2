@@ -50,20 +50,100 @@ backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
 
+
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
-# .d8888. d888888b db    db db      d88888b 
-# 88'  YP `~~88~~' `8b  d8' 88      88'     
-# `8bo.      88     `8bd8'  88      88ooooo 
-#   `Y8b.    88       88    88      88~~~~~ 
-# db   8D    88       88    88booo. 88.     
-# `8888Y'    YP       YP    Y88888P Y88888P 
 
 
-#################################################################
-# The functions create_circular_slider, create_round_button and round_rectabgle were created by Chatgbt, Tkinter did not have very asthetic sliders or buttons
-#                                       
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
 ##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
@@ -117,6 +197,8 @@ def create_titleFrame(window):
         command=lambda: validate_and_proceed(window),
         x=buttonPosX,
         y=buttonPosY )
+
+        
 
     create_rounded_button(
     canvas=canvas,
@@ -1643,13 +1725,13 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state.pkl')
+        save_window_state(window, 'window_state_multipulAdditives.pkl')
         print("saved")
         # processResults(window)
 
 
 def processResults(window):
-    # restore_window_state(window, 'window_state.pkl')
+    # restore_window_state(window, 'window_state_multipulAdditives.pkl')
 
     process_split_order_quantifications(window)
 
@@ -1736,9 +1818,12 @@ def generate_data_series(window):
    
     # Iterate over all plates
     for plate in window.all_plate_info:
-        additive = plate.get('additive', 'none')
-        plate_name = plate.get('plate_name', 'Unnamed Plate')
+        
+        additive = plate.get('additive', 'Control') or 'Control'
+
+        filename = plate.get('filename', 'Unnamed Plate')
         strains = plate['strains']
+        column_indexes = plate['column_indexes']
         ordered_quantifications = plate['ordered_quantifications']
         
         # Ensure ordered_quantifications and column_indexes match strain count
@@ -1749,17 +1834,26 @@ def generate_data_series(window):
         for strain_idx, strain in enumerate(strains):
             # Extract y_values for this strain
             y_values = ordered_quantifications[strain_idx]
+            column_indexes_for_strain = column_indexes[strain_idx]
+    
+            # Calculate the range of column indexes
+            start_col = min(column_indexes_for_strain)
+            end_col = max(column_indexes_for_strain)
             
             # Generate a label for this series
-            label = f"{plate_name} ({'Control' if additive == 'none' else additive})"
+            label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
             
+            print(label)  # Optional: Debugging to check the labels
+            # Generate a label for this series
+
             # Append data series to the strain's list
             strain_data[strain].append({
                 'y_values': y_values,
                 'additive': additive,
                 'label': label,
                 'strain': strain,
-                'plate_name': plate_name
+                'filename': filename,
+                'column_indexes':column_indexes_for_strain
             })
     
     # Convert strain_data to a list of series if needed
@@ -2202,16 +2296,14 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
 
-# initialize_window_attributes(window)
-# title_frame_widgets = create_titleFrame(window)
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
 
-# window.resizable(False, False)
-# window.mainloop()
+window.resizable(False, False)
+window.mainloop()
 
-restore_window_state(window, 'window_state.pkl')
-processResults(window)
-
-
+# restore_window_state(window, 'window_state_multipulAdditives.pkl')
+# processResults(window)
 
 
 
@@ -2219,8 +2311,12 @@ processResults(window)
 
 
 
+#Different saved states:
 
+#window_state.pkl   - real test its testing these images where https://www.dropbox.com/scl/fo/55v2k6p7hfb4hws18diod/AK-1lWdCixipX0rCeqPYjYc?rlkey=4uou81nqbu13wig1f8vwbx4ie&e=1&st=4vqqji7x&dl=0 
+#1 additive and 4 repeats for each
 
+#'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
 
 
 

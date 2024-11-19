@@ -24,7 +24,8 @@ COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
-
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
 
 # d8888b. db       .d8b.  d888888b d88888b .d8888. 
 # 88  `8D 88      d8' `8b `~~88~~' 88'     88'  YP 
@@ -41,9 +42,9 @@ def create_plate_designer(window):
         widget.destroy()
         
     # Initialize window properties
-    window.title("Plate Layout Designer")
-    window.geometry("1440x1024")
-    window.configure(bg=LIGHT)
+    # window.title("Plate Layout Designer")
+    # window.geometry("1440x1024")
+    # window.configure(bg=LIGHT)
     
     # Initialize plate layout attributes
     window.plate_layout = {
@@ -69,8 +70,9 @@ def create_plate_designer(window):
     )
     canvas.place(x=0, y=0)
 
-    
-    
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
     # Main dark rectangles
     round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
     round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
@@ -84,10 +86,36 @@ def create_plate_designer(window):
 
     create_controls(control_frame, window)
     create_plate_display(plate_frame, window)
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Cancel",
+        command=lambda: cancel_callback if cancel_callback else lambda: None,
+        x=17.0,
+        y=buttonPosY
+    )
+
 
 def create_controls(control_frame, window):
     y_offset = 20
     spacing = 80
+    
+    # Create a canvas for the controls
+    control_canvas = tk.Canvas(
+        control_frame,
+        bg=DARK,
+        highlightthickness=0,
+        width=282,
+        height=638
+    )
+    control_canvas.pack(fill="both", expand=True)
     
     # Row input
     row_label = Label(control_frame, text="Rows", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
@@ -132,23 +160,15 @@ def create_controls(control_frame, window):
     )
     gap_check.place(x=20, y=y_offset + spacing * 5)
     
-    # Next screen button
-    next_button = tk.Button(
-        control_frame,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        font=(FONT, 12),
-        bg=LIGHT,
-        fg=DARK
-    )
-    next_button.place(x=20, y=y_offset + spacing * 6)
+    # Create the Next button using the control_canvas
+
     
     # Bind all variables to update function
     for var_name in ['rows', 'columns', 'strains', 'x_dilution', 'y_dilution']:
         window.plate_layout[var_name].trace_add("write", lambda *args: update_plate_display_layout_designer(window))
 
 def create_plate_display(plate_frame, window):
-    window.plate_canvas = Canvas(
+    window.plate_canvas = tk.Canvas(
         plate_frame,
         bg=DARK,
         highlightthickness=0
@@ -396,14 +416,8 @@ def create_strain_designer(window):
     # Clear window
     for widget in window.winfo_children():
         widget.destroy()
-        #logo
 
-        
-    # # Initialize window properties
-    # window.title("Plate Layout Designer")
-    # window.geometry("1440x1024")
-    # window.configure(bg=LIGHT)
-    
+    # Initialize window properties
     # Store all state as window attributes
     window.plates = []
     window.strains = []
@@ -413,7 +427,7 @@ def create_strain_designer(window):
     window.strain_buttons = []
     window.position_labels = {i: chr(65 + i) for i in range(window.layout_data['strains'])}
     window.column_assignments = {}
-    
+
     # Create main canvas
     window.canvas = tk.Canvas(
         window,
@@ -426,11 +440,17 @@ def create_strain_designer(window):
     )
     window.canvas.place(x=0, y=0)
 
+    # Load the image using PhotoImage (or Pillow for more formats)
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    window.canvas.image_image_1 = image_image_1  # Keep a reference to prevent garbage collection
+
+    # Place the image on the canvas
+    image_1 = window.canvas.create_image(719.0, 57.0, image=image_image_1)
 
     # Main dark rectangles
     round_rectangle(window.canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
     round_rectangle(window.canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
+
     # Create frames
     window.plate_frame = tk.Frame(window, bg=DARK)
     window.plate_frame.place(x=27, y=178, width=1070, height=638)
@@ -449,6 +469,7 @@ def create_strain_designer(window):
     create_strain_controls(window)
     create_navigation_controls(window)
     create_plate_canvas(window)
+
 
 def create_plate_controls(window):
     # Plate name controls
