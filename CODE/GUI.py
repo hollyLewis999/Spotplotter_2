@@ -283,6 +283,7 @@ def display_results(window):
     
 
 def display_final_image(window, override =False):
+    cv2.imshow("EDITwindow.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
     add_to_history(window) #incase the user goes back
 
     for widget in window.winfo_children():
@@ -556,15 +557,15 @@ def create_slidersFrame(window):
         accent=DARK
     )
 
-    # Next button
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: switch_to_edit_screen(window),
-        x=1130,
-        y=750,
-        button_tag="adjustmentNext"
-    )
+    # # Next button
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Next",
+    #     command=lambda: switch_to_edit_screen(window),
+    #     x=1130,
+    #     y=750,
+    #     button_tag="adjustmentNext"
+    # )
 
     # Progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
@@ -584,7 +585,6 @@ def create_slidersFrame(window):
     update_progress_bar(window)
 
     display_image(window)
-    window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image
     return canvas
 
 def on_contrast_change(window, value, backToEdit = False):
@@ -597,7 +597,8 @@ def on_contrast_change(window, value, backToEdit = False):
         window.binarized_image = final_binary
         window.contour_img = contour_img
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
+        # print("SAVED")
         #cannot use undo redo buttons to undo this
         display_image(window)
     else:
@@ -616,7 +617,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
         # print("am i resetting here?")
-
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
         display_image(window)
     else:
         backToEdit2 = False
@@ -632,7 +633,7 @@ def on_block_size_change(window, value, backToEdit = False):
         else:   
             window.block_size = int(value) 
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
         #save new images
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
@@ -732,7 +733,16 @@ def on_block_size_change(window, value, backToEdit = False):
         backToEdit2 = False
 
 def create_editFrame(window, backToEdit = False):
+
     global backToEdit2 #have to put this here if i want to edit it within this function
+    if backToEdit == False:
+        # Only set if not already set, or force overwrite is needed
+        if window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] is None:
+            window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
+            print("IMGbinaryAutomatic updated")
+        cv2.imshow("window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
     canvas = Canvas(
         window,
@@ -994,7 +1004,9 @@ def create_editFrame(window, backToEdit = False):
     right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
     right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
 
-
+    cv2.imshow("TEST4window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     # Synchronization functions
     def sync_scroll_y_left(*args):
         window.right_canvas.yview_moveto(args[0])
@@ -1128,9 +1140,16 @@ def create_editFrame(window, backToEdit = False):
     window.progress_label.pack(side="left")
     update_progress_bar(window)
 
-   
+    cv2.imshow("TEST5window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     return canvas
+def test_Next(window):
+    cv2.imshow("EDITwindow.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
 
+    
 def update_zoomed_images(window):
     """Update both canvases with zoomed images, maintaining scrollable content"""
     window.left_canvas.delete("all")
@@ -1736,17 +1755,67 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_multipulAdditives.pkl')
+        save_window_state(window, 'window_state_IntermediaryImages.pkl')
         print("saved")
         # processResults(window)
 
+import cv2
+import numpy as np
+
+def process_tool_usage(window):
+    """
+    Process binary images to create a color-coded visualization of tool usage.
+    
+    Args:
+        window: Window object containing all_plate_info with binary images
+    """
+    print(window.all_plate_info)
+    for plate_info in window.all_plate_info:
+        # Skip if either image is None
+        if plate_info['IMGbinary'] is None or plate_info['IMGbinaryAutomatic'] is None:
+            print("IS NONE")
+            continue
+            
+        # Get the binary images
+        manual_binary = plate_info['IMGbinary']
+        auto_binary = plate_info['IMGbinaryAutomatic']
+        
+        # Ensure both images are binary (0 or 255)
+        _, manual_binary = cv2.threshold(manual_binary, 127, 255, cv2.THRESH_BINARY)
+        _, auto_binary = cv2.threshold(auto_binary, 127, 255, cv2.THRESH_BINARY)
+        
+        # Create blank RGB image
+        height, width = manual_binary.shape
+        tool_usage = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        # Where both are white (255)
+        both_white = cv2.bitwise_and(manual_binary, auto_binary)
+        tool_usage[both_white == 255] = [255, 255, 255]  # White
+        
+        # Where only manual is white
+        only_manual = cv2.bitwise_and(manual_binary, cv2.bitwise_not(auto_binary))
+        tool_usage[only_manual == 255] = [0, 0, 255]  # Red
+        
+        # Where only automatic is white
+        only_auto = cv2.bitwise_and(auto_binary, cv2.bitwise_not(manual_binary))
+        tool_usage[only_auto == 255] = [255, 0, 0]  # Blue
+        cv2.imshow("debug image", resize_for_display(tool_usage))
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+        # Save the result back to the plate info
+        plate_info['IMGToolUsage'] = tool_usage
 
 def processResults(window):
     # restore_window_state(window, 'window_state_multipulAdditives.pkl')
-
+    cv2.imshow("window.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
+    cv2.imshow("window.all_plate_info[1]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[1]['IMGbinaryAutomatic']))
+    process_tool_usage(window)
     process_split_order_quantifications(window)
     strain_data, dilution_series = generate_data_series(window)
-    
+
+
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     # Collect all strain data
     all_strain_data = []
     
@@ -1757,7 +1826,7 @@ def processResults(window):
     
     # Generate single PDF report with all strains
     output_filename = "growth_analysis_report_Test.pdf"
-    generate_pdf_report(all_strain_data, output_filename)
+    generate_pdf_report(window.all_plate_info, all_strain_data, output_filename)
     
     # Clean up matplotlib figures
     for _, figures_and_stats in all_strain_data:
@@ -1891,40 +1960,40 @@ def generate_data_series(window):
 ##     ## ##     ## ##     ## ##       ##    ## 
 ##     ##  #######  ########  ########  ###### 
 
-def on_contrast_change(window, value, backToEdit = False):
-    global backToEdit2
-    if (backToEdit2 == False):
-        window.contrast_value = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size )
+# def on_contrast_change(window, value, backToEdit = False):
+#     global backToEdit2
+#     if (backToEdit2 == False):
+#         window.contrast_value = float(value)
+#         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size )
 
-        #save new iamges
-        window.binarized_image = final_binary
-        window.contour_img = contour_img
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+#         #save new iamges
+#         window.binarized_image = final_binary
+#         window.contour_img = contour_img
+#         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
 
-        #cannot use undo redo buttons to undo this
-        clear_history(window)
-        display_image(window)
-    else:
-        backToEdit2 = False   
+#         #cannot use undo redo buttons to undo this
+#         clear_history(window)
+#         display_image(window)
+#     else:
+#         backToEdit2 = False   
  
-def on_excludeSmallDots(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
+# def on_excludeSmallDots(window, value, backToEdit = False):
+#     #print("on_excludeSmallDots")
+#     global backToEdit2
 
-    if (backToEdit2 == False):
-        window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size)
+#     if (backToEdit2 == False):
+#         window.excludeSmallDots = float(value)
+#         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size)
 
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        clear_history(window)
-        display_image(window)
-    else:
-        backToEdit2 = False
+#         #save new images
+#         window.binarized_image = final_binary
+#         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+#         # print("am i resetting here?")
+#         #reset history, cannot use undo redo buttons to undo this
+#         clear_history(window)
+#         display_image(window)
+#     else:
+#         backToEdit2 = False
 
 def set_mode(window, mode):
     window.mode = mode
@@ -2315,7 +2384,8 @@ window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICON
 # window.resizable(False, False)
 # window.mainloop()
 
-restore_window_state(window, 'window_state_multipulAdditives.pkl')
+restore_window_state(window, 'window_state_IntermediaryImages.pkl')
+
 processResults(window)
 
 
@@ -2331,7 +2401,7 @@ processResults(window)
 
 #'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
 
-
+#window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
 
 
 

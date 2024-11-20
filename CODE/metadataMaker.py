@@ -998,6 +998,9 @@ def draw_position_group(window, plate, x_pos, y_pos, position_width, position_id
 
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
+    # Create preview image
+    preview_image = create_plate_preview_image(window, plate)
+    
     return {
         'filename': plate['name'],
         'additive': plate.get('additive', None),
@@ -1005,25 +1008,133 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'unorderedquantifications': unordered_quantifications,
         'IMGcontours': None,
         'IMGbinary': None,
+        'IMGbinaryAutomatic':None,
+        'IMGToolUsage': None,
         'IMGgrid': None,
         'threshold': 0,
         'smallArea': 0,
         'blocksize': 0,
         'strains': strains,
-        'column_indexes': [list(indexes) for indexes in column_indexes],  # Ensure column indexes are lists
-        'strain_positions': window.plate_layout['strain_positions'],  # Use as-is if integers or tuples
+        'column_indexes': [list(indexes) for indexes in column_indexes],
+        'strain_positions': window.plate_layout['strain_positions'],
         'split_quantifications':[],
-	    'ordered_quantifications':[],
-        'removed_positions': list(window.plate_layout['removed_positions']),  # Convert sets to lists
+        'ordered_quantifications':[],
+        'removed_positions': list(window.plate_layout['removed_positions']),
         'layout': {
             'rows': rows,
             'columns': cols,
             'x_dilution': window.layout_data['x_dilution'],
             'y_dilution': window.layout_data['y_dilution'],
-            'gap_between_strains': window.layout_data['gap_between_strains']
+            'gap_between_strains': window.layout_data['gap_between_strains'],
+            'IMGPreview': preview_image  # Store the base64 encoded image
         }
     }
-
+    
+def create_plate_preview_image(window, plate, width=400, height=300):
+    """
+    Creates a preview image for a single plate and returns it as a base64 string.
+    Uses PIL for direct drawing instead of taking screenshots.
+    """
+    import io
+    import base64
+    from PIL import Image, ImageDraw, ImageFont
+    
+    # Create new image with white background
+    margin = 20
+    img_width = width - 40
+    img_height = height - 60
+    image = Image.new('RGB', (img_width, img_height), 'white')
+    draw = ImageDraw.Draw(image)
+    
+    # Calculate dimensions
+    grid_width = img_width - 2 * margin
+    grid_height = img_height - 2 * margin
+    
+    cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+    total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+    total_width = window.layout_data['columns'] + total_gaps
+    cell_width = grid_width / total_width
+    cell_height = grid_height / window.layout_data['rows']
+    
+    # Try to load fonts (fallback to default if not available)
+    try:
+        label_font = ImageFont.truetype("arial.ttf", 11)
+        strain_font = ImageFont.truetype("arial.ttf", 9)
+    except:
+        label_font = ImageFont.load_default()
+        strain_font = ImageFont.load_default()
+    
+    # Draw strain sections and labels
+    current_x = margin
+    for position_idx in range(window.layout_data['strains']):
+        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+        position_width = (end_col - start_col + 1) * cell_width
+        
+        # Find strain assignment for this section
+        assigned_strain = None
+        for pos_key, assignment in plate.get('assignments', {}).items():
+            row, col = map(int, pos_key.split('-'))
+            if start_col <= col <= end_col:
+                assigned_strain = assignment
+                break
+        
+        # Draw position label
+        position_label = f"Position {window.position_labels[position_idx]}"
+        text_width = draw.textlength(position_label, font=label_font)
+        draw.text(
+            (current_x + position_width/2 - text_width/2, margin - 15),
+            position_label,
+            font=label_font,
+            fill='black'
+        )
+        
+        # Draw strain label if assigned
+        if assigned_strain:
+            text_width = draw.textlength(assigned_strain, font=strain_font)
+            draw.text(
+                (current_x + position_width/2 - text_width/2, margin + 5),
+                assigned_strain,
+                font=strain_font,
+                fill='black'
+            )
+        
+        # Draw spots
+        for col_offset in range(end_col - start_col + 1):
+            col = start_col + col_offset
+            x_pos = int(current_x + col_offset * cell_width + cell_width/2)
+            
+            for row in range(window.layout_data['rows']):
+                pos_key = f"{row}-{col}"
+                if pos_key not in window.plate_layout['removed_positions']:
+                    y_pos = int(margin + row * cell_height + cell_height/2)
+                    
+                    # Determine spot color
+                    spot_color = GRAY1  # Your default gray color
+                    if pos_key in plate['assignments']:
+                        strain = plate['assignments'][pos_key]
+                        strain_index = window.strains.index(strain)
+                        spot_color = window.strain_colors[strain_index]
+                    
+                    # Draw spot (circle)
+                    draw.ellipse(
+                        [x_pos-8, y_pos-8, x_pos+8, y_pos+8],
+                        fill=spot_color,
+                        outline=spot_color
+                    )
+        
+        # Update x position for next group
+        current_x += position_width
+        
+        # Add gap after each position except the last one
+        if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+            current_x += cell_width
+    
+    # Convert to base64
+    buffer = io.BytesIO()
+    image.save(buffer, format='PNG')
+    img_str = base64.b64encode(buffer.getvalue()).decode()
+    
+    return img_str
 def preview_all_plates(window):
     if not window.plates:
         messagebox.showinfo("Info", "No plates to preview")
@@ -1056,20 +1167,25 @@ def preview_all_plates(window):
         plate_frame = tk.Frame(scrollable_frame, bg=LIGHT, bd=2, relief='raised')
         plate_frame.grid(row=row, column=col, padx=margin, pady=margin)
         
-        # Safely get additive information using .get() method with default values
-        has_additive = plate.get('has_additive', False)
-        additive_name = plate.get('additive_name', '')
-        
-        # Create additive text only if both conditions are met
-        additive_text = f" with {additive_name}" if has_additive and additive_name else ""
-        
+        # Create header with plate name
         header = tk.Label(
             plate_frame,
-            text=f"{plate.get('name', 'Unnamed')}{additive_text}",
+            text=f"{plate.get('name', 'Unnamed')}",
             font=(FONT, 12, 'bold'),
             bg=LIGHT
         )
-        header.pack(pady=5)
+        header.pack(pady=(5, 0))
+        
+        # Add additive information or "Control"
+        additive_text = plate.get('additive', 'Control')
+        additive_label = tk.Label(
+            plate_frame,
+            text=f"Additive: {additive_text}",
+            font=(FONT, 10, 'italic'),
+            bg=LIGHT,
+            fg='#666666'
+        )
+        additive_label.pack(pady=(0, 5))
 
         plate_canvas = tk.Canvas(
             plate_frame,
@@ -1083,6 +1199,7 @@ def preview_all_plates(window):
 
     scrollbar.pack(side="right", fill="y")
     canvas.pack(side="left", fill="both", expand=True)
+
 def draw_plate_preview(window, canvas, plate):
     # Calculate cell dimensions
     canvas_width = canvas.winfo_reqwidth()
@@ -1099,13 +1216,13 @@ def draw_plate_preview(window, canvas, plate):
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
 
-    # Draw position labels and spots
+    # Draw strain sections and labels
     current_x = margin
     for position_idx in range(window.layout_data['strains']):
         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
         position_width = (end_col - start_col + 1) * cell_width
         
-        # Find if this position is assigned to a strain
+        # Find strain assignment for this section
         assigned_strain = None
         for pos_key, assignment in plate.get('assignments', {}).items():
             row, col = map(int, pos_key.split('-'))
@@ -1114,14 +1231,26 @@ def draw_plate_preview(window, canvas, plate):
                 break
         
         # Draw position label
-        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+        position_label = f"Position {window.position_labels[position_idx]}"
         canvas.create_text(
             current_x + position_width/2,
-            margin - 10,
-            text=label_text,
-            font=(FONT, 10, 'bold'),
-            fill=DARK
+            margin - 15,
+            text=position_label,
+            font=(FONT, 11, 'bold'),
+            fill=DARK,
+            anchor='s'
         )
+        
+        # Draw strain label if assigned
+        if assigned_strain:
+            canvas.create_text(
+                current_x + position_width/2,
+                margin + 5,  # Position just below the position label
+                text=assigned_strain,
+                font=(FONT, 9),
+                fill=DARK,
+                anchor='n'
+            )
         
         # Draw spots
         for col_offset in range(end_col - start_col + 1):
@@ -1133,7 +1262,7 @@ def draw_plate_preview(window, canvas, plate):
                 if pos_key not in window.plate_layout['removed_positions']:
                     y_pos = margin + row * cell_height + cell_height/2
                     
-                    # Determine spot color
+                    # Determine spot color based on strain assignment
                     spot_color = GRAY1
                     if pos_key in plate['assignments']:
                         strain = plate['assignments'][pos_key]
@@ -1146,15 +1275,6 @@ def draw_plate_preview(window, canvas, plate):
                         fill=spot_color,
                         outline=spot_color
                     )
-                    
-                    # Add strain label if assigned
-                    if pos_key in plate['assignments']:
-                        canvas.create_text(
-                            x_pos, y_pos-12,
-                            text=plate['assignments'][pos_key],
-                            font=(FONT, 6),
-                            fill=DARK
-                        )
         
         # Update x position for next group
         current_x += position_width
@@ -1162,7 +1282,6 @@ def draw_plate_preview(window, canvas, plate):
         # Add gap after each position except the last one
         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
             current_x += cell_width
-
 def prev_plate(window):
     if window.plates and window.current_plate > 0:
         window.current_plate -= 1
@@ -1192,54 +1311,54 @@ def export_data(window):
     Returns: List of plate info and saves to a user-specified JSON file.
     """
     all_plate_info = []
-    
+   
     for plate in window.plates:
         rows = window.layout_data['rows']
         cols = window.layout_data['columns']
         unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
-        
+       
         ordered_assignments = []
         plate_assignments = plate.get('assignments', {})
-        
+       
         # Process assignments in order of positions
         for pos_idx in range(window.layout_data['strains']):
             start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
-            
+           
             strain = None
             for col in range(start_col, end_col + 1):
                 test_key = f"0-{col}"
                 if test_key in plate_assignments:
                     strain = plate_assignments[test_key]
                     break
-            
+           
             if strain:
                 ordered_assignments.append({
                     'strain': strain,
                     'columns': list(range(start_col, end_col + 1))
                 })
-        
+       
         strains = [assignment['strain'] for assignment in ordered_assignments]
         column_indexes = [assignment['columns'] for assignment in ordered_assignments]
-        
+       
         plate_info = create_plate_info(window, plate, rows, cols, unordered_quantifications,
                                      strains, column_indexes)
         all_plate_info.append(plate_info)
-    
+   
     # Ask the user for the file name and location
     filename = filedialog.asksaveasfilename(
         title="Save Plate Data",
         defaultextension=".json",
         filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
     )
-    
+   
     # Check if the user canceled the file dialog
     if not filename:
         print("Export canceled by the user.")
         return None
-
+        
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
-    
+   
     return all_plate_info
 
 def save_to_file(data, filename):

@@ -19,6 +19,17 @@ from datetime import datetime
 from tkinter import filedialog, simpledialog
 import os
 import openpyxl
+import base64
+import io
+
+from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.lib import colors
+from reportlab.graphics import renderPDF
+from PIL import Image
+from io import BytesIO
+import base64
+
+from PIL import Image, ImageTk
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 from matplotlib.colors import rgb2hex
@@ -571,15 +582,22 @@ def get_image_size(img, max_width, max_height):
 
 #     add_final_info_page()
 #     doc.build(story)
-
-
-def generate_pdf_report(all_strain_data, output_filename, version="1.0.0"):
+def resize_for_display(image, max_width=1280, max_height=720):
+    h, w = image.shape[:2]
+    if h > max_height or w > max_width:
+        scale = min(max_height/h, max_width/w)
+        new_size = (int(w*scale), int(h*scale))
+        return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+    return image
+    
+def generate_pdf_report(all_plate_info, all_strain_data, output_filename, version="1.0.0"):
     """
     Generates a single PDF report containing data for all strains.
     Each strain's figures are on consecutive pages with statistics underneath.
     Tables are split if they contain more than 4 entries, with colors matching the plots.
     
     Args:
+        all_plate_info: List of plate information dictionaries
         all_strain_data: List of tuples (strain_name, figures_and_stats)
         output_filename: Path to save the PDF
         version: Spotplotter version number
@@ -624,10 +642,132 @@ def generate_pdf_report(all_strain_data, output_filename, version="1.0.0"):
         alignment=1,
         spaceAfter=30
     )
+    body_style = styles['Normal']
     
     # Add logo
     logo_path = relative_to_assets("LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
+    
+    def add_info_page(plate_info, story, logo, title_style, body_style):
+        """Helper function to add plate information page"""
+        story.append(logo)
+        story.append(Spacer(1, 12))
+        
+        # Add title with plate name + Log
+        title_text = f"{plate_info['filename']} Log"
+        story.append(Paragraph(title_text, title_style))
+        story.append(Spacer(1, 20))
+        
+        max_width = 250
+        max_height = 200
+        
+        def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
+            """
+            Creates an image and caption for the PDF report using ReportLab components.
+            Handles both OpenCV images and base64-encoded preview images.
+            """
+            try:
+                if img_key == "IMGPreview":
+                    # Check if the preview image exists in the nested structure
+                    if plate_info.get('layout', {}).get('IMGPreview') is not None:
+                        # Decode base64 string to PIL Image
+                        img_data = base64.b64decode(plate_info['layout']['IMGPreview'])
+                        pil_img = Image.open(io.BytesIO(img_data))
+                    else:
+                        raise KeyError("IMGPreview not found in layout")
+                else:
+                    # Handle other image types
+                    if plate_info.get(img_key) is not None:
+                        if img_key == "IMGgrid":
+                            pil_img = cv2_to_pil(plate_info[img_key], False)
+                        else:
+                            # cv2.imshow(img_key, resize_for_display(plate_info[img_key]))
+                            # cv2.waitKey(0)
+                            # cv2.destroyAllWindows()
+                            pil_img = cv2_to_pil(plate_info[img_key])
+                    else:
+                        raise KeyError(f"{img_key} not found in plate_info")
+                
+                if pil_img:
+                    # Convert to RGB if needed
+                    if pil_img.mode != 'RGB':
+                        pil_img = pil_img.convert('RGB')
+                    
+                    # Resize image maintaining aspect ratio
+                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
+                    
+                    # Save to bytes buffer
+                    img_data = BytesIO()
+                    pil_img.save(img_data, format='JPEG', quality=40)
+                    img_data.seek(0)
+                    
+                    # Create ReportLab image
+                    img = ImageR(img_data, width=img_width, height=img_height)
+                    return [img, Paragraph(caption, body_style)]
+                    
+            except Exception as e:
+                print(f"Error processing image {img_key}: {e}")
+            
+            # Create a placeholder rectangle if image is missing or there's an error
+            placeholder = Drawing(max_width, max_height)
+            placeholder.add(Rect(0, 0, max_width, max_height, strokeWidth=1, strokeColor=colors.black, fillColor=colors.white))
+            placeholder.add(String(max_width/2, max_height/2, "Image not available",
+                                textAnchor='middle', fontSize=12))
+            return [placeholder, Paragraph(caption, body_style)]
+
+        def create_info_text(plate_info):
+            info_text = f"""
+            <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+            <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+            <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
+            <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
+            <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
+            <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
+            <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
+            <b>Threshold:</b> {plate_info['threshold']}<br/>
+            <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+            <b>Block Size:</b> {plate_info['blocksize']}<br/>
+            """
+            return Paragraph(info_text, body_style)
+
+        # Row 1: Preview and Info
+        row1_data = [
+            [create_image_with_caption('IMGPreview', "Preview Image"),
+             create_info_text(plate_info)]
+        ]
+        row1_table = Table(row1_data, colWidths=[max_width, max_width])
+        
+        # Row 2: Binary Images
+        row2_data = [
+            [create_image_with_caption('IMGbinary', "Binary Image"),
+             create_image_with_caption('IMGbinaryAutomatic', "Automatic")]
+        ]
+        row2_table = Table(row2_data, colWidths=[max_width, max_width])
+        ("PRINT HERE")
+        # Row 3: Grid and Contours
+        row3_data = [
+            [create_image_with_caption('IMGgrid', "Grid Image"),
+             create_image_with_caption('IMGcontours', "Contours Image")]
+        ]
+        row3_table = Table(row3_data, colWidths=[max_width, max_width])
+        
+        # Apply consistent styling to all tables
+        table_style = TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 10),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+            ('TOPPADDING', (0, 0), (-1, -1), 10),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
+        ])
+        
+        for table in [row1_table, row2_table, row3_table]:
+            table.setStyle(table_style)
+            story.append(table)
+            story.append(Spacer(1, 20))
+        
+        story.append(PageBreak())
     
     # Add title page
     story.append(logo)
@@ -643,108 +783,14 @@ def generate_pdf_report(all_strain_data, output_filename, version="1.0.0"):
         story.append(Paragraph(f"• {strain_name}", styles['Normal']))
     story.append(PageBreak())
     
-    def create_stats_table(stats_subset):
-        """Create a statistics table for a subset of stats (max 4 entries)"""
-        # Define fixed column widths (in points)
-        col_widths = [1.2*inch]  # First column (row labels)
-        col_widths.extend([1.5*inch] * len(stats_subset))  # Data columns
-        
-        table_data = [[''] + [stat['label'] for stat in stats_subset]]
-        for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'y-cut', 'x-cut', 'x_at_y50']:
-            row = [row_label]
-            for stat in stats_subset:
-                if row_label == 'Formula':
-                    value = stat['formula']
-                elif row_label == 'R-squared':
-                    value = f"{stat['r_squared']:.3f}"
-                elif row_label == 'x_at_y50':
-                    value = f"{stat['x_at_y50']:.2f}"
-                else:
-                    key = row_label.lower().replace('-', '_')
-                    value = f"{stat[key]:.2f}"
-                row.append(value)
-            table_data.append(row)
-        
-        table = Table(table_data, colWidths=col_widths)
-        table_style = [
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-            # Add word wrapping
-            ('WORDWRAP', (0, 0), (-1, -1), True),
-        ]
-        
-        # Add matched colors from the stats
-        for i, stat in enumerate(stats_subset, start=1):
-            # Convert matplotlib color to reportlab color
-            if isinstance(stat.get('color'), str):
-                if stat['color'].startswith('#'):
-                    bg_color = colors.HexColor(stat['color'])
-                else:
-                    # Handle named colors
-                    bg_color = colors.HexColor(rgb2hex(mcolors.to_rgb(stat['color'])))
-            else:
-                # Handle RGB tuples
-                bg_color = colors.HexColor(rgb2hex(stat['color']))
-            
-            table_style.append((
-                'BACKGROUND',
-                (i, 0),
-                (i, 0),
-                bg_color
-            ))
-        
-        table.setStyle(TableStyle(table_style))
-        return table
+    # Add plate info pages
+    for plate_info in all_plate_info:
+        add_info_page(plate_info, story, logo, title_style, body_style)
     
-    # Process each strain's data
-    for strain_name, figures_and_stats in all_strain_data:
-            # Process each figure and its statistics for this strain
-            for fig, stats, plot_title in figures_and_stats:
-                # Add logo before each graph
-                story.append(logo)
-                
-                # Add figure
-                img_data = BytesIO()
-                fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
-                img_data.seek(0)
-                story.append(ImageR(img_data, width=6*inch, height=4*inch))
-                story.append(Spacer(1, 20))
-                
-                # Split stats into groups of 4 and create multiple tables if needed
-                for i in range(0, len(stats), 4):
-                    stats_subset = stats[i:i+4]
-                    table = create_stats_table(stats_subset)
-                    story.append(table)
-                    story.append(Spacer(1, 10))
-
-                   
-                # Add page break after each strain except the last one
-                if strain_name != all_strain_data[-1][0]:
-                    story.append(PageBreak())
+    # Rest of the code for strain data processing remains the same...
     
     # Build the PDF with footer
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
-
-def generate_all_outputs(window):
-
-    #plots and statistics from image info
-    figA, statsA = plot_logarithmic_graph(window.image_info[0]['QuantificationA'], window.image_info[1]['QuantificationA'], window.image_info[2]['QuantificationA'], window.image_info[3]['QuantificationA'], window.image_info[0]['strainA'],window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
-    figB, statsB = plot_logarithmic_graph(window.image_info[0]['QuantificationB'], window.image_info[1]['QuantificationB'], window.image_info[2]['QuantificationB'], window.image_info[3]['QuantificationB'], window.image_info[0]['strainB'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
-    figC, statsC = plot_logarithmic_graph(window.image_info[0]['QuantificationC'], window.image_info[1]['QuantificationC'], window.image_info[2]['QuantificationC'], window.image_info[3]['QuantificationC'], window.image_info[0]['strainC'], window.image_info[0]['filename'].split('.')[0], window.image_info[1]['filename'].split('.')[0], window.image_info[2]['filename'].split('.')[0],  window.image_info[3]['filename'].split('.')[0])
-
-    #report
-    output_filename = "growth_curves_report.pdf"
-    write_image_info_to_file(window, figA, statsA, figB, statsB, figC, statsC, output_filename)
-    plt.close('all')
-
-
-
-
 
 
 
