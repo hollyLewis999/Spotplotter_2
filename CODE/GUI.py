@@ -584,6 +584,7 @@ def create_slidersFrame(window):
     update_progress_bar(window)
 
     display_image(window)
+    window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image
     return canvas
 
 def on_contrast_change(window, value, backToEdit = False):
@@ -1744,19 +1745,11 @@ def processResults(window):
     # restore_window_state(window, 'window_state_multipulAdditives.pkl')
 
     process_split_order_quantifications(window)
-
     strain_data , dilution_series = generate_data_series(window)
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print(strain_data)
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    print(dilution_series)
-    print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
     for strain, series in strain_data.items():
-        print("_______________________________________________________________")
-        print(series)
-        fig, stats = plot_multiadditive_graph(series, dilution_series, strain)
+        fig_individual, fig_average, individual_statistics, average_statistics = plot_multiadditive_graphs(series, dilution_series, strain)
         
-        print("_______________________________________________________________")
 
 
 
@@ -2306,14 +2299,14 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
 
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+# initialize_window_attributes(window)
+# title_frame_widgets = create_titleFrame(window)
 
-window.resizable(False, False)
-window.mainloop()
+# window.resizable(False, False)
+# window.mainloop()
 
-# restore_window_state(window, 'window_state_multipulAdditives.pkl')
-# processResults(window)
+restore_window_state(window, 'window_state_multipulAdditives.pkl')
+processResults(window)
 
 
 
