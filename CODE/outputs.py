@@ -83,15 +83,14 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
     
     figures_and_stats = []
-    # Create two separate figures with increased width
-    fig_individual = plt.figure(figsize=(20, 10))  # Increased width from 16 to 20
+    # Create two separate figures
+    fig_individual = plt.figure(figsize=(20, 10))
     ax1 = fig_individual.add_subplot(111)
     
-    fig_average = plt.figure(figsize=(20, 10))  # Increased width from 16 to 20
+    fig_average = plt.figure(figsize=(20, 10))
     ax2 = fig_average.add_subplot(111)
     
-    # Increased font scale for better readability
-    sns.set_context("notebook", font_scale=1.4)  # Increased from 1.2 to 1.4
+    sns.set_context("notebook", font_scale=1.2)
     
     # Set log scale and style
     for ax in [ax1, ax2]:
@@ -144,17 +143,19 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         additive_counts[additive] += 1
         marker = series.get('marker', default_markers[idx % len(default_markers)])
         
+        # Use new statistics calculation
         stats = calculate_statistics(dilution_series, y_norm, color, series['label'])
         
         if stats is not None:
             individual_statistics.append(stats)
             
             ax1.scatter(dilution_series, y_norm, color=color, 
-                       marker=marker, label=series['label'], s=100)  # Increased marker size from 80 to 100
+                       marker=marker, label=series['label'], s=80)
             
-            # Plot trend line using statistics
+            # Plot trend line using new statistics
             x_fit = np.logspace(0, np.log10(max(dilution_series)), num=100)
             y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+            # Only plot positive y values
             mask = y_fit >= 0
             x_fit = x_fit[mask]
             y_fit = y_fit[mask]
@@ -163,7 +164,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         
         # Collect data for averaging
         for x, y in zip(dilution_series, y_norm):
-            if x > 0 and y > 10:
+            if x > 0 and y > 10:  # Updated threshold as per new statistics function
                 averaged_data[additive][x].append(y)
     
     # Plot averaged data
@@ -180,6 +181,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                                 if len(averaged_data[additive][x]) > 1 else 0)
         
         if valid_x:
+            # Calculate statistics for averaged data using new function
             stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive)
             
             if stats is not None:
@@ -188,9 +190,10 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
                             color=color_map[additive][1], marker='o',
                             label=f'{additive}\nError bars = ±1 SD\nR² = {stats["r_squared"]:.3f}\n{stats["formula"]}',
-                            capsize=5, capthick=1, markersize=10,  # Increased from 8 to 10
-                            linewidth=2, ls='none')
+                            capsize=5, capthick=1, markersize=8, linewidth=2,
+                            ls='none')
                 
+                # Plot trend line using new statistics
                 x_fit = np.logspace(0, np.log10(max(valid_x)), num=100)
                 y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
                 mask = y_fit >= 0
@@ -198,29 +201,25 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 y_fit = y_fit[mask]
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
     
-    # Style plots with larger legend
+    # Style plots
     for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
                                (ax2, fig_average, "Average Growth Curves")]:
         ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
         ax.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
         ax.legend(
-            fontsize=12,  # Increased from 8 to 12
-            loc='center left',  # Changed from 'upper right' to 'center left'
-            bbox_to_anchor=(1.02, 0.5),  # Moved legend outside the plot
-            ncol=1,  # Changed from 2 to 1 column for better readability
+            fontsize=8,
+            loc='upper right', 
+            bbox_to_anchor=(1, 1),
+            ncol=2,
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
-            framealpha=0.8,  # Increased from 0.5 to 0.8 for better visibility
-            borderpad=1,  # Added padding
-            labelspacing=1.2  # Increased spacing between legend entries
+            framealpha=0.5
         )
         ax.tick_params(axis='both', which='major', labelsize=14)
         ax.set_title(f"{plot_title} for {title}",
                     fontsize=20, fontweight='bold', pad=20)
-        # Adjusted layout to accommodate the legend
         fig.tight_layout()
-        plt.subplots_adjust(right=0.85)  # Make room for the legend
     
     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
