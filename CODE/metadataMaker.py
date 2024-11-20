@@ -449,7 +449,7 @@ def create_strain_designer(window):
     create_plate_canvas(window)
 
     create_rounded_button(
-        canvas=canvas,
+        canvas=window.canvas,
         text="Next",
         command=lambda: print("processMetadata"),
         x=buttonPosX,
@@ -555,23 +555,19 @@ def update_plate_display(window):
     draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                     margin_bottom, grid_width, grid_height)
 
-
 def create_plate_controls(window):
-    # Plate name controls
-    plate_label = tk.Label(window.control_frame, text="Plate Name", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    plate_label.pack(pady=(0, 5))
-
-    plate_entry_frame = tk.Frame(window.control_frame, bg=DARK)
-    plate_entry_frame.pack(fill=tk.X, padx=10)
-
-    # Plate name entry
-    window.plate_entry = ttk.Entry(plate_entry_frame, width=20)
-    window.plate_entry.pack(side=tk.LEFT, padx=(0, 5))
+    # "Add a plate" header
+    plate_header = tk.Label(window.control_frame, text="Add a Plate", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
+    plate_header.pack(pady=(10, 5))
+    
 
     # Additive controls
-    window.additive_var = tk.BooleanVar()
+    window.additive_var = tk.BooleanVar(value=False)
+    additive_frame = tk.Frame(window.control_frame, bg=DARK)
+    additive_frame.pack(fill=tk.X, padx=10, pady=(5, 0))
+    
     additive_check = tk.Checkbutton(
-        plate_entry_frame,
+        additive_frame,
         text="Additive",
         variable=window.additive_var,
         bg=DARK,
@@ -579,52 +575,101 @@ def create_plate_controls(window):
         selectcolor=DARK,
         font=(FONT, 10)
     )
-    additive_check.pack(side=tk.LEFT, padx=(5, 5))
-
-    window.additive_entry = ttk.Entry(plate_entry_frame, width=15, state=tk.DISABLED)
-    window.additive_entry.pack(side=tk.LEFT)
-
-    # Enable/disable additive entry based on checkbox
+    additive_check.pack(side=tk.LEFT)
+    
+    window.additive_entry = ttk.Entry(additive_frame, width=25, state=tk.DISABLED)
+    window.additive_entry.pack(side=tk.LEFT, padx=(10, 0))
+    
     def toggle_additive_entry():
         if window.additive_var.get():
             window.additive_entry.config(state=tk.NORMAL)
         else:
             window.additive_entry.config(state=tk.DISABLED)
-
+            window.additive_entry.delete(0, tk.END)
+    
     window.additive_var.trace_add("write", lambda *args: toggle_additive_entry())
 
-    # Add plate button
+
+    # Plate name frame
+    plate_frame = tk.Frame(window.control_frame, bg=DARK)
+    plate_frame.pack(fill=tk.X, padx=10)
+    
+
+
+
+    
+    # Initialize plates attribute if not exists
+    if not hasattr(window, 'plates'):
+        window.plates = []
+    
+    # Plate name entry
+    window.plate_entry = ttk.Entry(plate_frame, width=25)
+    window.plate_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
+    
+    # Add plate button (now a + button)
     add_plate_btn = tk.Button(
-        window.control_frame,
-        text="Add Plate",
+        plate_frame,
+        text="+",
         command=lambda: add_plate(window),
         font=(FONT, 10),
         bg=LIGHT,
-        fg=DARK
+        fg=DARK,
+        width=3
     )
-    add_plate_btn.pack(pady=(5, 10))
+    add_plate_btn.pack(side=tk.RIGHT)
+    
+    # Rest of the code remains the same as in previous version...
 
 def create_strain_controls(window):
+    # "Add a strain" header
+    strain_header = tk.Label(window.control_frame, text="Add a Strain", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
+    strain_header.pack(pady=(10, 5))
+    
+    # Strain name frame
     strain_frame = tk.Frame(window.control_frame, bg=DARK)
     strain_frame.pack(fill=tk.X, padx=10)
-
-    window.strain_entry = ttk.Entry(strain_frame, width=20)
-    window.strain_entry.pack(side=tk.LEFT, padx=(0, 5))
-
+    
+    # Initialize strains attribute if not exists
+    if not hasattr(window, 'strains'):
+        window.strains = []
+    
+    # Strain entry
+    window.strain_entry = ttk.Entry(strain_frame, width=25)
+    window.strain_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
+    
+    # Add strain button (now a + button)
     add_strain_btn = tk.Button(
         strain_frame,
-        text="Add Strain",
+        text="+",
         command=lambda: add_strain(window),
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK,
+        width=3
+    )
+    add_strain_btn.pack(side=tk.RIGHT)
+    
+    # Blank space for added strains
+    window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
+
+    
+def create_navigation_controls(window):
+    # Clear current plate button
+    clear_btn = tk.Button(
+        window.bottom_frame,
+        text="Clear Current Plate",
+        command=lambda: clear_current_plate(window),
         font=(FONT, 10),
         bg=LIGHT,
         fg=DARK
     )
-    add_strain_btn.pack(side=tk.LEFT)
-
-def create_navigation_controls(window):
+    clear_btn.pack(pady=(20, 5))  # Increased vertical padding
+    
+    # Rest of the code remains the same as in the previous artifact
     nav_frame = tk.Frame(window.bottom_frame, bg=DARK)
     nav_frame.pack(fill=tk.X, pady=5)
-
+    
     prev_plate_btn = tk.Button(
         nav_frame,
         text="Previous Plate",
@@ -633,8 +678,8 @@ def create_navigation_controls(window):
         bg=LIGHT,
         fg=DARK
     )
-    prev_plate_btn.pack(side=tk.LEFT, padx=5)
-
+    prev_plate_btn.pack(side=tk.LEFT, padx=5, expand=True)
+    
     next_plate_btn = tk.Button(
         nav_frame,
         text="Next Plate",
@@ -643,21 +688,11 @@ def create_navigation_controls(window):
         bg=LIGHT,
         fg=DARK
     )
-    next_plate_btn.pack(side=tk.LEFT, padx=5)
-
+    next_plate_btn.pack(side=tk.LEFT, padx=5, expand=True)
+    
     action_frame = tk.Frame(window.bottom_frame, bg=DARK)
     action_frame.pack(fill=tk.X, pady=5)
-
-    export_btn = tk.Button(
-        action_frame,
-        text="Export All",
-        command=lambda: export_data(window),
-        font=(FONT, 10),
-        bg=LIGHT,
-        fg=DARK
-    )
-    export_btn.pack(side=tk.LEFT, padx=5)
-
+    
     preview_btn = tk.Button(
         action_frame,
         text="Preview All Plates",
@@ -666,17 +701,17 @@ def create_navigation_controls(window):
         bg=LIGHT,
         fg=DARK
     )
-    preview_btn.pack(side=tk.LEFT, padx=5)
-
-    clear_btn = tk.Button(
+    preview_btn.pack(side=tk.LEFT, padx=5, expand=True)
+    
+    export_btn = tk.Button(
         action_frame,
-        text="Clear Plate",
-        command=lambda: clear_current_plate(window),
+        text="Export All",
+        command=lambda: export_data(window),
         font=(FONT, 10),
         bg=LIGHT,
         fg=DARK
     )
-    clear_btn.pack(side=tk.LEFT, padx=5)
+    export_btn.pack(side=tk.LEFT, padx=5, expand=True)
 
 def create_plate_canvas(window):
     window.plate_canvas = tk.Canvas(
