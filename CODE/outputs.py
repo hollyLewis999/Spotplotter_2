@@ -6,11 +6,11 @@ import numpy as np
 from scipy import stats as scipy_stats
 from pathlib import Path
 import seaborn as sns
-# from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
-# from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-# from reportlab.lib.units import inch
-# from reportlab.lib import colors
-# from reportlab.lib.pagesizes import letter
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter
 from io import BytesIO
 import cv2
 import sys
@@ -19,6 +19,12 @@ from datetime import datetime
 from tkinter import filedialog, simpledialog
 import os
 import openpyxl
+OUTPUT_PATH = Path(__file__).parent
+ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+from matplotlib.colors import rgb2hex
+import matplotlib.colors as mcolors
+def relative_to_assets(path: str) -> Path:
+    return ASSETS_PATH / Path(path)
 
 
 
@@ -76,14 +82,16 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     sorted_positions = get_sorted_positions(dilution_series)
     dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
     
-    # Create two separate figures
-    fig_individual = plt.figure(figsize=(16, 10))
+    figures_and_stats = []
+    # Create two separate figures with increased width
+    fig_individual = plt.figure(figsize=(20, 10))  # Increased width from 16 to 20
     ax1 = fig_individual.add_subplot(111)
     
-    fig_average = plt.figure(figsize=(16, 10))
+    fig_average = plt.figure(figsize=(20, 10))  # Increased width from 16 to 20
     ax2 = fig_average.add_subplot(111)
     
-    sns.set_context("notebook", font_scale=1.2)
+    # Increased font scale for better readability
+    sns.set_context("notebook", font_scale=1.4)  # Increased from 1.2 to 1.4
     
     # Set log scale and style
     for ax in [ax1, ax2]:
@@ -92,11 +100,10 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
 
     # Get unique additives for averaging - handle None values
     additives = set(series.get('additive', 'Control') for series in data_series)
-    # Convert None to 'Control' for sorting and display
     additives = ['Control' if x is None else x for x in additives]
     additives = sorted(additives)
     
-    # Initialize averaged data with correct key types based on additives
+    # Initialize averaged data
     averaged_data = {additive: {float(x): [] for x in dilution_series} for additive in additives}
     
     # Get normalization value from control series
@@ -111,7 +118,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     max_y = max(max(series['y_values']) for series in data_series)
     y_max = max_y + 10
 
-    # Color mapping based on additives
+    # Color mapping
     color_map = {}
     for additive in additives:
         if additive == 'Control':
@@ -123,7 +130,6 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         else:
             color_map[additive] = PURPLESCOLOURS
     
-    # Initialize data collection for averaging
     individual_statistics = []
     average_statistics = []
     additive_counts = {additive: 0 for additive in additives}
@@ -132,40 +138,35 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     # Plot individual series
     for idx, series in enumerate(data_series):
         y_norm = normalize_array(series['y_values'], norm_value)
-        # Convert None to 'Control' for consistency
         additive = 'Control' if series.get('additive') is None else series.get('additive')
         
-        # Plot individual series using label
         color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
         additive_counts[additive] += 1
-        
         marker = series.get('marker', default_markers[idx % len(default_markers)])
         
-        # Calculate and store statistics
-        stats = calculate_statistics(dilution_series, y_norm, series['label'], log_base)
+        stats = calculate_statistics(dilution_series, y_norm, color, series['label'])
+        
         if stats is not None:
             individual_statistics.append(stats)
             
-            # Plot points with label from series
             ax1.scatter(dilution_series, y_norm, color=color, 
-                       marker=marker, label=series['label'], s=80)
+                       marker=marker, label=series['label'], s=100)  # Increased marker size from 80 to 100
             
-            # Plot trend line
-            x_fit = np.logspace(np.log(min(dilution_series))/np.log(log_base),
-                              np.log(max(dilution_series))/np.log(log_base),
-                              num=100, base=log_base)
-            y_fit = stats['slope'] * np.log(x_fit)/np.log(log_base) + stats['intercept']
-            x_fit = x_fit[y_fit >= 0]
-            y_fit = y_fit[y_fit >= 0]
+            # Plot trend line using statistics
+            x_fit = np.logspace(0, np.log10(max(dilution_series)), num=100)
+            y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+            mask = y_fit >= 0
+            x_fit = x_fit[mask]
+            y_fit = y_fit[mask]
             ax1.plot(x_fit, y_fit, color=color, linestyle='--',
                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
         
-        # Collect data for averaging based on additive
+        # Collect data for averaging
         for x, y in zip(dilution_series, y_norm):
-            if x > 0 and y > 0:
+            if x > 0 and y > 10:
                 averaged_data[additive][x].append(y)
     
-    # Plot averaged data based on additives
+    # Plot averaged data
     for additive in additives:
         valid_x = []
         valid_means = []
@@ -179,75 +180,52 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                                 if len(averaged_data[additive][x]) > 1 else 0)
         
         if valid_x:
-            # Calculate regression for averaged data
-            log_x = np.log(valid_x) / np.log(log_base)
-            slope, intercept, r_value, _, _ = scipy_stats.linregress(log_x, valid_means)
-            r_squared = r_value ** 2
+            stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive)
             
-            if log_base == 10:
-                formula = f"y = {slope:.2f}log(x) + {intercept:.2f}"
-            elif log_base == np.e:
-                formula = f"y = {slope:.2f}ln(x) + {intercept:.2f}"
-            else:
-                formula = f"y = {slope:.2f}log_{log_base}(x) + {intercept:.2f}"
-            
-            # Store average statistics
-            average_statistics.append({
-                'additive': additive,
-                'slope': slope,
-                'intercept': intercept,
-                'r_squared': r_squared,
-                'formula': formula
-            })
-            
-            # Plot averaged points with error bars
-            ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
-                        color=color_map[additive][1], marker='o',
-                        label=f'{additive}\nError bars = ±1 SD\nR² = {r_squared:.3f}\n{formula}',
-                        capsize=5, capthick=1, markersize=8, linewidth=2,
-                        ls='none')
-            
-            # Plot trend line
-            x_fit = np.logspace(np.log(min(valid_x))/np.log(log_base),
-                              np.log(max(valid_x))/np.log(log_base),
-                              num=100, base=log_base)
-            y_fit = slope * np.log(x_fit)/np.log(log_base) + intercept
-            ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
+            if stats is not None:
+                average_statistics.append(stats)
+                
+                ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
+                            color=color_map[additive][1], marker='o',
+                            label=f'{additive}\nError bars = ±1 SD\nR² = {stats["r_squared"]:.3f}\n{stats["formula"]}',
+                            capsize=5, capthick=1, markersize=10,  # Increased from 8 to 10
+                            linewidth=2, ls='none')
+                
+                x_fit = np.logspace(0, np.log10(max(valid_x)), num=100)
+                y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+                mask = y_fit >= 0
+                x_fit = x_fit[mask]
+                y_fit = y_fit[mask]
+                ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
     
-    # Style plots
+    # Style plots with larger legend
     for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
                                (ax2, fig_average, "Average Growth Curves")]:
         ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
         ax.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
         ax.legend(
-            fontsize=8,
-            loc='upper right', 
-            bbox_to_anchor=(1, 1),
-            ncol=2,
+            fontsize=12,  # Increased from 8 to 12
+            loc='center left',  # Changed from 'upper right' to 'center left'
+            bbox_to_anchor=(1.02, 0.5),  # Moved legend outside the plot
+            ncol=1,  # Changed from 2 to 1 column for better readability
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
-            framealpha=0.5
+            framealpha=0.8,  # Increased from 0.5 to 0.8 for better visibility
+            borderpad=1,  # Added padding
+            labelspacing=1.2  # Increased spacing between legend entries
         )
         ax.tick_params(axis='both', which='major', labelsize=14)
         ax.set_title(f"{plot_title} for {title}",
                     fontsize=20, fontweight='bold', pad=20)
+        # Adjusted layout to accommodate the legend
         fig.tight_layout()
+        plt.subplots_adjust(right=0.85)  # Make room for the legend
     
-    plt.show()
-    
-    return fig_individual, fig_average, individual_statistics, average_statistics
+    figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
+    figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
+    return figures_and_stats
 
-
-
-
-FONT = "Microsoft New Tai Lue"
-plt.rcParams['font.family'] = FONT
-sns.set_style("whitegrid")
-
-sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 
 
 def write_image_info_to_file(window, figA, statsA, figB, statsB, figC, statsC, pdf_filename):
@@ -349,8 +327,7 @@ def calculate_statistics(x, y, color, label):
             #convert it to log 10 becuse of the dilution sequence
             valid_x.append(np.log10(xi))
             valid_y.append(yi)
-    
-
+   
     if len(valid_x) > 1:
         #getting all the statistics
         slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
@@ -360,9 +337,8 @@ def calculate_statistics(x, y, color, label):
         x_cut = 10 ** (-b / m)
         x_at_y50 = 10 ** ((50 - b) / m)
         formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
-        
-
-        #retrun as a dictionart since it very nice to call values from
+       
+        #return as a dictionary since it very nice to call values from
         return {
             'slope': m,
             'intercept': b,
@@ -371,11 +347,11 @@ def calculate_statistics(x, y, color, label):
             'y_cut': y_cut,
             'x_cut': x_cut,
             'x_at_y50': x_at_y50,
-            'label': label
+            'label': label,
+            'color': color  # Add the color to the statistics dictionary
         }
-    
+   
     return None
-
 
 
 # d8888b. d8888b. d88888b 
@@ -411,56 +387,286 @@ def get_image_size(img, max_width, max_height):
     return img_width, img_height
 
 
-def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
+# def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
 
-    doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0*inch, bottomMargin=0.5*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
-    story = []
-    styles = getSampleStyleSheet()
+#     doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0*inch, bottomMargin=0.5*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
+#     story = []
+#     styles = getSampleStyleSheet()
 
-    title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
-    heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
-    body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
+#     title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
+#     heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
+#     body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
 
 
-    logo_path = relative_to_assets("LogoHorizontalDark.png")
-    logo = ImageR(logo_path, width=1170/4, height=407/4)
+#     logo_path = relative_to_assets("LogoHorizontalDark.png")
+#     logo = ImageR(logo_path, width=1170/4, height=407/4)
 
-    #same color_scheme as before - should make it a global variable
-    color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
+#     #same color_scheme as before - should make it a global variable
+#     color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
 
-    def add_plot_and_stats(fig, stats, strain):
-        story.append(logo)
-        story.append(Spacer(1, 6))
-        story.append(Spacer(1, 12))
+#     def add_plot_and_stats(fig, stats, strain):
+#         story.append(logo)
+#         story.append(Spacer(1, 6))
+#         story.append(Spacer(1, 12))
 
-        #saving it in lower quality
-        img_data = BytesIO()
-        fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
-        img_data.seek(0)
+#         #saving it in lower quality
+#         img_data = BytesIO()
+#         fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
+#         img_data.seek(0)
 
         
-        story.append(ImageR(img_data, width=6*inch, height=4*inch))
-        story.append(Spacer(1, 80))
+#         story.append(ImageR(img_data, width=6*inch, height=4*inch))
+#         story.append(Spacer(1, 80))
 
 
-        #Used Chagbt to help generate this table
-        table_data = [[''] + [stat['label'] for stat in stats]]
-        for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'Y-cut', 'X-cut', 'X at Y=50']:
+#         #Used Chagbt to help generate this table
+#         table_data = [[''] + [stat['label'] for stat in stats]]
+#         for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'Y-cut', 'X-cut', 'X at Y=50']:
+#             row = [row_label]
+#             for stat in stats:
+#                 if row_label == 'Formula':
+#                     value = stat['formula']
+#                 elif row_label == 'R-squared':
+#                     value = f"{stat['r_squared']:.3f}"
+#                 elif row_label == 'X at Y=50':
+#                     value = f"{stat['x_at_y50']:.2f}"
+#                 else:
+#                     key = row_label.lower().replace('-', '_')
+#                     value = f"{stat[key]:.2f}"
+#                 row.append(value)
+#             table_data.append(row)
+
+#         table = Table(table_data)
+#         table_style = [
+#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+#             ('GRID', (0, 0), (-1, -1), 1, colors.black),
+#             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+#             ('FONTSIZE', (0, 0), (-1, -1), 8),
+#             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+#             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+#         ]
+
+#         for i in range(1, len(table_data[0])):
+#             table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
+
+#         table.setStyle(TableStyle(table_style))
+#         story.append(table)
+#         story.append(PageBreak())
+
+#     def add_info_page(info):
+#         story.append(logo)
+#         story.append(Spacer(1, 1))
+        
+#         #header to show connected info with titiles bolded
+#         header_text = f"""<br/><br/><br/><br/>
+#         <b>Filename:</b> &nbsp; {info['filename']}<br/>
+#         <b>Type:</b> &nbsp; {info['type']}<br/>
+#         <b>Detergent:</b> &nbsp; {info['detergent']}<br/>
+#         <b>Treatment:</b> &nbsp; {info['treatment']}<br/>
+#         <b>Repeat:</b> &nbsp; {info['repeat']}<br/>
+#         <b>Strain A:</b> &nbsp; {info['strainA']}<br/>
+#         <b>Strain B:</b> &nbsp; {info['strainB']}<br/>
+#         <b>Strain C:</b> &nbsp; {info['strainC']}<br/>
+#         <b>Parameters Used:</b> &nbsp;<br/>
+#         <b>Threshold:</b> &nbsp {info['threshold']}<br/>
+#         <b>Minimum Area:</b> &nbsp {info['smallArea']}<br/>
+#         """
+        
+#         max_width = 230
+#         max_height = 200
+        
+#         def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
+#             if info[img_key] is not None:
+#                 if img_key == "IMGgrid": #this is to deal with the RGB and BGR conversion, the otherone is an okay colour
+#                     pil_img = cv2_to_pil(info[img_key], False)
+#                 else:
+#                     pil_img = cv2_to_pil(info[img_key])
+#                 if pil_img:
+#                     img_width, img_height = get_image_size(pil_img, max_width, max_height)
+#                     img_data = BytesIO()
+#                     #saving to 40% quality
+#                     pil_img.save(img_data, format='JPEG', quality=40) 
+#                     img_data.seek(0)
+#                     img = ImageR(img_data, width=img_width, height=img_height)
+#                     return [img, Paragraph(caption, body_style)]
+#             return [Paragraph("Image not available", body_style), Paragraph(caption, body_style)]
+        
+#         # Create top row table - ChatGBT
+#         top_row_data = [
+#             [Paragraph(header_text, body_style), create_image_with_caption('IMGcontours', "Contours Image", max_width = 350, max_height =300 )]
+#         ]
+#         top_row_table = Table(top_row_data, colWidths=[150, 350])
+#         top_row_table.setStyle(TableStyle([
+#             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#             ('LEFTPADDING', (0, 0), (-1, -1), 10),
+#             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+#             ('TOPPADDING', (0, 0), (-1, -1), 10),
+#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+#         ]))
+        
+#         # Create bottom row table - ChatGBT
+#         bottom_row_data = [
+#             [create_image_with_caption('IMGbinary', "Binary Image"), create_image_with_caption('IMGgrid', "Grid Image")]
+#         ]
+#         bottom_row_table = Table(bottom_row_data, colWidths=[250, 250])
+#         bottom_row_table.setStyle(TableStyle([
+#             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#             ('LEFTPADDING', (0, 0), (-1, -1), 10),
+#             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+#             ('TOPPADDING', (0, 0), (-1, -1), 10),
+#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+#         ]))
+        
+#         #adding the tables
+#         story.append(top_row_table)
+#         story.append(bottom_row_table)
+#         story.append(PageBreak())
+
+#     def add_final_info_page():
+#         story.append(logo)
+#         story.append(Spacer(1, 6))
+#         story.append(Spacer(1, 12))
+
+#         current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        
+#         info_text = f"""
+#         This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
+
+#         Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
+
+#         To read the full report please see: <i>GITHUB LINK</i>
+
+
+#         <b>Formula:</b> The formula represents the linear regression equation that models determined using the by linregress function from scipy.stats which determines the relationship between the logarithm of the dilution series and relative growth. It follows the form:
+#         y = m ⋅ log10(x) + b
+
+#         <b>Normalization:</b> The relative growth values were normalized to a baseline to make the results comparable across different conditions. The quantified values of each spot were divided by the average value of the first spot in the -ATP for each strain.
+
+#         <b>The slope (m):</b> indicates the rate of change in relative growth as the dilution series increases (on a logarithmic scale). A steep slope indicated that the growth has a faster knockdown as the dilution changes. A shallow slope indicates that the growth is more stable across dilutions.
+
+#         <b>The intercept (b)</b> and y-cut is the relative growth when the solution is not diluted.
+
+#         <b>The R-squared value</b> measures how well the linear regression line fits the data, where 1 represents a perfect fit and 0 represents no relationship. Higher R² values indicates that the growth follows a linear relationship.
+
+#         <b>The X-cut</b> refers to the point where the regression line crosses the x-axis, indicating the dilution value at which the relative growth would theoretically be zero (no growth).
+
+#         <b>X at Y = 50:</b> This value represents the dilution series value when the relative growth is 50% i.e., the knockdown is 50% in comparison to the -ATP series.
+#         """
+
+#         for paragraph in info_text.split('\n\n'):
+#             story.append(Paragraph(paragraph.strip(), body_style))
+#             story.append(Spacer(1, 6))
+
+#     #create plots of each one
+#     add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
+#     add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
+#     add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
+
+#     #this should ways be 4
+#     for info in window.image_info:
+#         add_info_page(info)
+
+#     add_final_info_page()
+#     doc.build(story)
+
+
+def generate_pdf_report(all_strain_data, output_filename, version="1.0.0"):
+    """
+    Generates a single PDF report containing data for all strains.
+    Each strain's figures are on consecutive pages with statistics underneath.
+    Tables are split if they contain more than 4 entries, with colors matching the plots.
+    
+    Args:
+        all_strain_data: List of tuples (strain_name, figures_and_stats)
+        output_filename: Path to save the PDF
+        version: Spotplotter version number
+    """
+    # Create footer style
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=getSampleStyleSheet()['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=1  # Center alignment
+    )
+    
+    # Create footer function
+    def add_footer(canvas, doc):
+        footer_text = f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')} using Spotplotter v{version}"
+        footer = Paragraph(footer_text, footer_style)
+        w, h = footer.wrap(doc.width, doc.bottomMargin)
+        footer.drawOn(canvas, doc.leftMargin, h)
+    
+    doc = SimpleDocTemplate(
+        output_filename,
+        pagesize=letter,
+        topMargin=0*inch,
+        bottomMargin=0.5*inch,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='Title',
+        parent=styles['Heading1'],
+        fontSize=16,
+        alignment=1
+    )
+    strain_style = ParagraphStyle(
+        name='StrainTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        alignment=1,
+        spaceAfter=30
+    )
+    
+    # Add logo
+    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)
+    
+    # Add title page
+    story.append(logo)
+    story.append(Spacer(1, 50))
+    story.append(Paragraph("Growth Analysis Report", title_style))
+    story.append(Spacer(1, 20))
+    story.append(PageBreak())
+    
+    # Add table of contents
+    story.append(Paragraph("Table of Contents", title_style))
+    story.append(Spacer(1, 20))
+    for strain_name, _ in all_strain_data:
+        story.append(Paragraph(f"• {strain_name}", styles['Normal']))
+    story.append(PageBreak())
+    
+    def create_stats_table(stats_subset):
+        """Create a statistics table for a subset of stats (max 4 entries)"""
+        # Define fixed column widths (in points)
+        col_widths = [1.2*inch]  # First column (row labels)
+        col_widths.extend([1.5*inch] * len(stats_subset))  # Data columns
+        
+        table_data = [[''] + [stat['label'] for stat in stats_subset]]
+        for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'y-cut', 'x-cut', 'x_at_y50']:
             row = [row_label]
-            for stat in stats:
+            for stat in stats_subset:
                 if row_label == 'Formula':
                     value = stat['formula']
                 elif row_label == 'R-squared':
                     value = f"{stat['r_squared']:.3f}"
-                elif row_label == 'X at Y=50':
+                elif row_label == 'x_at_y50':
                     value = f"{stat['x_at_y50']:.2f}"
                 else:
                     key = row_label.lower().replace('-', '_')
                     value = f"{stat[key]:.2f}"
                 row.append(value)
             table_data.append(row)
-
-        table = Table(table_data)
+        
+        table = Table(table_data, colWidths=col_widths)
         table_style = [
             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
@@ -469,137 +675,61 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
             ('FONTSIZE', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            # Add word wrapping
+            ('WORDWRAP', (0, 0), (-1, -1), True),
         ]
-
-        for i in range(1, len(table_data[0])):
-            table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
-
-        table.setStyle(TableStyle(table_style))
-        story.append(table)
-        story.append(PageBreak())
-
-    def add_info_page(info):
-        story.append(logo)
-        story.append(Spacer(1, 1))
         
-        #header to show connected info with titiles bolded
-        header_text = f"""<br/><br/><br/><br/>
-        <b>Filename:</b> &nbsp; {info['filename']}<br/>
-        <b>Type:</b> &nbsp; {info['type']}<br/>
-        <b>Detergent:</b> &nbsp; {info['detergent']}<br/>
-        <b>Treatment:</b> &nbsp; {info['treatment']}<br/>
-        <b>Repeat:</b> &nbsp; {info['repeat']}<br/>
-        <b>Strain A:</b> &nbsp; {info['strainA']}<br/>
-        <b>Strain B:</b> &nbsp; {info['strainB']}<br/>
-        <b>Strain C:</b> &nbsp; {info['strainC']}<br/>
-        <b>Parameters Used:</b> &nbsp;<br/>
-        <b>Threshold:</b> &nbsp {info['threshold']}<br/>
-        <b>Minimum Area:</b> &nbsp {info['smallArea']}<br/>
-        """
-        
-        max_width = 230
-        max_height = 200
-        
-        def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
-            if info[img_key] is not None:
-                if img_key == "IMGgrid": #this is to deal with the RGB and BGR conversion, the otherone is an okay colour
-                    pil_img = cv2_to_pil(info[img_key], False)
+        # Add matched colors from the stats
+        for i, stat in enumerate(stats_subset, start=1):
+            # Convert matplotlib color to reportlab color
+            if isinstance(stat.get('color'), str):
+                if stat['color'].startswith('#'):
+                    bg_color = colors.HexColor(stat['color'])
                 else:
-                    pil_img = cv2_to_pil(info[img_key])
-                if pil_img:
-                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
-                    img_data = BytesIO()
-                    #saving to 40% quality
-                    pil_img.save(img_data, format='JPEG', quality=40) 
-                    img_data.seek(0)
-                    img = ImageR(img_data, width=img_width, height=img_height)
-                    return [img, Paragraph(caption, body_style)]
-            return [Paragraph("Image not available", body_style), Paragraph(caption, body_style)]
+                    # Handle named colors
+                    bg_color = colors.HexColor(rgb2hex(mcolors.to_rgb(stat['color'])))
+            else:
+                # Handle RGB tuples
+                bg_color = colors.HexColor(rgb2hex(stat['color']))
+            
+            table_style.append((
+                'BACKGROUND',
+                (i, 0),
+                (i, 0),
+                bg_color
+            ))
         
-        # Create top row table - ChatGBT
-        top_row_data = [
-            [Paragraph(header_text, body_style), create_image_with_caption('IMGcontours', "Contours Image", max_width = 350, max_height =300 )]
-        ]
-        top_row_table = Table(top_row_data, colWidths=[150, 350])
-        top_row_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ]))
-        
-        # Create bottom row table - ChatGBT
-        bottom_row_data = [
-            [create_image_with_caption('IMGbinary', "Binary Image"), create_image_with_caption('IMGgrid', "Grid Image")]
-        ]
-        bottom_row_table = Table(bottom_row_data, colWidths=[250, 250])
-        bottom_row_table.setStyle(TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ]))
-        
-        #adding the tables
-        story.append(top_row_table)
-        story.append(bottom_row_table)
-        story.append(PageBreak())
+        table.setStyle(TableStyle(table_style))
+        return table
+    
+    # Process each strain's data
+    for strain_name, figures_and_stats in all_strain_data:
+            # Process each figure and its statistics for this strain
+            for fig, stats, plot_title in figures_and_stats:
+                # Add logo before each graph
+                story.append(logo)
+                
+                # Add figure
+                img_data = BytesIO()
+                fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
+                img_data.seek(0)
+                story.append(ImageR(img_data, width=6*inch, height=4*inch))
+                story.append(Spacer(1, 20))
+                
+                # Split stats into groups of 4 and create multiple tables if needed
+                for i in range(0, len(stats), 4):
+                    stats_subset = stats[i:i+4]
+                    table = create_stats_table(stats_subset)
+                    story.append(table)
+                    story.append(Spacer(1, 10))
 
-    def add_final_info_page():
-        story.append(logo)
-        story.append(Spacer(1, 6))
-        story.append(Spacer(1, 12))
-
-        current_date = datetime.now().strftime("%Y-%m-%d")
-        
-        
-        info_text = f"""
-        This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
-
-        Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
-
-        To read the full report please see: <i>GITHUB LINK</i>
-
-
-        <b>Formula:</b> The formula represents the linear regression equation that models determined using the by linregress function from scipy.stats which determines the relationship between the logarithm of the dilution series and relative growth. It follows the form:
-        y = m ⋅ log10(x) + b
-
-        <b>Normalization:</b> The relative growth values were normalized to a baseline to make the results comparable across different conditions. The quantified values of each spot were divided by the average value of the first spot in the -ATP for each strain.
-
-        <b>The slope (m):</b> indicates the rate of change in relative growth as the dilution series increases (on a logarithmic scale). A steep slope indicated that the growth has a faster knockdown as the dilution changes. A shallow slope indicates that the growth is more stable across dilutions.
-
-        <b>The intercept (b)</b> and y-cut is the relative growth when the solution is not diluted.
-
-        <b>The R-squared value</b> measures how well the linear regression line fits the data, where 1 represents a perfect fit and 0 represents no relationship. Higher R² values indicates that the growth follows a linear relationship.
-
-        <b>The X-cut</b> refers to the point where the regression line crosses the x-axis, indicating the dilution value at which the relative growth would theoretically be zero (no growth).
-
-        <b>X at Y = 50:</b> This value represents the dilution series value when the relative growth is 50% i.e., the knockdown is 50% in comparison to the -ATP series.
-        """
-
-        for paragraph in info_text.split('\n\n'):
-            story.append(Paragraph(paragraph.strip(), body_style))
-            story.append(Spacer(1, 6))
-
-    #create plots of each one
-    add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
-    add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
-    add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
-
-    #this should ways be 4
-    for info in window.image_info:
-        add_info_page(info)
-
-    add_final_info_page()
-    doc.build(story)
-
-
-
-
+                   
+                # Add page break after each strain except the last one
+                if strain_name != all_strain_data[-1][0]:
+                    story.append(PageBreak())
+    
+    # Build the PDF with footer
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
 def generate_all_outputs(window):
 

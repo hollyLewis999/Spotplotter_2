@@ -1745,14 +1745,24 @@ def processResults(window):
     # restore_window_state(window, 'window_state_multipulAdditives.pkl')
 
     process_split_order_quantifications(window)
-    strain_data , dilution_series = generate_data_series(window)
-
+    strain_data, dilution_series = generate_data_series(window)
+    
+    # Collect all strain data
+    all_strain_data = []
+    
     for strain, series in strain_data.items():
-        fig_individual, fig_average, individual_statistics, average_statistics = plot_multiadditive_graphs(series, dilution_series, strain)
-        
-
-
-
+        # Get all figures and statistics for this strain
+        figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
+        all_strain_data.append((strain, figures_and_stats))
+    
+    # Generate single PDF report with all strains
+    output_filename = "growth_analysis_report_Test.pdf"
+    generate_pdf_report(all_strain_data, output_filename)
+    
+    # Clean up matplotlib figures
+    for _, figures_and_stats in all_strain_data:
+        for fig, _, _ in figures_and_stats:
+            plt.close(fig)
     #display_results(window)
 
 def save_window_state(window, filename):
