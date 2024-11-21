@@ -21,6 +21,8 @@ from Style import *
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
@@ -405,7 +407,7 @@ def create_strain_designer(window):
     window.strain_buttons = []
     window.position_labels = {i: chr(65 + i) for i in range(window.layout_data['strains'])}
     window.column_assignments = {}
-
+    window.atc_var = tk.StringVar(value="") 
     # Create main canvas
     window.canvas = tk.Canvas(
         window,
@@ -513,15 +515,6 @@ def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_
                         tags=(pos_key, "spot")
                     )
 
-                    # # Add strain label if assigned
-                    # if pos_key in plate['assignments']:
-                    #     canvas.create_text(
-                    #         x_pos, y_pos-12,
-                    #         text=plate['assignments'][pos_key],
-                    #         font=(FONT, 6),
-                    #         fill=DARK
-                    #     )
-
         # Update x position for next group
         current_x += position_width
 
@@ -530,11 +523,40 @@ def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_
             current_x += cell_width
 
 def update_plate_display(window):
+    print("======== UPDATING PLATE DISPLAY ========")
+    print(f"Total plates: {len(window.plates)}")
+    
+    if not window.plates:
+        print("ERROR: No plates exist")
+        return
+
+    # Validate current plate index
+    if window.current_plate < 0 or window.current_plate >= len(window.plates):
+        print(f"ERROR: Invalid plate index {window.current_plate}")
+        window.current_plate = 0
+
+    current_plate = window.plates[window.current_plate]
+    print(f"Current Plate Index: {window.current_plate}")
+    print(f"Current Plate Name: {current_plate.get('name', 'NO NAME')}")
+    print(f"Plate Assignments: {current_plate.get('assignments', 'NO ASSIGNMENTS')}")
+
+    # Verify plate_canvas exists
+    if not hasattr(window, 'plate_canvas'):
+        print("ERROR: plate_canvas does not exist")
+        return
+
+    # Clear the canvas completely
     window.plate_canvas.delete('all')
 
+    # Get canvas dimensions
     width = window.plate_canvas.winfo_width()
     height = window.plate_canvas.winfo_height()
+    
+    print(f"Canvas Dimensions: {width} x {height}")
+
+    # If canvas is not properly sized, schedule a retry
     if width <= 1 or height <= 1:
+        print("WARNING: Invalid canvas size, scheduling retry")
         window.plate_canvas.after(100, lambda: update_plate_display(window))
         return
 
@@ -547,13 +569,33 @@ def update_plate_display(window):
     grid_width = width - margin_left - margin_right
     grid_height = height - margin_top - margin_bottom
 
-    # Draw the actual plate, not just a preview
-    draw_plate(window, window.plate_canvas, window.plates[window.current_plate], 
-               margin_left, margin_top, grid_width, grid_height)
+    # Print layout details for debugging
+    print(f"Layout Details:")
+    print(f"Rows: {window.layout_data['rows']}")
+    print(f"Columns: {window.layout_data['columns']}")
+    print(f"Strain Positions: {window.plate_layout['strain_positions']}")
 
-    # Update the plate display title
-    draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
-                    margin_bottom, grid_width, grid_height)
+    # Draw the plate
+    try:
+        draw_plate(window, window.plate_canvas, current_plate, 
+                   margin_left, margin_top, grid_width, grid_height)
+    except Exception as e:
+        print(f"ERROR in draw_plate: {e}")
+        import traceback
+        traceback.print_exc()
+
+    # Update the plate display grid and header
+    try:
+        draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
+                        margin_bottom, grid_width, grid_height)
+    except Exception as e:
+        print(f"ERROR in draw_plate_grid: {e}")
+        import traceback
+        traceback.print_exc()
+
+    print("======== PLATE DISPLAY UPDATE COMPLETE ========")
+
+
 
 def create_plate_controls(window):
     # "Add a plate" header
@@ -652,8 +694,7 @@ def create_strain_controls(window):
     # Blank space for added strains
     window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
     window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
-
-    
+  
 def create_navigation_controls(window):
     # Clear current plate button
     clear_btn = tk.Button(
@@ -721,6 +762,9 @@ def create_plate_canvas(window):
     )
     window.plate_canvas.pack(expand=True, fill='both')
     window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, e))
+    
+    # Force initial update
+    window.plate_canvas.after(100, lambda: update_plate_display(window))
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
@@ -767,21 +811,25 @@ def add_strain(window):
 
 def add_plate(window):
     name = window.plate_entry.get().strip()
+    atc = window.atc_var.get().strip()  # Get ATC value
     if name:
         additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
         new_plate = {
             'name': name,
+            'atc': atc,  # Add ATC to plate metadata
             'additive': additive_name,
             'assignments': {},
             'column_assignments': {}
         }
         window.plates.append(new_plate)
         window.plate_entry.delete(0, tk.END)
+        window.atc_var.set("")  # Clear ATC entry
         window.additive_var.set(False)
         window.additive_entry.delete(0, tk.END)
         window.current_plate = len(window.plates) - 1
         window.column_assignments = {}
         update_plate_display(window)
+        print(f"Plate added. Total plates: {len(window.plates)}")
 
 def unselect_position(window, event):
     if not window.plates:
@@ -985,16 +1033,7 @@ def draw_position_group(window, plate, x_pos, y_pos, position_width, position_id
                     fill=spot_color,
                     outline=spot_color,
                     tags=(pos_key, "spot")
-                )
-                
-                # Add strain label if assigned
-                # if assigned_strain:
-                #     window.plate_canvas.create_text(
-                #         x, y - 12,
-                #         text=assigned_strain,
-                #         font=(FONT, 6),
-                #         fill=LIGHT
-                #     )
+                )            
 
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
@@ -1031,7 +1070,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         }
     }
     
-def create_plate_preview_image(window, plate, width=800, height=600):
+def create_plate_preview_image(window, plate, width=1600, height=1200):
     """
     Creates a preview image for a single plate and returns it as a base64 string.
     Uses PIL for direct drawing instead of taking screenshots.
@@ -1059,8 +1098,8 @@ def create_plate_preview_image(window, plate, width=800, height=600):
     
     # Try to load fonts (fallback to default if not available)
     try:
-        label_font = ImageFont.truetype("arial.ttf", 11)
-        strain_font = ImageFont.truetype("arial.ttf", 9)
+        label_font = ImageFont.truetype("arial.ttf", 16)
+        strain_font = ImageFont.truetype("arial.ttf", 16)
     except:
         label_font = ImageFont.load_default()
         strain_font = ImageFont.load_default()
@@ -1078,16 +1117,6 @@ def create_plate_preview_image(window, plate, width=800, height=600):
             if start_col <= col <= end_col:
                 assigned_strain = assignment
                 break
-        
-        # # Draw position label
-        # position_label = f"Position {window.position_labels[position_idx]}"
-        # text_width = draw.textlength(position_label, font=label_font)
-        # draw.text(
-        #     (current_x + position_width/2 - text_width/2, margin),
-        #     position_label,
-        #     font=label_font,
-        #     fill='black'
-        # )
         
         # Draw strain label if assigned
         if assigned_strain:
@@ -1136,6 +1165,7 @@ def create_plate_preview_image(window, plate, width=800, height=600):
     img_str = base64.b64encode(buffer.getvalue()).decode()
     
     return img_str
+
 def preview_all_plates(window):
     if not window.plates:
         messagebox.showinfo("Info", "No plates to preview")
@@ -1237,7 +1267,7 @@ def draw_plate_preview(window, canvas, plate):
             current_x + position_width/2,
             margin,
             text=position_label,
-            font=(FONT, 11, 'bold'),
+            font=(FONT, 16, 'bold'),
             fill=DARK,
             anchor='s',
 
@@ -1287,27 +1317,48 @@ def draw_plate_preview(window, canvas, plate):
             current_x += cell_width
 
 
+
+
+
 def prev_plate(window):
+    print("==== PREV PLATE CALLED ====")
+    print(f"Current plate before: {window.current_plate}")
+    
     if window.plates and window.current_plate > 0:
         window.current_plate -= 1
+        
+        print(f"Current plate after decrement: {window.current_plate}")
+        
         window.plate_entry.delete(0, tk.END)
         window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
-        window.atc_var.set(window.plates[window.current_plate]['atc'])
+        
+        # Add safe ATC handling
+        window.atc_var.set(window.plates[window.current_plate].get('atc', ''))
+        
         update_plate_display(window)
         window.plate_canvas.focus_set()
+    else:
+        print("Cannot go to previous plate")
 
 def next_plate(window):
+    print("==== NEXT PLATE CALLED ====")
+    print(f"Current plate before: {window.current_plate}")
+    
     if window.plates and window.current_plate < len(window.plates) - 1:
         window.current_plate += 1
+        
+        print(f"Current plate after increment: {window.current_plate}")
+        
         window.plate_entry.delete(0, tk.END)
         window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
-        window.atc_var.set(window.plates[window.current_plate]['atc'])
+        
+        # Add safe ATC handling
+        window.atc_var.set(window.plates[window.current_plate].get('atc', ''))
+        
         update_plate_display(window)
         window.plate_canvas.focus_set()
-
-
-
-
+    else:
+        print("Cannot go to next plate")
 
 
 def export_data(window):
@@ -1402,7 +1453,6 @@ def get_available_data_files():
     """
     files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
     return sorted(files, reverse=True)
-
 
 def upload_metadata_handler(window):
     """

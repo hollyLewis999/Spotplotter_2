@@ -32,7 +32,7 @@ from Style import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 import openpyxl
-
+from singleDilutionTest import *
 
 
 DARK = "#092934"
@@ -1059,15 +1059,15 @@ def create_editFrame(window, backToEdit = False):
     window.left_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
     window.right_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
 
-    # Synchronize scrolling between canvases
-    def on_left_scroll(*args):
-        window.right_canvas.yview_moveto(args[1])
+    # # Synchronize scrolling between canvases
+    # def on_left_scroll(*args):
+    #     window.right_canvas.yview_moveto(args[1])
     
-    def on_right_scroll(*args):
-        window.left_canvas.yview_moveto(args[1])
+    # def on_right_scroll(*args):
+    #     window.left_canvas.yview_moveto(args[1])
 
-    window.left_canvas.configure(yscrollcommand=lambda *args: (left_scroll_y.set(*args), on_left_scroll(*args)))
-    window.right_canvas.configure(yscrollcommand=lambda *args: (right_scroll_y.set(*args), on_right_scroll(*args)))
+    # window.left_canvas.configure(yscrollcommand=lambda *args: (left_scroll_y.set(*args), on_left_scroll(*args)))
+    # window.right_canvas.configure(yscrollcommand=lambda *args: (right_scroll_y.set(*args), on_right_scroll(*args)))
     
     # Display images
     display_images(window)
@@ -1743,7 +1743,7 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_Preview_image_quality.pkl')
+        save_window_state(window, 'window_state_MSM1-2Comparison.pkl')
         print("saved")
         # processResults(window)
 
@@ -2322,7 +2322,7 @@ def initialize_window_attributes(window):
     window.current_image = None 
 
 
-#creating the frame with title and icon
+# #creating the frame with title and icon
 window = Tk()
 window.geometry("1440x1000")
 window.configure(bg=LIGHT)
@@ -2335,9 +2335,18 @@ window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICON
 # window.resizable(False, False)
 # window.mainloop()
 
-restore_window_state(window, 'window_state_IntermediaryImages.pkl')
+restore_window_state(window, 'window_state_MSM1-2Comparison.pkl')
 
-processResults(window)
+df, fig = analyze_plate_data(window.all_plate_info)
+plt.show()
+
+# process_split_order_quantifications(window)
+# strain_data, dilution_series = generate_data_series(window)
+# print(window.all_plate_info)  
+# df, fig = analyze_plate_data(strain_data)
+# print(df)
+# plt.show()
+# processResults(window)
 
 
 

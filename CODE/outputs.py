@@ -64,16 +64,14 @@ def normalize_array(arr, norm_value):
     """Normalize an array by a given value"""
     return [100 * x / norm_value for x in arr]
 
-
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
-
     
     figures_and_stats = []
     # Create two separate figures
-    fig_individual = plt.figure(figsize=(20, 10))
+    fig_individual = plt.figure(figsize=(24, 10))  # Increased width to accommodate legend
     ax1 = fig_individual.add_subplot(111)
     
-    fig_average = plt.figure(figsize=(20, 10))
+    fig_average = plt.figure(figsize=(24, 10))  # Increased width to accommodate legend
     ax2 = fig_average.add_subplot(111)
     
     sns.set_context("notebook", font_scale=1.2)
@@ -99,11 +97,11 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     for additive in additives:
         if additive == 'Control':
             color_map[additive] = BLUECOLOURS
-        elif 'atc' in str(additive).lower():
+        elif len(color_map) % 3 == 0:
             color_map[additive] = REDCOLOURS
-        elif len(color_map) % 2 == 0:
+        elif len(color_map) % 3 == 1:
             color_map[additive] = GREENCOLOURS
-        else:
+        elif len(color_map) % 3 == 2:
             color_map[additive] = PURPLESCOLOURS
     
     individual_statistics = []
@@ -179,21 +177,27 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
     
     # Style plots
-
     for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
                                (ax2, fig_average, "Average Growth Curves")]:
         ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
         ax.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
-        ax.legend(
-            fontsize=8,
-            loc='upper right', 
-            bbox_to_anchor=(1, 1),
-            ncol=2,
+        
+        # Adjust legend to be a single column on the right
+        legend = ax.legend(
+            fontsize=10,  # Increased font size
+            loc='center left',  # Positioned on the left side of the plot 
+            bbox_to_anchor=(1, 0.5),  # Centered vertically on the right side
+            ncol=1,  # Single column
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
-            framealpha=0.5
+            framealpha=0.5,
+            title_fontsize=12  # Optional: if you want a title for the legend
         )
+        
+        # Adjust figure size to make room for the legend
+        fig.subplots_adjust(right=0.75)  # Leaves 25% of the width for the legend
+        
         ax.set_ylim(0, 110)
         ax.tick_params(axis='both', which='major', labelsize=14)
         ax.set_title(f"{plot_title} for {title}",
@@ -203,6 +207,8 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
     return figures_and_stats
+
+
 def normalize_array(values, norm_value):
     """
     Normalize an array of values relative to a normalization value.
