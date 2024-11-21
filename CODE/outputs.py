@@ -22,13 +22,15 @@ import openpyxl
 import base64
 import io
 import math
-
+from collections import defaultdict
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
 from reportlab.graphics import renderPDF
 from PIL import Image
 from io import BytesIO
 import base64
+import pandas as pd
+import numpy as np
 
 from PIL import Image, ImageTk
 OUTPUT_PATH = Path(__file__).parent
@@ -63,36 +65,8 @@ def normalize_array(arr, norm_value):
     return [100 * x / norm_value for x in arr]
 
 
-# def calculate_statistics(x_values, y_values, label, log_base=10):
-#     """
-#     Calculate statistics for the data series using specified log base
-#     """
-#     valid_points = [(x, y) for x, y in zip(x_values, y_values) if x > 0 and y > 10]
-#     if len(valid_points) < 2:
-#         return None
-        
-#     # Use the specified log base instead of always using log10
-#     valid_x = [np.log(point[0])/np.log(log_base) for point in valid_points]
-#     valid_y = [point[1] for point in valid_points]
-    
-#     slope, intercept, r_value, p_value, std_err = scipy_stats.linregress(valid_x, valid_y)
-#     r_squared = r_value ** 2
-    
-#     # Update formula to show correct log base
-#     formula = f"y = {slope:.2f}log(x) + {intercept:.2f}"
-
-    
-#     return {
-#         'label': label,
-#         'slope': slope,
-#         'intercept': intercept,
-#         'r_squared': r_squared,
-#         'formula': formula
-#     }
-
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
-    sorted_positions = get_sorted_positions(dilution_series)
-    dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
+
     
     figures_and_stats = []
     # Create two separate figures
@@ -117,19 +91,10 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     # Initialize averaged data
     averaged_data = {additive: {float(x): [] for x in dilution_series} for additive in additives}
     
-    # Get normalization value from control series
-    norm_values = [
-        series['y_values'][0] for series in data_series 
-        if series.get('additive') in [None, 'Control']
-    ]
-    if not norm_values:
-        raise ValueError("Must have at least one control series for normalization")
-    norm_value = sum(norm_values) / len(norm_values)
-    
-    max_y = max(max(series['y_values']) for series in data_series)
+    max_y = max(max(series['normalized_y_values']) for series in data_series)
     y_max = max_y + 10
 
-    # Color mapping
+    # Color mapping (rest of the function remains the same as before)
     color_map = {}
     for additive in additives:
         if additive == 'Control':
@@ -148,7 +113,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     
     # Plot individual series
     for idx, series in enumerate(data_series):
-        y_norm = normalize_array(series['y_values'], norm_value)
+        y_norm = series['normalized_y_values']
         additive = 'Control' if series.get('additive') is None else series.get('additive')
         
         color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
@@ -238,82 +203,254 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
     return figures_and_stats
+def normalize_array(values, norm_value):
+    """
+    Normalize an array of values relative to a normalization value.
+    
+    Args:
+        values (list or np.array): Original values to normalize
+        norm_value (float): Value to normalize against
+    
+    Returns:
+        np.array: Normalized values as percentages
+    """
+    return np.array(values) / norm_value * 100
+
+def calculate_strain_normalization_value(data_series, strain):
+    """
+    Calculate normalization value for a specific strain from control series.
+    
+    Args:
+        data_series (list): List of data series dictionaries
+        strain (str): Strain to calculate normalization for
+    
+    Returns:
+        float: Normalization value (average of first values in control series for the strain)
+    """
+    # Find control series (None or 'Control' additive) for the specific strain
+    norm_values = [
+        series['y_values'][0] for series in data_series 
+        if (series.get('additive') in [None, 'Control']) and (series['strain'] == strain)
+    ]
+    
+    if not norm_values:
+        raise ValueError(f"Must have at least one control series for strain {strain}")
+    
+    return sum(norm_values) / len(norm_values)
 
 
-
-def write_image_info_to_file(window, figA, statsA, figB, statsB, figC, statsC, pdf_filename):
-    #get save location and file name
-    file_path = filedialog.asksaveasfilename(
-        defaultextension=".xlsx",
-        filetypes=[("Excel files", "*.xlsx")],
-        title="Save Data and Create Folder"
+def export_strain_data_to_excel(strain_data, dilution_series, output_filename='strain_data_export.xlsx'):
+    """
+    Export strain data to an Excel workbook in tidy (long) format.
+    
+    Args:
+        strain_data (dict): Dictionary of strain data 
+        dilution_series (list): List of dilution values
+        output_filename (str): Name of the Excel file to save
+    
+    Returns:
+        pd.DataFrame: Exported dataframe for additional processing if needed
+    """
+    # Prepare a list to collect all rows
+    tidy_data = []
+    
+    # Iterate through each strain
+    for strain, series_list in strain_data.items():
+        for series in series_list:
+            # Extract data from series
+            filename = str(series['filename'])  # Ensure string
+            additive = str(series.get('additive', 'Control'))  # Ensure string
+            y_values = series['y_values']
+            norm_value = float(series['norm_value'])  # Ensure float
+            normalized_y_values = series['normalized_y_values']
+            
+            # Create rows for each quantification
+            for dilution, y_value, norm_y_value in zip(dilution_series, y_values, normalized_y_values):
+                tidy_data.append({
+                    'filename': filename,
+                    'additive': additive,
+                    'strain': str(strain),  # Ensure string
+                    'quantification': float(y_value),  # Ensure float
+                    'dilution': float(dilution),  # Ensure float
+                    'normalised_quantification': float(norm_y_value),  # Ensure float
+                    'normalisation_value': norm_value
+                })
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(tidy_data)
+    
+    # Sort without using categorical
+    df = df.sort_values(
+        by=['strain', 'additive', 'filename', 'dilution'], 
+        key=lambda col: col.astype(str)
     )
-    if not file_path:
-        return
     
-    #the first part is the save location and the second part will be the file name
-    save_location, filename = os.path.split(file_path)
-    folder_name = os.path.splitext(filename)[0]  # Remove extension
+    # Export to Excel
+    df.to_excel(output_filename, index=False)
     
-    #making noew folder with specified name
-    new_folder_path = os.path.join(save_location, folder_name)
-    os.makedirs(new_folder_path, exist_ok=True)
+    print(f"Data exported to {output_filename}")
     
-    #filepath must now be insdie new solder
-    file_path = os.path.join(new_folder_path, f"{folder_name}_rawdata.xlsx")
-    
-    #make excel file
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Image Data"
-    
+    return df
 
-    #in future this should be variable to account for different experiment values
-    dilutionSeries = [0, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
+def generate_data_series(window):
+    # Dictionary to store data series for each strain
+    strain_data = defaultdict(list)
+    dilution_series = window.all_plate_info[0]['dilutions']
+   
+    # Temporary list to collect all data series for normalization
+    all_data_series = []
+   
+    # Iterate over all plates
+    for plate in window.all_plate_info:
+       
+        additive = plate.get('additive', 'Control') or 'Control'
+        filename = plate.get('filename', 'Unnamed Plate')
+        strains = plate['strains']
+        column_indexes = plate['column_indexes']
+        ordered_quantifications = plate['ordered_quantifications']
+       
+        # Ensure ordered_quantifications and column_indexes match strain count
+        if len(ordered_quantifications) != len(strains):
+            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
+       
+        # For each strain in the plate
+        for strain_idx, strain in enumerate(strains):
+            # Extract y_values for this strain
+            y_values = ordered_quantifications[strain_idx]
+            column_indexes_for_strain = column_indexes[strain_idx]
+   
+            # Calculate the range of column indexes
+            start_col = min(column_indexes_for_strain)
+            end_col = max(column_indexes_for_strain)
+           
+            # Generate a label for this series
+            label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
+           
+            # Create data series dictionary
+            series_dict = {
+                'y_values': y_values,
+                'additive': additive,
+                'label': label,
+                'strain': strain,
+                'filename': filename,
+                'column_indexes': column_indexes_for_strain
+            }
+            
+            # Add to temporary list for normalization calculation
+            all_data_series.append(series_dict)
     
-    headers = ["filename", "type", "detergent", "treatment", "repeat", "strain", "quantification", "fold_dilution", "normalization_value", "normalized_value"]
-    ws.append(headers)
-    #normalisation values is the average of the non ATP quantifications
-    norm_value_A = (window.image_info[0]['QuantificationA'][0] + window.image_info[1]['QuantificationA'][0])/2
-    norm_value_B = (window.image_info[0]['QuantificationB'][0] + window.image_info[1]['QuantificationB'][0])/2
-    norm_value_C = (window.image_info[0]['QuantificationC'][0] + window.image_info[1]['QuantificationC'][0])/2
-
-
-    #chatGBT helped with tidy data format
-    for info in window.image_info:
-        current_filename = info.get('filename', 'Unknown')  # Use a default if filename is not available
-        base_row = [current_filename, info['type'], info['detergent'], info['treatment'], info['repeat']]
+    # Calculate normalization values for each strain
+    for strain in set(series['strain'] for series in all_data_series):
+        # Calculate normalization value for this strain
+        norm_value = calculate_strain_normalization_value(all_data_series, strain)
         
+        # Update series with normalized values for this strain
+        for series_dict in all_data_series:
+            if series_dict['strain'] == strain:
+                # Normalize values
+                normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
+                
+                # Update series with normalized values and normalization value
+                series_dict['normalized_y_values'] = normalized_y_values
+                series_dict['norm_value'] = norm_value
+                
+                # Add to strain data
+                strain_data[strain].append(series_dict)
+    
+    # Convert strain_data to a list of series if needed
+    data_series = []
+    for strain, series_list in strain_data.items():
+        data_series.extend(series_list)
+   
+    return strain_data, dilution_series
 
-        def add_strain_rows(strain, quant_list, norm_value):
-            for quant, dilution in zip(quant_list, dilutionSeries[:len(quant_list)]):
-                normalized_value = 100 * quant / norm_value if norm_value else None
-                row = base_row + [strain, quant, dilution, norm_value, normalized_value]
-                ws.append(row)
+
+
+
+
+def generate_tidy_dataframe(window):
+    """
+    Generate a tidy dataframe from plate quantification data.
+    
+    Args:
+        window: The window object containing plate information
+    
+    Returns:
+        pd.DataFrame: A tidy dataframe with one row per quantification point
+    """
+    # Initialize lists to collect data
+    tidy_data = []
+    
+    # Iterate over all plates
+    for plate in window.all_plate_info:
+        additive = plate.get('additive', 'Control') or 'Control'
+        filename = plate.get('filename', 'Unnamed Plate')
+        strains = plate['strains']
+        column_indexes = plate['column_indexes']
+        dilutions = plate['dilutions']
+        ordered_quantifications = plate['ordered_quantifications']
         
+        # Ensure ordered_quantifications and column_indexes match strain count
+        if len(ordered_quantifications) != len(strains):
+            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
+        
+        # For each strain in the plate
+        for strain_idx, strain in enumerate(strains):
+            # Extract y_values for this strain
+            y_values = ordered_quantifications[strain_idx]
+            column_indexes_for_strain = column_indexes[strain_idx]
+            
+            # Calculate normalisation value (using first value of control series)
+            norm_values = [
+                series['ordered_quantifications'][0] for series in window.all_plate_info 
+                if series.get('additive') in [None, 'Control']
+            ]
+            norm_value = sum(norm_values) / len(norm_values) if norm_values else 1
+            
+            # Normalize the y_values
+            normalized_y_values = [y / norm_value * 100 for y in y_values]
+            
+            # Prepare data for tidy format
+            for col_idx, (raw_value, normalized_value) in enumerate(zip(y_values, normalized_y_values)):
+                # Find the corresponding dilution
+                dilution_index = col_idx % len(dilutions[0])
+                dilution_value = dilutions[0][dilution_index]
+                
+                tidy_data.append({
+                    'filename': filename,
+                    'additive': additive,
+                    'strain': strain,
+                    'quantification': raw_value,
+                    'dilution': dilution_value,
+                    'normalization_value': norm_value,
+                    'normalized_value': normalized_value
+                })
+    
+    # Convert to DataFrame
+    df = pd.DataFrame(tidy_data)
+    
+    return df
 
-        if info['QuantificationA']:
-            add_strain_rows(info['strainA'], info['QuantificationA'], norm_value_A)
-        if info['QuantificationB']:
-            add_strain_rows(info['strainB'], info['QuantificationB'], norm_value_B)
-        if info['QuantificationC']:
-            add_strain_rows(info['strainC'], info['QuantificationC'], norm_value_C)
+def export_tidy_data_to_excel(window, output_filename='tidy_data.xlsx'):
+    """
+    Export tidy data to an Excel workbook.
     
-    #excel
-    wb.save(file_path)
+    Args:
+        window: The window object containing plate information
+        output_filename: Name of the Excel file to save (default: 'tidy_data.xlsx')
     
-    #pdf
-    pdf_filename = os.path.join(new_folder_path, f"{folder_name}_report.pdf")
-    generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, pdf_filename)
+    Returns:
+        str: Path to the saved Excel file
+    """
+    # Generate tidy dataframe
+    tidy_df = generate_tidy_dataframe(window)
     
-    #images
-    save_graph_image(figA, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainA']}.png"))
-    save_graph_image(figB, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainB']}.png"))
-    save_graph_image(figC, os.path.join(new_folder_path, f"{folder_name}_{window.image_info[0]['strainC']}.png"))
+    # Export to Excel
+    tidy_df.to_excel(output_filename, index=False)
     
-    print(f"Files saved successfully in folder: {new_folder_path}")
+    print(f"Tidy data exported to {output_filename}")
+    return output_filename
 
-#higher quality than in the report
 def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 
@@ -400,191 +537,7 @@ def get_image_size(img, max_width, max_height):
     return img_width, img_height
 
 
-# def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output_filename):
 
-#     doc = SimpleDocTemplate(output_filename, pagesize=letter, topMargin=0*inch, bottomMargin=0.5*inch, leftMargin=0.5*inch, rightMargin=0.5*inch)
-#     story = []
-#     styles = getSampleStyleSheet()
-
-#     title_style = ParagraphStyle(name='Title', parent=styles['Heading1'], fontSize=16, alignment=1)
-#     heading_style = ParagraphStyle(name='Heading', parent=styles['Heading2'], fontSize=12)
-#     body_style = ParagraphStyle(name='Body', parent=styles['BodyText'], fontSize=8)
-
-
-#     logo_path = relative_to_assets("LogoHorizontalDark.png")
-#     logo = ImageR(logo_path, width=1170/4, height=407/4)
-
-#     #same color_scheme as before - should make it a global variable
-#     color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
-
-#     def add_plot_and_stats(fig, stats, strain):
-#         story.append(logo)
-#         story.append(Spacer(1, 6))
-#         story.append(Spacer(1, 12))
-
-#         #saving it in lower quality
-#         img_data = BytesIO()
-#         fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
-#         img_data.seek(0)
-
-        
-#         story.append(ImageR(img_data, width=6*inch, height=4*inch))
-#         story.append(Spacer(1, 80))
-
-
-#         #Used Chagbt to help generate this table
-#         table_data = [[''] + [stat['label'] for stat in stats]]
-#         for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'Y-cut', 'X-cut', 'X at Y=50']:
-#             row = [row_label]
-#             for stat in stats:
-#                 if row_label == 'Formula':
-#                     value = stat['formula']
-#                 elif row_label == 'R-squared':
-#                     value = f"{stat['r_squared']:.3f}"
-#                 elif row_label == 'X at Y=50':
-#                     value = f"{stat['x_at_y50']:.2f}"
-#                 else:
-#                     key = row_label.lower().replace('-', '_')
-#                     value = f"{stat[key]:.2f}"
-#                 row.append(value)
-#             table_data.append(row)
-
-#         table = Table(table_data)
-#         table_style = [
-#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-#             ('GRID', (0, 0), (-1, -1), 1, colors.black),
-#             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-#             ('FONTSIZE', (0, 0), (-1, -1), 8),
-#             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-#             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-#         ]
-
-#         for i in range(1, len(table_data[0])):
-#             table_style.append(('BACKGROUND', (i, 0), (i, 0), colors.HexColor(color_scheme[(i-1) % len(color_scheme)])))
-
-#         table.setStyle(TableStyle(table_style))
-#         story.append(table)
-#         story.append(PageBreak())
-
-#     def add_info_page(info):
-#         story.append(logo)
-#         story.append(Spacer(1, 1))
-        
-#         #header to show connected info with titiles bolded
-#         header_text = f"""<br/><br/><br/><br/>
-#         <b>Filename:</b> &nbsp; {info['filename']}<br/>
-#         <b>Type:</b> &nbsp; {info['type']}<br/>
-#         <b>Detergent:</b> &nbsp; {info['detergent']}<br/>
-#         <b>Treatment:</b> &nbsp; {info['treatment']}<br/>
-#         <b>Repeat:</b> &nbsp; {info['repeat']}<br/>
-#         <b>Strain A:</b> &nbsp; {info['strainA']}<br/>
-#         <b>Strain B:</b> &nbsp; {info['strainB']}<br/>
-#         <b>Strain C:</b> &nbsp; {info['strainC']}<br/>
-#         <b>Parameters Used:</b> &nbsp;<br/>
-#         <b>Threshold:</b> &nbsp {info['threshold']}<br/>
-#         <b>Minimum Area:</b> &nbsp {info['smallArea']}<br/>
-#         """
-        
-#         max_width = 230
-#         max_height = 200
-        
-#         def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
-#             if info[img_key] is not None:
-#                 if img_key == "IMGgrid": #this is to deal with the RGB and BGR conversion, the otherone is an okay colour
-#                     pil_img = cv2_to_pil(info[img_key], False)
-#                 else:
-#                     pil_img = cv2_to_pil(info[img_key])
-#                 if pil_img:
-#                     img_width, img_height = get_image_size(pil_img, max_width, max_height)
-#                     img_data = BytesIO()
-#                     #saving to 40% quality
-#                     pil_img.save(img_data, format='JPEG', quality=40) 
-#                     img_data.seek(0)
-#                     img = ImageR(img_data, width=img_width, height=img_height)
-#                     return [img, Paragraph(caption, body_style)]
-#             return [Paragraph("Image not available", body_style), Paragraph(caption, body_style)]
-        
-#         # Create top row table - ChatGBT
-#         top_row_data = [
-#             [Paragraph(header_text, body_style), create_image_with_caption('IMGcontours', "Contours Image", max_width = 350, max_height =300 )]
-#         ]
-#         top_row_table = Table(top_row_data, colWidths=[150, 350])
-#         top_row_table.setStyle(TableStyle([
-#             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#             ('LEFTPADDING', (0, 0), (-1, -1), 10),
-#             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-#             ('TOPPADDING', (0, 0), (-1, -1), 10),
-#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-#         ]))
-        
-#         # Create bottom row table - ChatGBT
-#         bottom_row_data = [
-#             [create_image_with_caption('IMGbinary', "Binary Image"), create_image_with_caption('IMGgrid', "Grid Image")]
-#         ]
-#         bottom_row_table = Table(bottom_row_data, colWidths=[250, 250])
-#         bottom_row_table.setStyle(TableStyle([
-#             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-#             ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-#             ('LEFTPADDING', (0, 0), (-1, -1), 10),
-#             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-#             ('TOPPADDING', (0, 0), (-1, -1), 10),
-#             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-#         ]))
-        
-#         #adding the tables
-#         story.append(top_row_table)
-#         story.append(bottom_row_table)
-#         story.append(PageBreak())
-
-#     def add_final_info_page():
-#         story.append(logo)
-#         story.append(Spacer(1, 6))
-#         story.append(Spacer(1, 12))
-
-#         current_date = datetime.now().strftime("%Y-%m-%d")
-        
-        
-#         info_text = f"""
-#         This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
-
-#         Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
-
-#         To read the full report please see: <i>GITHUB LINK</i>
-
-
-#         <b>Formula:</b> The formula represents the linear regression equation that models determined using the by linregress function from scipy.stats which determines the relationship between the logarithm of the dilution series and relative growth. It follows the form:
-#         y = m ⋅ log10(x) + b
-
-#         <b>Normalization:</b> The relative growth values were normalized to a baseline to make the results comparable across different conditions. The quantified values of each spot were divided by the average value of the first spot in the -ATP for each strain.
-
-#         <b>The slope (m):</b> indicates the rate of change in relative growth as the dilution series increases (on a logarithmic scale). A steep slope indicated that the growth has a faster knockdown as the dilution changes. A shallow slope indicates that the growth is more stable across dilutions.
-
-#         <b>The intercept (b)</b> and y-cut is the relative growth when the solution is not diluted.
-
-#         <b>The R-squared value</b> measures how well the linear regression line fits the data, where 1 represents a perfect fit and 0 represents no relationship. Higher R² values indicates that the growth follows a linear relationship.
-
-#         <b>The X-cut</b> refers to the point where the regression line crosses the x-axis, indicating the dilution value at which the relative growth would theoretically be zero (no growth).
-
-#         <b>X at Y = 50:</b> This value represents the dilution series value when the relative growth is 50% i.e., the knockdown is 50% in comparison to the -ATP series.
-#         """
-
-#         for paragraph in info_text.split('\n\n'):
-#             story.append(Paragraph(paragraph.strip(), body_style))
-#             story.append(Spacer(1, 6))
-
-#     #create plots of each one
-#     add_plot_and_stats(figA, statsA, window.image_info[0]['strainA'])
-#     add_plot_and_stats(figB, statsB, window.image_info[0]['strainB'])
-#     add_plot_and_stats(figC, statsC, window.image_info[0]['strainC'])
-
-#     #this should ways be 4
-#     for info in window.image_info:
-#         add_info_page(info)
-
-#     add_final_info_page()
-#     doc.build(story)
 def resize_for_display(image, max_width=1280, max_height=720):
     h, w = image.shape[:2]
     if h > max_height or w > max_width:
@@ -650,19 +603,53 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
     # Add logo
     logo_path = relative_to_assets("LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
-    
-    def add_info_page(plate_info, story, logo, title_style, body_style):
-        """Helper function to add plate information page"""
+    def add_final_info_page():
         story.append(logo)
+        story.append(Spacer(1, 6))
         story.append(Spacer(1, 12))
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
         
+        
+        info_text = f"""
+        This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
+
+        Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
+
+        To read the full report please see: <i>GITHUB LINK</i>
+
+
+        <b>Formula:</b> The formula represents the linear regression equation that models determined using the by linregress function from scipy.stats which determines the relationship between the logarithm of the dilution series and relative growth. It follows the form:
+        y = m ⋅ log10(x) + b
+
+        <b>Normalization:</b> The relative growth values were normalized to a baseline to make the results comparable across different conditions. The quantified values of each spot were divided by the average value of the first spot in the -ATP for each strain.
+
+        <b>The slope (m):</b> indicates the rate of change in relative growth as the dilution series increases (on a logarithmic scale). A steep slope indicated that the growth has a faster knockdown as the dilution changes. A shallow slope indicates that the growth is more stable across dilutions.
+
+        <b>The intercept (b)</b> and y-cut is the relative growth when the solution is not diluted.
+
+        <b>The R-squared value</b> measures how well the linear regression line fits the data, where 1 represents a perfect fit and 0 represents no relationship. Higher R² values indicates that the growth follows a linear relationship.
+
+        <b>The X-cut</b> refers to the point where the regression line crosses the x-axis, indicating the dilution value at which the relative growth would theoretically be zero (no growth).
+
+        <b>X at Y = 50:</b> This value represents the dilution series value when the relative growth is 50% i.e., the knockdown is 50% in comparison to the -ATP series.
+        """
+
+        for paragraph in info_text.split('\n\n'):
+            story.append(Paragraph(paragraph.strip(), body_style))
+            story.append(Spacer(1, 6))
+
+
+    def add_info_page(plate_info, story, logo, title_style, body_style):
+        """Helper function to add plate information page"""  
         # Add title with plate name + Log
-        title_text = f"{plate_info['filename']} Log"
+        story.append(Spacer(1, 10))
+        title_text = f"\n{plate_info['filename']} Log"
         story.append(Paragraph(title_text, title_style))
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 10))
         
-        max_width = 250
-        max_height = 200
+        max_width = 280
+        max_height = 180
         
         def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
             """
@@ -684,39 +671,40 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
                         if img_key == "IMGgrid":
                             pil_img = cv2_to_pil(plate_info[img_key], False)
                         else:
-                            # cv2.imshow(img_key, resize_for_display(plate_info[img_key]))
-                            # cv2.waitKey(0)
-                            # cv2.destroyAllWindows()
                             pil_img = cv2_to_pil(plate_info[img_key])
                     else:
                         raise KeyError(f"{img_key} not found in plate_info")
-                
+            
                 if pil_img:
                     # Convert to RGB if needed
                     if pil_img.mode != 'RGB':
                         pil_img = pil_img.convert('RGB')
-                    
+                
                     # Resize image maintaining aspect ratio
                     img_width, img_height = get_image_size(pil_img, max_width, max_height)
-                    
+                
                     # Save to bytes buffer
                     img_data = BytesIO()
                     pil_img.save(img_data, format='JPEG', quality=40)
                     img_data.seek(0)
-                    
-                    # Create ReportLab image
+                
+                    # Create ReportLab image without border
                     img = ImageR(img_data, width=img_width, height=img_height)
-                    return [img, Paragraph(caption, body_style)]
                     
+                    # Create bold and italic caption style
+                    caption_style = ParagraphStyle(
+                        'CaptionStyle',
+                        parent=body_style,
+                        fontWeight='bold',
+                        fontStyle='italic'
+                    )
+                    
+                    return [img, Paragraph(caption, caption_style)]
+
             except Exception as e:
-                print(f"Error processing image {img_key}: {e}")
-            
-            # Create a placeholder rectangle if image is missing or there's an error
-            placeholder = Drawing(max_width, max_height)
-            placeholder.add(Rect(0, 0, max_width, max_height, strokeWidth=1, strokeColor=colors.black, fillColor=colors.white))
-            placeholder.add(String(max_width/2, max_height/2, "Image not available",
-                                textAnchor='middle', fontSize=12))
-            return [placeholder, Paragraph(caption, body_style)]
+                print(f"Error creating image with caption: {e}")
+                return []
+
 
         def create_info_text(plate_info):
             info_text = f"""
@@ -742,11 +730,10 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
         
         # Row 2: Binary Images
         row2_data = [
-            [create_image_with_caption('IMGbinary', "Binary Image"),
-             create_image_with_caption('IMGToolUsage', "Manual changes: Red- Additions, Blue - subtractions")]
+            [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
+            create_image_with_caption('IMGbinary', "Binary Image")]
         ]
         row2_table = Table(row2_data, colWidths=[max_width, max_width])
-        ("PRINT HERE")
         # Row 3: Grid and Contours
         row3_data = [
             [create_image_with_caption('IMGgrid', "Grid Image"),
@@ -762,7 +749,6 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
             ('RIGHTPADDING', (0, 0), (-1, -1), 10),
             ('TOPPADDING', (0, 0), (-1, -1), 10),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-            ('GRID', (0, 0), (-1, -1), 1, colors.grey),
         ])
         
         for table in [row1_table, row2_table, row3_table]:
@@ -772,19 +758,6 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
         
         story.append(PageBreak())
     
-    # Add title page
-    story.append(logo)
-    story.append(Spacer(1, 50))
-    story.append(Paragraph("Growth Analysis Report", title_style))
-    story.append(Spacer(1, 20))
-    story.append(PageBreak())
-    
-    # Add table of contents
-    story.append(Paragraph("Table of Contents", title_style))
-    story.append(Spacer(1, 20))
-    for strain_name, _ in all_strain_data:
-        story.append(Paragraph(f"• {strain_name}", styles['Normal']))
-    story.append(PageBreak())
     
     # Add plate info pages
     for plate_info in all_plate_info:
@@ -882,7 +855,9 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
             if strain_name != all_strain_data[-1][0]:
                 story.append(PageBreak())
         
+    
     # Build the PDF with footer
+    story.append(add_final_info_page())
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
 
@@ -972,71 +947,3 @@ def extract_values_at_positions(array, positions):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-# dilution_array = calculate_dilution_series(8,12,10,2)   
-# sorted_positions = get_sorted_positions(dilution_array)
-# ordered_values = extract_values_at_positions(dilution_array, sorted_positions)
-# print(ordered_values)
-
-
-
-
-
-
-# y1 = [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0]
-# y2 = [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0]
-# y3 = [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 990, 1650, 590, 662, 0, 203, 0, 161, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 0]
-# y4 = [20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-# y5 = [30000, 20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0]
-# # Example usage:
-# data_series = [
-#     {
-#         'y_values': y1,
-#         'label': 'Series 1',
-#         'color': '#073B3A',  # optional
-#         'marker': 'o',       # optional
-#         'atc': False       # optional
-#     },
-#     {
-#         'y_values': y2,
-#         'label': 'Series 2',
-#         'atc': False
-#     },
-#     {
-#         'y_values': y3,
-#         'label': 'Series 3',
-#         'atc': True
-#     },
-#     {
-#         'y_values': y4,
-#         'label': 'Series 4',
-#         'atc': True
-#     },
-#     {
-#         'y_values': y5,
-#         'label': 'Series 2',
-#         'atc': False
-#     }
-#     # Add as many series as needed...
-# ]
-
-# y1 = [32104, 21485, 19504, 18271, 17283, 10029, 20164, 9907, 10611, 12160, 9120, 8598, 2442, 4719, 8308, 4957, 7553, 1160, 2043, 695, 0, 3840, 2944, 2703, 939, 0, 533, 0, 731, 0, 0, 0]
-# y2 = [35381, 27773, 29721, 26322, 20777, 27826, 22096, 25658, 15214, 18442, 16458, 11103, 11263, 11343, 11245, 4970, 9886, 3830, 5635, 3304, 4045, 3195, 2033, 3204, 1140, 2708, 224, 134, 0, 0, 0, 0]
-# y3 = [18909, 16152, 13604, 12738, 12577, 8611, 14617, 6462, 3661, 1967, 3733, 990, 1650, 590, 662, 0, 203, 0, 161, 0, 0, 0, 0, 0, 0, 165, 0, 0, 0, 0, 0, 0]
-# y4 = [20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0, 0]
-# y5 = [30000, 20644, 17099, 17124, 14325, 11952, 13282, 13110, 12045, 6060, 10173, 2723, 405, 2177, 368, 0, 0, 580, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 229, 0, 0, 0]
-# # Example usage:
-
-
-# # fig, stats = plot_logarithmic_graph(data_series, DILUTIONSERIES, "My Title", log_base=10)

@@ -2,7 +2,8 @@
 #Tkinter Designer by Parth Jadhav
 #https://github.com/ParthJadhav/Tkinter-Designer
 
-
+import pandas as pd
+import numpy as np
 from pathlib import Path
 import os
 from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
@@ -84,7 +85,7 @@ def create_plate_designer(window):
     window.plate_layout = {
         'rows': tk.IntVar(value=8),
         'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=2),
+        'strains': tk.IntVar(value=3),
         'x_dilution': tk.IntVar(value=10),
         'y_dilution': tk.IntVar(value=2),
         'gap_between_strains': tk.BooleanVar(value=False),
@@ -1742,7 +1743,7 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_Test_Positions.pkl')
+        save_window_state(window, 'window_state_Preview_image_quality.pkl')
         print("saved")
         # processResults(window)
 
@@ -1756,7 +1757,7 @@ def process_tool_usage(window):
     Args:
         window: Window object containing all_plate_info with binary images
     """
-    print(window.all_plate_info)
+    # print(window.all_plate_info)
     for plate_info in window.all_plate_info:
         # Skip if either image is None
         if plate_info['IMGbinary'] is None or plate_info['IMGbinaryAutomatic'] is None:
@@ -1794,11 +1795,15 @@ def processResults(window):
     process_tool_usage(window)
     process_split_order_quantifications(window)
     strain_data, dilution_series = generate_data_series(window)
+    sorted_positions = get_sorted_positions(dilution_series)
+    dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
+    print("strain Data")
+    print(strain_data)
+    print("______________________________")
+    print("dilution_series")
+    print(dilution_series)
 
-
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    # Collect all strain data
+    exported_df = export_strain_data_to_excel(strain_data, dilution_series)
     all_strain_data = []
     
     for strain, series in strain_data.items():
@@ -1815,6 +1820,10 @@ def processResults(window):
         for fig, _, _ in figures_and_stats:
             plt.close(fig)
     #display_results(window)
+    # # After processing plates
+    # export_tidy_data_to_excel(window)  # Uses default filename
+    # # Or specify a custom filename
+    # export_tidy_data_to_excel(window, 'my_plate_data.xlsx')
 
 def save_window_state(window, filename):
     # Extract the all_plate_info from the window object
@@ -1875,57 +1884,57 @@ def process_split_order_quantifications(window):
         plate['ordered_quantifications'] = ordered_quantifications
 
 
-def generate_data_series(window):
-    # Dictionary to store data series for each strain
-    strain_data = defaultdict(list)
-    dilution_series = window.all_plate_info[0]['dilutions']
+# def generate_data_series(window):
+#     # Dictionary to store data series for each strain
+#     strain_data = defaultdict(list)
+#     dilution_series = window.all_plate_info[0]['dilutions']
    
-    # Iterate over all plates
-    for plate in window.all_plate_info:
+#     # Iterate over all plates
+#     for plate in window.all_plate_info:
         
-        additive = plate.get('additive', 'Control') or 'Control'
+#         additive = plate.get('additive', 'Control') or 'Control'
 
-        filename = plate.get('filename', 'Unnamed Plate')
-        strains = plate['strains']
-        column_indexes = plate['column_indexes']
-        ordered_quantifications = plate['ordered_quantifications']
+#         filename = plate.get('filename', 'Unnamed Plate')
+#         strains = plate['strains']
+#         column_indexes = plate['column_indexes']
+#         ordered_quantifications = plate['ordered_quantifications']
         
-        # Ensure ordered_quantifications and column_indexes match strain count
-        if len(ordered_quantifications) != len(strains):
-            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
+#         # Ensure ordered_quantifications and column_indexes match strain count
+#         if len(ordered_quantifications) != len(strains):
+#             raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
         
-        # For each strain in the plate
-        for strain_idx, strain in enumerate(strains):
-            # Extract y_values for this strain
-            y_values = ordered_quantifications[strain_idx]
-            column_indexes_for_strain = column_indexes[strain_idx]
+#         # For each strain in the plate
+#         for strain_idx, strain in enumerate(strains):
+#             # Extract y_values for this strain
+#             y_values = ordered_quantifications[strain_idx]
+#             column_indexes_for_strain = column_indexes[strain_idx]
     
-            # Calculate the range of column indexes
-            start_col = min(column_indexes_for_strain)
-            end_col = max(column_indexes_for_strain)
+#             # Calculate the range of column indexes
+#             start_col = min(column_indexes_for_strain)
+#             end_col = max(column_indexes_for_strain)
             
-            # Generate a label for this series
-            label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
+#             # Generate a label for this series
+#             label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
             
-            print(label)  # Optional: Debugging to check the labels
-            # Generate a label for this series
+#             print(label)  # Optional: Debugging to check the labels
+#             # Generate a label for this series
 
-            # Append data series to the strain's list
-            strain_data[strain].append({
-                'y_values': y_values,
-                'additive': additive,
-                'label': label,
-                'strain': strain,
-                'filename': filename,
-                'column_indexes':column_indexes_for_strain
-            })
+#             # Append data series to the strain's list
+#             strain_data[strain].append({
+#                 'y_values': y_values,
+#                 'additive': additive,
+#                 'label': label,
+#                 'strain': strain,
+#                 'filename': filename,
+#                 'column_indexes':column_indexes_for_strain
+#             })
     
-    # Convert strain_data to a list of series if needed
-    data_series = []
-    for strain, series in strain_data.items():
-        data_series.extend(series)
+#     # Convert strain_data to a list of series if needed
+#     data_series = []
+#     for strain, series in strain_data.items():
+#         data_series.extend(series)
     
-    return strain_data, dilution_series
+#     return strain_data, dilution_series
 
 
 # Example usage
