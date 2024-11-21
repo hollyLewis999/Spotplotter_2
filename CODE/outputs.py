@@ -21,6 +21,7 @@ import os
 import openpyxl
 import base64
 import io
+import math
 
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
@@ -213,6 +214,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
     
     # Style plots
+
     for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
                                (ax2, fig_average, "Average Growth Curves")]:
         ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
@@ -227,6 +229,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             edgecolor='gray',
             framealpha=0.5
         )
+        ax.set_ylim(0, 110)
         ax.tick_params(axis='both', which='major', labelsize=14)
         ax.set_title(f"{plot_title} for {title}",
                     fontsize=20, fontweight='bold', pad=20)
@@ -740,7 +743,7 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
         # Row 2: Binary Images
         row2_data = [
             [create_image_with_caption('IMGbinary', "Binary Image"),
-             create_image_with_caption('IMGbinaryAutomatic', "Automatic")]
+             create_image_with_caption('IMGToolUsage', "Manual changes: Red- Additions, Blue - subtractions")]
         ]
         row2_table = Table(row2_data, colWidths=[max_width, max_width])
         ("PRINT HERE")
@@ -787,8 +790,98 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
     for plate_info in all_plate_info:
         add_info_page(plate_info, story, logo, title_style, body_style)
     
-    # Rest of the code for strain data processing remains the same...
-    
+    def create_stats_table(stats_subset):
+            """Create a statistics table for a subset of stats (max 4 entries)"""
+            # Define fixed column widths (in points)
+            col_widths = [1.2*inch]  # First column (row labels)
+            col_widths.extend([1.5*inch] * len(stats_subset))  # Data columns
+            
+            table_data = [[''] + [stat['label'] for stat in stats_subset]]
+            for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'y-cut', 'x-cut', 'x_at_y50']:
+                row = [row_label]
+                for stat in stats_subset:
+                    if row_label == 'Formula':
+                        value = stat['formula']
+                    elif row_label == 'R-squared':
+                        value = f"{stat['r_squared']:.3f}"
+                    elif row_label == 'x_at_y50':
+                        if abs(stat['x_at_y50']) >= 1e5:  # 5 digits before the decimal
+                            value = f"{stat['x_at_y50']:.2e}"  # Scientific notation
+                        else:
+                            value = f"{stat['x_at_y50']:.2f}"
+                    else:
+                        key = row_label.lower().replace('-', '_')
+                        # Handle scientific notation for values with more than 5 digits before the decimal
+                        raw_value = stat[key]
+                        if abs(raw_value) >= 1e5:  # 5 digits before the decimal
+                            value = f"{raw_value:.2e}"  # Scientific notation
+                        else:
+                            value = f"{raw_value:.2f}"
+                    row.append(value)
+                table_data.append(row)
+            
+            table = Table(table_data, colWidths=col_widths)
+            table_style = [
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('FONTSIZE', (0, 0), (-1, -1), 8),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+                # Add word wrapping
+                ('WORDWRAP', (0, 0), (-1, -1), True),
+            ]
+            
+            # Add matched colors from the stats
+            for i, stat in enumerate(stats_subset, start=1):
+                # Convert matplotlib color to reportlab color
+                if isinstance(stat.get('color'), str):
+                    if stat['color'].startswith('#'):
+                        bg_color = colors.HexColor(stat['color'])
+                    else:
+                        # Handle named colors
+                        bg_color = colors.HexColor(rgb2hex(mcolors.to_rgb(stat['color'])))
+                else:
+                    # Handle RGB tuples
+                    bg_color = colors.HexColor(rgb2hex(stat['color']))
+                
+                table_style.append((
+                    'BACKGROUND',
+                    (i, 0),
+                    (i, 0),
+                    bg_color
+                ))
+            
+            table.setStyle(TableStyle(table_style))
+            return table
+        
+    # Process each strain's data
+    for strain_name, figures_and_stats in all_strain_data:
+        # Process each figure and its statistics for this strain
+        for fig, stats, plot_title in figures_and_stats:
+            # Add logo before each graph
+            story.append(logo)
+            
+            # Add figure
+            img_data = BytesIO()
+            fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
+            img_data.seek(0)
+            story.append(ImageR(img_data, width=6*inch, height=4*inch))
+            story.append(Spacer(1, 20))
+            
+            # Split stats into groups of 4 and create multiple tables if needed
+            for i in range(0, len(stats), 4):
+                stats_subset = stats[i:i+4]
+                table = create_stats_table(stats_subset)
+                story.append(table)
+                story.append(Spacer(1, 10))
+
+            
+            # Add page break after each strain except the last one
+            if strain_name != all_strain_data[-1][0]:
+                story.append(PageBreak())
+        
     # Build the PDF with footer
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 

@@ -283,9 +283,7 @@ def display_results(window):
     
 
 def display_final_image(window, override =False):
-    cv2.imshow("EDITwindow.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
     add_to_history(window) #incase the user goes back
-
     for widget in window.winfo_children():
         widget.destroy()
 
@@ -740,9 +738,7 @@ def create_editFrame(window, backToEdit = False):
         if window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] is None:
             window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
             print("IMGbinaryAutomatic updated")
-        cv2.imshow("window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
+
 
     canvas = Canvas(
         window,
@@ -1004,9 +1000,6 @@ def create_editFrame(window, backToEdit = False):
     right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
     right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
 
-    cv2.imshow("TEST4window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
     # Synchronization functions
     def sync_scroll_y_left(*args):
         window.right_canvas.yview_moveto(args[0])
@@ -1140,14 +1133,8 @@ def create_editFrame(window, backToEdit = False):
     window.progress_label.pack(side="left")
     update_progress_bar(window)
 
-    cv2.imshow("TEST5window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic']))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
     return canvas
-def test_Next(window):
-    cv2.imshow("EDITwindow.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+
 
     
 def update_zoomed_images(window):
@@ -1755,7 +1742,7 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_IntermediaryImages.pkl')
+        save_window_state(window, 'window_state_Test_Positions.pkl')
         print("saved")
         # processResults(window)
 
@@ -1799,16 +1786,11 @@ def process_tool_usage(window):
         # Where only automatic is white
         only_auto = cv2.bitwise_and(auto_binary, cv2.bitwise_not(manual_binary))
         tool_usage[only_auto == 255] = [255, 0, 0]  # Blue
-        cv2.imshow("debug image", resize_for_display(tool_usage))
-        cv2.waitKey(0)
-        cv2.destroyAllWindows()
         # Save the result back to the plate info
         plate_info['IMGToolUsage'] = tool_usage
 
 def processResults(window):
     # restore_window_state(window, 'window_state_multipulAdditives.pkl')
-    cv2.imshow("window.all_plate_info[0]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[0]['IMGbinaryAutomatic']))
-    cv2.imshow("window.all_plate_info[1]['IMGbinaryAutomatic']", resize_for_display(window.all_plate_info[1]['IMGbinaryAutomatic']))
     process_tool_usage(window)
     process_split_order_quantifications(window)
     strain_data, dilution_series = generate_data_series(window)
@@ -2006,47 +1988,7 @@ def toggle_image(window):
     window.show_original = not window.show_original
     display_images(window)
 
-# def display_images(window):
 
-#     try:
-#         #right image = editing image
-#         # cv2.imshow("debug image", resize_for_display(window.debug_image))
-#         # cv2.waitKey(0)
-#         # cv2.destroyAllWindows()
-#         img_editing = Image.fromarray(window.debug_image)
-#         img_editing.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
-#         window.photo_editing = ImageTk.PhotoImage(img_editing)
-#         window.right_canvas.config(width=window.photo_editing.width(), height=window.photo_editing.height())
-#         window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
-#         window.display_width = window.photo_editing.width()
-#         window.display_height = window.photo_editing.height()
-
-#         #toggleable left image
-#         if window.show_original:
-#             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
-#         else:
-#             img_np = window.current_image
-#             img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
-#             img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
-#             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-#             contour_img = img_np.copy()
-#             for cntr in contours:
-#                 cv2.drawContours(contour_img, [cntr], 0, (0, 255, 255), 3)
-#             window.image_info[window.current_image_index]["IMGcontours"] = contour_img    
-#             window.current_info["IMGcontours"] = contour_img 
-#             # cv2.imshow("contours2345", resize_for_display(contour_img))
-#             # # # cv2.imshow("contours", resize_for_display(window.marked_image))
-#             # cv2.waitKey(0)
-#             # cv2.destroyAllWindows()
-#             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-#         img_left.thumbnail((window.winfo_width()//2 - 60, window.winfo_height() - 200))
-#         window.photo_left = ImageTk.PhotoImage(img_left)
-#         window.left_canvas.config(width=window.photo_left.width(), height=window.photo_left.height())
-#         window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
-
-
-#     except Exception as e:
-#         print(f"Error in display_images: {e}")
 
 
 def setup_zoom_controls(window):
@@ -2402,6 +2344,6 @@ processResults(window)
 #'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
 
 #window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
-
+#window_state_Test_Positions.pkl testing the postitions are correct
 
 
