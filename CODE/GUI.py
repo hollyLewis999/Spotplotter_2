@@ -19,11 +19,9 @@ import time
 import math 
 import sys
 import json
-import os
 from datetime import datetime
 from collections import defaultdict
 import pickle
-
 
 from Processing import *
 from outputs import *
@@ -136,21 +134,6 @@ def create_plate_designer(window):
         x=17.0,
         y=buttonPosY
     )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -278,8 +261,6 @@ def display_results(window):
         y=buttonPosY-100,
         button_tag="Finish"
     )
-
-
 
     
 
@@ -1056,19 +1037,8 @@ def create_editFrame(window, backToEdit = False):
     
     # Set up zoom controls and bindings
     setup_zoom_controls(window)
-    window.left_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
-    window.right_canvas.bind("<MouseWheel>", lambda e: mouse_zoom(window, e))
 
-    # # Synchronize scrolling between canvases
-    # def on_left_scroll(*args):
-    #     window.right_canvas.yview_moveto(args[1])
-    
-    # def on_right_scroll(*args):
-    #     window.left_canvas.yview_moveto(args[1])
 
-    # window.left_canvas.configure(yscrollcommand=lambda *args: (left_scroll_y.set(*args), on_left_scroll(*args)))
-    # window.right_canvas.configure(yscrollcommand=lambda *args: (right_scroll_y.set(*args), on_right_scroll(*args)))
-    
     # Display images
     display_images(window)
     
@@ -1083,27 +1053,6 @@ def create_editFrame(window, backToEdit = False):
         height = 60,
         fill = LIGHT,
         accent = DARK)
-
-
-    # #sliders
-    # smallDots_label = Label(window, text="Size:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    # smallDots_label.place(x=665, y=223)
-    # smallDots_slider = create_circular_slider(
-    #     window, min_val=1, max_val=100,
-    #     position=(700, 190),
-    #     command=lambda v: on_excludeSmallDots(window, v, False),
-    #     initial_value=window.excludeSmallDots
-    # )
-
-    # contrast_label = Label(window, text="Threshold:", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    # contrast_label.place(x=220, y=223)
-    # contrast_slider = create_circular_slider(
-    #     window, min_val=0, max_val=40,
-    #     position=(300, 190),
-    #     command=lambda v: on_contrast_change(window, v, False),
-    #     initial_value=window.contrast_value
-    # )
-
 
 
     #bind mouse clicks to start the drawing mode, binding it like this allows the user to draw continiously until they let go of the click
@@ -1743,7 +1692,7 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_MSM1-2Comparison.pkl')
+        save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
         print("saved")
         # processResults(window)
 
@@ -1884,60 +1833,7 @@ def process_split_order_quantifications(window):
         plate['ordered_quantifications'] = ordered_quantifications
 
 
-# def generate_data_series(window):
-#     # Dictionary to store data series for each strain
-#     strain_data = defaultdict(list)
-#     dilution_series = window.all_plate_info[0]['dilutions']
-   
-#     # Iterate over all plates
-#     for plate in window.all_plate_info:
-        
-#         additive = plate.get('additive', 'Control') or 'Control'
 
-#         filename = plate.get('filename', 'Unnamed Plate')
-#         strains = plate['strains']
-#         column_indexes = plate['column_indexes']
-#         ordered_quantifications = plate['ordered_quantifications']
-        
-#         # Ensure ordered_quantifications and column_indexes match strain count
-#         if len(ordered_quantifications) != len(strains):
-#             raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
-        
-#         # For each strain in the plate
-#         for strain_idx, strain in enumerate(strains):
-#             # Extract y_values for this strain
-#             y_values = ordered_quantifications[strain_idx]
-#             column_indexes_for_strain = column_indexes[strain_idx]
-    
-#             # Calculate the range of column indexes
-#             start_col = min(column_indexes_for_strain)
-#             end_col = max(column_indexes_for_strain)
-            
-#             # Generate a label for this series
-#             label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
-            
-#             print(label)  # Optional: Debugging to check the labels
-#             # Generate a label for this series
-
-#             # Append data series to the strain's list
-#             strain_data[strain].append({
-#                 'y_values': y_values,
-#                 'additive': additive,
-#                 'label': label,
-#                 'strain': strain,
-#                 'filename': filename,
-#                 'column_indexes':column_indexes_for_strain
-#             })
-    
-#     # Convert strain_data to a list of series if needed
-#     data_series = []
-#     for strain, series in strain_data.items():
-#         data_series.extend(series)
-    
-#     return strain_data, dilution_series
-
-
-# Example usage
 
 
 
@@ -1951,40 +1847,7 @@ def process_split_order_quantifications(window):
 ##     ## ##     ## ##     ## ##       ##    ## 
 ##     ##  #######  ########  ########  ###### 
 
-# def on_contrast_change(window, value, backToEdit = False):
-#     global backToEdit2
-#     if (backToEdit2 == False):
-#         window.contrast_value = float(value)
-#         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size )
 
-#         #save new iamges
-#         window.binarized_image = final_binary
-#         window.contour_img = contour_img
-#         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-
-#         #cannot use undo redo buttons to undo this
-#         clear_history(window)
-#         display_image(window)
-#     else:
-#         backToEdit2 = False   
- 
-# def on_excludeSmallDots(window, value, backToEdit = False):
-#     #print("on_excludeSmallDots")
-#     global backToEdit2
-
-#     if (backToEdit2 == False):
-#         window.excludeSmallDots = float(value)
-#         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size =window.block_size)
-
-#         #save new images
-#         window.binarized_image = final_binary
-#         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-#         # print("am i resetting here?")
-#         #reset history, cannot use undo redo buttons to undo this
-#         clear_history(window)
-#         display_image(window)
-#     else:
-#         backToEdit2 = False
 
 def set_mode(window, mode):
     window.mode = mode
@@ -1996,8 +1859,6 @@ def set_mode(window, mode):
 def toggle_image(window):
     window.show_original = not window.show_original
     display_images(window)
-
-
 
 
 def setup_zoom_controls(window):
@@ -2034,44 +1895,6 @@ def setup_zoom_controls(window):
     )
     zoom_out_btn.pack(pady=2)
     
-    # Add scrollbars for both canvases
-    # add_scrollbars(window)
-
-# def add_scrollbars(window):
-#     """Add scrollbars to both canvases"""
-#     # Left canvas scrollbars
-#     left_frame = Frame(window)
-#     left_frame.place(x=30, y=303)
-    
-#     left_scrollbar_y = Scrollbar(left_frame)
-#     left_scrollbar_y.pack(side=RIGHT, fill=Y)
-    
-#     left_scrollbar_x = Scrollbar(left_frame, orient=HORIZONTAL)
-#     left_scrollbar_x.pack(side=BOTTOM, fill=X)
-    
-#     window.left_canvas.config(
-#         xscrollcommand=left_scrollbar_x.set,
-#         yscrollcommand=left_scrollbar_y.set
-#     )
-#     left_scrollbar_x.config(command=window.left_canvas.xview)
-#     left_scrollbar_y.config(command=window.left_canvas.yview)
-    
-#     # Right canvas scrollbars
-#     right_frame = Frame(window)
-#     right_frame.place(x=690, y=303)
-    
-#     right_scrollbar_y = Scrollbar(right_frame)
-#     right_scrollbar_y.pack(side=RIGHT, fill=Y)
-    
-#     right_scrollbar_x = Scrollbar(right_frame, orient=HORIZONTAL)
-#     right_scrollbar_x.pack(side=BOTTOM, fill=X)
-    
-#     window.right_canvas.config(
-#         xscrollcommand=right_scrollbar_x.set,
-#         yscrollcommand=right_scrollbar_y.set
-#     )
-#     right_scrollbar_x.config(command=window.right_canvas.xview)
-#     right_scrollbar_y.config(command=window.right_canvas.yview)
 
 def adjust_zoom(window, factor):
     """Adjust zoom level and trigger display update"""
@@ -2190,12 +2013,7 @@ def draw(window, event):
         display_images(window)
 
 
-def mouse_zoom(window, event):
-    """Handle mouse wheel zoom"""
-    if event.delta > 0:
-        adjust_zoom(window, 1.1)
-    else:
-        adjust_zoom(window, 0.9)
+
 
 
 def stop_draw(window, event):
@@ -2329,17 +2147,17 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
 
-# initialize_window_attributes(window)
-# title_frame_widgets = create_titleFrame(window)
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
 
-# window.resizable(False, False)
-# window.mainloop()
+window.resizable(False, False)
+window.mainloop()
 
-restore_window_state(window, 'window_state_MSM1-2Comparison.pkl')
+# restore_window_state(window, 'window_state_singleDilutionRepeatsEcoli.pkl')
 
-df, fig = analyze_plate_data(window.all_plate_info)
-knockdown_fig = plot_knockdown(df)
-plt.show()
+# df, fig = analyze_plate_data(window.all_plate_info)
+# knockdown_fig = plot_knockdown(df)
+# plt.show()
 
 # process_split_order_quantifications(window)
 # strain_data, dilution_series = generate_data_series(window)

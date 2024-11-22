@@ -7,20 +7,24 @@ from matplotlib.patches import Patch
 
 # Define constants
 FONT = "Microsoft New Tai Lue"
-FOREGROUND_COLOR = '#46A2A2'
-CONTROL_COLOR = 'gray'
+FOREGROUND_COLOR = '#80AEB8'
+CONTROL_COLOR = '#DFE6E8'
 FACE_COLOR = '#F5F5F5'
 TEXT_COLOR = 'black'
-
+ALPHA = 1
 def generate_plate_labels(rows, cols):
 
     col_labels = list(string.ascii_uppercase[:cols])
     return [f"{col}{row+1}" for row in range(rows) for col in col_labels]
 
 
+
 def analyze_plate_data(all_plate_info):
     """
-    Analyze plate data from window.all_plate_info
+    Analyze plate data showing averaged bars with individual data points:
+    - Bar height represents average quantification
+    - Individual points shown for each measurement
+    - Ordered by position (A1, A2, etc.)
     
     Parameters:
     all_plate_info (list): List of plate information dictionaries
@@ -45,55 +49,46 @@ def analyze_plate_data(all_plate_info):
     if not control_plates or not treatment_plates:
         raise ValueError("Must have both control and treatment plates")
     
-    # Get first control and treatment plate
-    control_plate = control_plates[0]
-    treatment_plate = treatment_plates[0]
+    # Get all control and treatment quantifications
+    control_quants_list = [plate['unorderedquantifications'].flatten() 
+                          for plate in control_plates]
+    treatment_quants_list = [plate['unorderedquantifications'].flatten() 
+                            for plate in treatment_plates]
     
-    # Get quantifications
-    control_quants = control_plate['unorderedquantifications']
-    treatment_quants = treatment_plate['unorderedquantifications']
+    # Convert to arrays for easier manipulation
+    control_quants_array = np.array(control_quants_list)
+    treatment_quants_array = np.array(treatment_quants_list)
     
-    # Generate labels
-    rows, cols = treatment_quants.shape
+    # Calculate averages
+    control_means = np.mean(control_quants_array, axis=0)
+    treatment_means = np.mean(treatment_quants_array, axis=0)
+    
+    # Generate labels based on first plate shape
+    rows, cols = control_plates[0]['unorderedquantifications'].shape
     labels = generate_plate_labels(rows, cols)
-    
-    # Flatten arrays
-    control_values = control_quants.flatten()
-    treatment_values = treatment_quants.flatten()
     
     # Prepare DataFrame
     df = pd.DataFrame({
         'Position': labels,
-        'Control Value': control_values,
-        'Treatment Value': treatment_values
+        'Control Mean': control_means,
+        'Treatment Mean': treatment_means
     })
     
-    # Calculate knockdown (treatment/control), setting to NA for zero cases
+    # Calculate knockdown using means
     df['Knockdown'] = np.where(
-        (df['Control Value'] == 0) | (df['Treatment Value'] == 0),
+        (df['Control Mean'] == 0) | (df['Treatment Mean'] == 0),
         np.nan,
-        df['Treatment Value'] / df['Control Value']
+        df['Treatment Mean'] / df['Control Mean']
     )
     
     # Create categorical column for sorting
     df['Category'] = 'both_nonzero'
-    df.loc[df['Treatment Value'] == 0, 'Category'] = 'treatment_zero'
-    df.loc[df['Control Value'] == 0, 'Category'] = 'control_zero'
-    df.loc[(df['Control Value'] == 0) & (df['Treatment Value'] == 0), 'Category'] = 'both_zero'
+    df.loc[df['Treatment Mean'] == 0, 'Category'] = 'treatment_zero'
+    df.loc[df['Control Mean'] == 0, 'Category'] = 'control_zero'
+    df.loc[(df['Control Mean'] == 0) & (df['Treatment Mean'] == 0), 'Category'] = 'both_zero'
     
     # Remove only pairs where both values are zero
     df = df[df['Category'] != 'both_zero']
-    
-    # Sort the DataFrame:
-    # 1. Treatment zeros first (sorted by control value, descending)
-    # 2. Non-zero pairs (sorted by knockdown, descending)
-    # 3. Control zeros last (sorted by treatment value, descending)
-    df_treatment_zeros = df[df['Category'] == 'treatment_zero'].sort_values('Control Value', ascending=False)
-    df_nonzeros = df[df['Category'] == 'both_nonzero'].sort_values('Knockdown', ascending=False)
-    df_control_zeros = df[df['Category'] == 'control_zero'].sort_values('Treatment Value', ascending=False)
-    
-    # Concatenate the sorted sections
-    df = pd.concat([df_treatment_zeros, df_nonzeros, df_control_zeros])
     
     # Reset index for plotting
     df = df.reset_index(drop=True)
@@ -108,27 +103,45 @@ def analyze_plate_data(all_plate_info):
     fig.patch.set_facecolor('white')
     ax.set_facecolor(FACE_COLOR)
     
-    # Create bar plots with black edges
-    # Control bars
-    sns.barplot(x='Position', y='Control Value', data=df, 
-                color=CONTROL_COLOR, alpha=0.5, 
-                ax=ax,
-                edgecolor='black', 
-                linewidth=1)
-    
-    # Treatment bars
-    sns.barplot(x='Position', y='Treatment Value', data=df, 
-                color=FOREGROUND_COLOR, alpha=0.7, 
-                ax=ax,
-                edgecolor='black', 
-                linewidth=1)
+    # For each position, plot bars and individual points
+    for i, row in df.iterrows():
+        control_mean = row['Control Mean']
+        treatment_mean = row['Treatment Mean']
+        
+        # Plot bars for means
+        if control_mean > treatment_mean:
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=ALPHA, 
+                  edgecolor='black', linewidth=1)
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+        else:
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+        
+        # Plot individual points for controls
+        for control_values in control_quants_list:
+            ax.scatter(i, control_values[i], color=CONTROL_COLOR, 
+                      edgecolor='black', linewidth=1, s=30, zorder=3)
+        
+        # Plot individual points for treatments
+        for treatment_values in treatment_quants_list:
+            ax.scatter(i, treatment_values[i], color=FOREGROUND_COLOR,
+                      edgecolor='black', linewidth=1, s=30, zorder=3)
     
     # Create legend
     legend_elements = [
-        Patch(facecolor=CONTROL_COLOR, alpha=0.5, edgecolor='black', 
-              label=f'Control (No additive)', linewidth=1),
-        Patch(facecolor=FOREGROUND_COLOR, alpha=0.7, edgecolor='black', 
-              label=f'Treatment ({treatment_plate["additive"]})', linewidth=1)
+        Patch(facecolor=CONTROL_COLOR, alpha=ALPHA, edgecolor='black', 
+              label=f'Control Mean (No additive)', linewidth=1),
+        Patch(facecolor=FOREGROUND_COLOR, alpha=ALPHA, edgecolor='black', 
+              label=f'Treatment Mean ({treatment_plates[0]["additive"]})', linewidth=1),
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=CONTROL_COLOR,
+                  markeredgecolor='black', label='Individual Control Values', 
+                  markersize=8, markeredgewidth=1),
+        plt.Line2D([0], [0], marker='o', color='w', markerfacecolor=FOREGROUND_COLOR,
+                  markeredgecolor='black', label='Individual Treatment Values', 
+                  markersize=8, markeredgewidth=1)
     ]
     ax.legend(handles=legend_elements, loc='upper right', 
              fontsize=8, frameon=True, facecolor='white')
@@ -150,24 +163,27 @@ def analyze_plate_data(all_plate_info):
     
     # Add knockdown labels at the top of the highest bar
     for i, row in df.iterrows():
-        max_height = max(row['Control Value'], row['Treatment Value'])
+        max_height = max(row['Control Mean'], row['Treatment Mean'])
         label_text = f"{row['Knockdown']:.2f}" if not np.isnan(row['Knockdown']) else "NA"
-        plt.text(i, max_height, label_text,
+        plt.text(i, max_height+5, label_text,
                  horizontalalignment='center', 
                  verticalalignment='bottom',
                  color=TEXT_COLOR,
-                 fontsize=8,
+                 fontsize=6,
                  fontweight='bold')
     
     # Set labels and title
-    strain_name = control_plate.get('strain', 'Unknown Strain')
-    additive_name = treatment_plate.get('additive', 'Unknown Additive')
+    strain_name = control_plates[0].get('strain', 'Unknown Strain')
+    additive_name = treatment_plates[0].get('additive', 'Unknown Additive')
     
     plt.title(f'Knockdown for {strain_name} with additive {additive_name}',
              color=TEXT_COLOR,
              pad=20,
              fontsize=12,
              fontweight='bold')
+    
+    # Set x-axis labels to positions
+    plt.xticks(range(len(df)), df['Position'])
     
     plt.xlabel('Position', 
               color=TEXT_COLOR,
@@ -186,11 +202,6 @@ def analyze_plate_data(all_plate_info):
     plt.tight_layout()
     
     return df, fig
-
-# Example usage
-# df, fig = analyze_plate_data(all_plate_info)
-# plt.show()
-
 
 def plot_knockdown(df):
     """
