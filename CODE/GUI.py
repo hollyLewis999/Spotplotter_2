@@ -2338,6 +2338,7 @@ window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICON
 restore_window_state(window, 'window_state_MSM1-2Comparison.pkl')
 
 df, fig = analyze_plate_data(window.all_plate_info)
+knockdown_fig = plot_knockdown(df)
 plt.show()
 
 # process_split_order_quantifications(window)

@@ -190,3 +190,103 @@ def analyze_plate_data(all_plate_info):
 # Example usage
 # df, fig = analyze_plate_data(all_plate_info)
 # plt.show()
+
+
+def plot_knockdown(df):
+    """
+    Create a plot showing knockdown values, excluding positions with NA values.
+    
+    Parameters:
+    df (pandas.DataFrame): Processed plate data containing knockdown values
+    
+    Returns:
+    matplotlib.figure.Figure: Visualization of knockdown values
+    """
+    # Filter out NA knockdown values
+    df_filtered = df.dropna(subset=['Knockdown']).copy()
+    
+    # Sort by knockdown value for better visualization
+    df_filtered = df_filtered.sort_values('Knockdown', ascending=False)
+    
+    # Set the style
+    plt.style.use('default')
+    plt.rcParams['font.family'] = "Microsoft New Tai Lue"
+    plt.rcParams['font.weight'] = 'bold'
+    
+    # Create figure and axis
+    fig, ax = plt.subplots(figsize=(15, 6))
+    fig.patch.set_facecolor('white')
+    ax.set_facecolor('#F5F5F5')
+    
+    # Create bar plot for knockdown values
+    bars = sns.barplot(x='Position', y='Knockdown', data=df_filtered, 
+                      color='#46A2A2', alpha=0.7,
+                      ax=ax,
+                      edgecolor='black',
+                      linewidth=1)
+    
+    # Add value labels on top of bars
+    for i, row in df_filtered.iterrows():
+        plt.text(df_filtered.index.get_loc(i), row['Knockdown'],
+                f"{row['Knockdown']:.2f}",
+                horizontalalignment='center',
+                verticalalignment='bottom',
+                color='black',
+                fontsize=8,
+                fontweight='bold')
+    
+    # Add horizontal marking lines (solid)
+    ax.yaxis.grid(True, linestyle='-', alpha=0.7, color='gray')
+    ax.xaxis.grid(False)
+    
+    # Ensure grid is behind the bars
+    ax.set_axisbelow(True)
+    
+    # Style spines
+    for spine in ax.spines.values():
+        spine.set_color('black')
+        spine.set_linewidth(1.5)
+    
+    # Add a horizontal line at y=1 to show baseline
+    ax.axhline(y=1, color='red', linestyle='--', alpha=0.5, linewidth=1)
+    
+    # Set labels and title
+    plt.title('Knockdown Values by Position (Excluding Zero Values)',
+             color='black',
+             pad=20,
+             fontsize=12,
+             fontweight='bold')
+    
+    plt.xlabel('Position',
+              color='black',
+              fontsize=10,
+              fontweight='bold')
+    
+    plt.ylabel('Knockdown (Treatment/Control)',
+              color='black',
+              fontsize=10,
+              fontweight='bold')
+    
+    # Rotate x-axis labels
+    plt.xticks(rotation=45, ha='right')
+    
+    # Add count information to title
+    excluded_count = len(df) - len(df_filtered)
+    plt.title(f'Knockdown Values by Position\n{len(df_filtered)} positions shown ({excluded_count} positions with zero values excluded)',
+             color='black',
+             pad=20,
+             fontsize=12,
+             fontweight='bold')
+    
+    # Adjust layout
+    plt.tight_layout()
+    
+    return fig
+
+# Example usage:
+# knockdown_fig = plot_knockdown(df)
+# plt.show()
+
+# Example usage:
+# knockdown_fig = plot_knockdown(df)
+# plt.show()
