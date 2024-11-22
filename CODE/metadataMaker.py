@@ -22,7 +22,7 @@ DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
 COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
-
+CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
@@ -458,7 +458,12 @@ def create_strain_designer(window):
         y=buttonPosY
     )
 
-def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_height):
+def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height):
+    if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        return
+        
+    plate = window.plates[CURRENTPLATEINDEX]
+    
     # Calculate cell dimensions
     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
@@ -484,7 +489,7 @@ def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_
         label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
         canvas.create_text(
             current_x + position_width/2,
-            margin_top ,
+            margin_top,
             text=label_text,
             font=(FONT, 16, 'bold'),
             fill=DARK
@@ -515,10 +520,8 @@ def draw_plate(window, canvas, plate, margin_left, margin_top, grid_width, grid_
                         tags=(pos_key, "spot")
                     )
 
-        # Update x position for next group
         current_x += position_width
 
-        # Add gap after each position except the last one
         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
             current_x += cell_width
 
@@ -530,13 +533,13 @@ def update_plate_display(window):
         print("ERROR: No plates exist")
         return
 
-    # Validate current plate index
-    if window.current_plate < 0 or window.current_plate >= len(window.plates):
-        print(f"ERROR: Invalid plate index {window.current_plate}")
-        window.current_plate = 0
+    # Validate plate index
+    if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        print(f"ERROR: Invalid plate index {CURRENTPLATEINDEX}")
+        return
 
-    current_plate = window.plates[window.current_plate]
-    print(f"Current Plate Index: {window.current_plate}")
+    current_plate = window.plates[CURRENTPLATEINDEX]
+    print(f"Current Plate Index: {CURRENTPLATEINDEX}")
     print(f"Current Plate Name: {current_plate.get('name', 'NO NAME')}")
     print(f"Plate Assignments: {current_plate.get('assignments', 'NO ASSIGNMENTS')}")
 
@@ -577,7 +580,7 @@ def update_plate_display(window):
 
     # Draw the plate
     try:
-        draw_plate(window, window.plate_canvas, current_plate, 
+        draw_plate(window, window.plate_canvas, 
                    margin_left, margin_top, grid_width, grid_height)
     except Exception as e:
         print(f"ERROR in draw_plate: {e}")
@@ -594,7 +597,6 @@ def update_plate_display(window):
         traceback.print_exc()
 
     print("======== PLATE DISPLAY UPDATE COMPLETE ========")
-
 
 
 def create_plate_controls(window):
@@ -761,10 +763,11 @@ def create_plate_canvas(window):
         highlightthickness=0
     )
     window.plate_canvas.pack(expand=True, fill='both')
-    window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, e))
+    window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, window.current_plate, e))
     
-    # Force initial update
+    # Force initial update with current plate index
     window.plate_canvas.after(100, lambda: update_plate_display(window))
+
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
@@ -810,6 +813,7 @@ def add_strain(window):
         update_plate_display(window)
 
 def add_plate(window):
+    global CURRENTPLATEINDEX
     name = window.plate_entry.get().strip()
     atc = window.atc_var.get().strip()  # Get ATC value
     if name:
@@ -828,11 +832,12 @@ def add_plate(window):
         window.additive_entry.delete(0, tk.END)
         window.current_plate = len(window.plates) - 1
         window.column_assignments = {}
+        CURRENTPLATEINDEX = (len(window.plates) - 1)
         update_plate_display(window)
         print(f"Plate added. Total plates: {len(window.plates)}")
 
 def unselect_position(window, event):
-    if not window.plates:
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         return
         
     clicked_items = window.plate_canvas.find_closest(event.x, event.y)
@@ -851,14 +856,13 @@ def unselect_position(window, event):
             if start <= col <= end:
                 del window.column_assignments[position_key]
                 
-        plate = window.plates[window.current_plate]
+        plate = window.plates[CURRENTPLATEINDEX]
         for row_idx in range(window.layout_data['rows']):
             key = f"{row_idx}-{col}"
             if key in plate['assignments']:
                 del plate['assignments'][key]
         
         update_plate_display(window)
-
 def setup_frames(window):
     window.plate_frame = tk.Frame(window, bg=DARK)
     window.plate_frame.place(x=27, y=178, width=1070, height=638)
@@ -888,8 +892,9 @@ def update_strain_menu(window):
         menu.configure(font=(FONT, 10), bg=LIGHT, fg=DARK)
         menu.grid(row=3, column=2, padx=20, pady=10)
 
+
 def assign_strain_to_group(window, strain):
-    if not window.plates:
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         messagebox.showwarning("Warning", "Please create a plate first")
         return
 
@@ -917,11 +922,12 @@ def assign_strain_to_group(window, strain):
     else:
         messagebox.showwarning("Warning", "All positions are already assigned.")
 
+
 def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
-    if not window.plates:
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         return
         
-    plate = window.plates[window.current_plate]
+    plate = window.plates[CURRENTPLATEINDEX]
     position_key = f"{start_col}-{end_col}"
     
     # Check if columns are already assigned
@@ -945,12 +951,16 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
                 
     update_plate_display(window)
 
+
 def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                    margin_bottom, grid_width, grid_height):
-    if not window.plates:
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         return
         
-    plate = window.plates[window.current_plate]
+    plate = window.plates[CURRENTPLATEINDEX]
+    print("____________________________________________________DRAW PLATE GRID")
+    print(CURRENTPLATEINDEX)
+    print(plate)
     num_strains = window.layout_data['strains']
 
     # Draw plate header
@@ -960,7 +970,7 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     window.plate_canvas.create_text(
         width // 2,
         20,
-        text=f"Current Plate: {window.current_plate + 1} - {plate['name']}{additive_display}",
+        text=f"Current Plate: {CURRENTPLATEINDEX + 1} - {plate['name']}{additive_display}",
         fill=LIGHT,
         font=(FONT, 16, 'bold')
     )
@@ -972,68 +982,38 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
     
-    draw_positions_and_spots(window, plate, margin_left, margin_top, 
-                           cell_width, cell_height, num_strains)
-
-def draw_positions_and_spots(window, plate, margin_left, margin_top, 
+    draw_positions_and_spots(window, margin_left, margin_top, 
+                           cell_width, cell_height, num_strains)    
+def draw_positions_and_spots(window, margin_left, margin_top, 
                            cell_width, cell_height, num_strains):
+    plate = window.plates[CURRENTPLATEINDEX]                  
     current_x = margin_left
-    
     for position_idx in range(num_strains):
         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
         position_width = (end_col - start_col + 1) * cell_width
         
-        # Find assigned strain
+        # Find assigned strain from the current plate's assignments
         assigned_strain = None
-        for pos_key, assignment in window.column_assignments.items():
-            pos_start, pos_end = map(int, pos_key.split('-'))
-            if pos_start == start_col and pos_end == end_col:
-                assigned_strain = assignment['strain']
+        for pos_key in plate.get('assignments', {}):
+            row, col = map(int, pos_key.split('-'))
+            if start_col <= col <= end_col:
+                assigned_strain = plate['assignments'][pos_key]
                 break
         
-        draw_position_group(window, plate, current_x, margin_top, position_width,
-                          position_idx, start_col, end_col, cell_width, cell_height,
-                          assigned_strain)
+        # Draw position label
+        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+        window.plate_canvas.create_text(
+            current_x + position_width/2,
+            margin_top,
+            text=label_text,
+            font=(FONT, 16, 'bold'),
+            fill=LIGHT
+        )
+
         
         current_x += position_width
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
-
-def draw_position_group(window, plate, x_pos, y_pos, position_width, position_idx, 
-                       start_col, end_col, cell_width, cell_height, assigned_strain):
-    # Draw position label
-    label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
-    window.plate_canvas.create_text(
-        x_pos + position_width/2,
-        y_pos ,
-        text=label_text,
-        font=(FONT, 16, 'bold'),
-        fill=LIGHT
-    )
-    
-    # Draw spots for this position
-    for col_offset in range(end_col - start_col + 1):
-        col = start_col + col_offset
-        x = x_pos + col_offset * cell_width + cell_width/2
-        
-        for row in range(window.layout_data['rows']):
-            pos_key = f"{row}-{col}"
-            if pos_key not in window.layout_data['removed_positions']:
-                y = y_pos + row * cell_height + cell_height/2
-                
-                # Determine spot color
-                spot_color = "#E5E7EB"
-                if assigned_strain:
-                    strain_index = window.strains.index(assigned_strain)
-                    spot_color = window.strain_colors[strain_index]
-                
-                # Draw spot
-                window.plate_canvas.create_oval(
-                    x-10, y-10, x+10, y+10,
-                    fill=spot_color,
-                    outline=spot_color,
-                    tags=(pos_key, "spot")
-                )            
 
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
@@ -1318,48 +1298,48 @@ def draw_plate_preview(window, canvas, plate):
 
 
 
-
-
 def prev_plate(window):
-    print("==== PREV PLATE CALLED ====")
-    print(f"Current plate before: {window.current_plate}")
-    
+    global CURRENTPLATEINDEX
     if window.plates and window.current_plate > 0:
+        # Clear current display
+        window.plate_canvas.delete('all')
+        CURRENTPLATEINDEX = CURRENTPLATEINDEX -1
+        # Update current plate index
         window.current_plate -= 1
+        new_plate = window.plates[window.current_plate]
         
-        print(f"Current plate after decrement: {window.current_plate}")
-        
+        # Update entry fields
         window.plate_entry.delete(0, tk.END)
-        window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
+        window.plate_entry.insert(0, new_plate['name'])
+        window.atc_var.set(new_plate.get('atc', ''))
         
-        # Add safe ATC handling
-        window.atc_var.set(window.plates[window.current_plate].get('atc', ''))
-        
+        # Update display with new plate index
         update_plate_display(window)
         window.plate_canvas.focus_set()
     else:
         print("Cannot go to previous plate")
 
 def next_plate(window):
-    print("==== NEXT PLATE CALLED ====")
-    print(f"Current plate before: {window.current_plate}")
-    
+    global CURRENTPLATEINDEX
     if window.plates and window.current_plate < len(window.plates) - 1:
+        # Clear current display
+        CURRENTPLATEINDEX = CURRENTPLATEINDEX +1
+        window.plate_canvas.delete('all')
+        
+        # Update current plate index
         window.current_plate += 1
+        new_plate = window.plates[window.current_plate]
         
-        print(f"Current plate after increment: {window.current_plate}")
-        
+        # Update entry fields
         window.plate_entry.delete(0, tk.END)
-        window.plate_entry.insert(0, window.plates[window.current_plate]['name'])
+        window.plate_entry.insert(0, new_plate['name'])
+        window.atc_var.set(new_plate.get('atc', ''))
         
-        # Add safe ATC handling
-        window.atc_var.set(window.plates[window.current_plate].get('atc', ''))
-        
+        # Update display with new plate index
         update_plate_display(window)
         window.plate_canvas.focus_set()
     else:
         print("Cannot go to next plate")
-
 
 def export_data(window):
     """
