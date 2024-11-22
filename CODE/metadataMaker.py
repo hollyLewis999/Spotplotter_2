@@ -603,7 +603,6 @@ def create_plate_controls(window):
     # "Add a plate" header
     plate_header = tk.Label(window.control_frame, text="Add a Plate", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
     plate_header.pack(pady=(10, 5))
-    
 
     # Additive controls
     window.additive_var = tk.BooleanVar(value=False)
@@ -633,14 +632,9 @@ def create_plate_controls(window):
     
     window.additive_var.trace_add("write", lambda *args: toggle_additive_entry())
 
-
     # Plate name frame
     plate_frame = tk.Frame(window.control_frame, bg=DARK)
     plate_frame.pack(fill=tk.X, padx=10)
-    
-
-
-
     
     # Initialize plates attribute if not exists
     if not hasattr(window, 'plates'):
@@ -650,7 +644,7 @@ def create_plate_controls(window):
     window.plate_entry = ttk.Entry(plate_frame, width=25)
     window.plate_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
     
-    # Add plate button (now a + button)
+    # Add plate button
     add_plate_btn = tk.Button(
         plate_frame,
         text="+",
@@ -661,8 +655,149 @@ def create_plate_controls(window):
         width=3
     )
     add_plate_btn.pack(side=tk.RIGHT)
+
+    # Plate management buttons frame
+    manage_frame = tk.Frame(window.control_frame, bg=DARK)
+    manage_frame.pack(fill=tk.X, padx=10, pady=5)
     
-    # Rest of the code remains the same as in previous version...
+    # Delete button
+    delete_btn = tk.Button(
+        manage_frame,
+        text="Delete",
+        command=lambda: delete_current_plate(window),
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK
+    )
+    delete_btn.pack(side=tk.LEFT, expand=True, padx=2)
+    
+    # Clear button
+    clear_btn = tk.Button(
+        manage_frame,
+        text="Clear",
+        command=lambda: clear_current_plate(window),
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK
+    )
+    clear_btn.pack(side=tk.LEFT, expand=True, padx=2)
+    
+    # Rename button
+    rename_btn = tk.Button(
+        manage_frame,
+        text="Rename",
+        command=lambda: rename_current_plate(window),
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK
+    )
+    rename_btn.pack(side=tk.LEFT, expand=True, padx=2)
+
+def delete_current_plate(window):
+    global CURRENTPLATEINDEX
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        messagebox.showwarning("Warning", "No plate to delete")
+        return
+        
+    if messagebox.askyesno("Confirm Delete", "Are you sure you want to delete the current plate?"):
+        # Remove the current plate
+        window.plates.pop(CURRENTPLATEINDEX)
+        
+        # Adjust current plate index if necessary
+        if CURRENTPLATEINDEX >= len(window.plates):
+            CURRENTPLATEINDEX = max(len(window.plates) - 1, 0)
+            
+        # Reset column assignments
+        window.column_assignments = {}
+        
+        # Update display
+        # Update display
+        if len(window.plates) == 0:
+            window.plate_canvas.delete('all')
+        else:    
+            update_plate_display(window)
+
+def clear_current_plate(window):
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        messagebox.showwarning("Warning", "No plate to clear")
+        return
+        
+    if messagebox.askyesno("Confirm Clear", "Are you sure you want to clear all assignments from the current plate?"):
+        # Clear all assignments from current plate
+        window.plates[CURRENTPLATEINDEX]['assignments'] = {}
+        window.column_assignments = {}
+        
+        # Update display
+        update_plate_display(window)
+
+def rename_current_plate(window):
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        messagebox.showwarning("Warning", "No plate to rename")
+        return
+        
+    current_name = window.plates[CURRENTPLATEINDEX]['name']
+    
+    # Create rename dialog
+    rename_dialog = tk.Toplevel(window)
+    rename_dialog.title("Rename Plate")
+    rename_dialog.geometry("300x120")
+    rename_dialog.configure(bg=DARK)
+    
+    # Make dialog modal
+    rename_dialog.transient(window)
+    rename_dialog.grab_set()
+    
+    # Create and pack widgets
+    tk.Label(
+        rename_dialog,
+        text="Enter new plate name:",
+        font=(FONT, 12),
+        bg=DARK,
+        fg=LIGHT
+    ).pack(pady=10)
+    
+    name_entry = ttk.Entry(rename_dialog, width=30)
+    name_entry.insert(0, current_name)
+    name_entry.pack(pady=5)
+    
+    def do_rename():
+        new_name = name_entry.get().strip()
+        if new_name:
+            window.plates[CURRENTPLATEINDEX]['name'] = new_name
+            update_plate_display(window)
+            rename_dialog.destroy()
+    
+    button_frame = tk.Frame(rename_dialog, bg=DARK)
+    button_frame.pack(pady=10)
+    
+    tk.Button(
+        button_frame,
+        text="Cancel",
+        command=rename_dialog.destroy,
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK
+    ).pack(side=tk.LEFT, padx=5)
+    
+    tk.Button(
+        button_frame,
+        text="Rename",
+        command=do_rename,
+        font=(FONT, 10),
+        bg=LIGHT,
+        fg=DARK
+    ).pack(side=tk.LEFT, padx=5)
+    
+    # Center the dialog on the window
+    rename_dialog.update_idletasks()
+    window_width = window.winfo_width()
+    window_height = window.winfo_height()
+    dialog_width = rename_dialog.winfo_width()
+    dialog_height = rename_dialog.winfo_height()
+    x = window.winfo_x() + (window_width - dialog_width) // 2
+    y = window.winfo_y() + (window_height - dialog_height) // 2
+    rename_dialog.geometry(f"+{x}+{y}")
+
 
 def create_strain_controls(window):
     # "Add a strain" header
@@ -698,16 +833,7 @@ def create_strain_controls(window):
     window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
   
 def create_navigation_controls(window):
-    # Clear current plate button
-    clear_btn = tk.Button(
-        window.bottom_frame,
-        text="Clear Current Plate",
-        command=lambda: clear_current_plate(window),
-        font=(FONT, 10),
-        bg=LIGHT,
-        fg=DARK
-    )
-    clear_btn.pack(pady=(20, 5))  # Increased vertical padding
+ # Increased vertical padding
     
     # Rest of the code remains the same as in the previous artifact
     nav_frame = tk.Frame(window.bottom_frame, bg=DARK)
@@ -756,18 +882,6 @@ def create_navigation_controls(window):
     )
     export_btn.pack(side=tk.LEFT, padx=5, expand=True)
 
-def create_plate_canvas(window):
-    window.plate_canvas = tk.Canvas(
-        window.plate_frame,
-        bg=DARK,
-        highlightthickness=0
-    )
-    window.plate_canvas.pack(expand=True, fill='both')
-    window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, window.current_plate, e))
-    
-    # Force initial update with current plate index
-    window.plate_canvas.after(100, lambda: update_plate_display(window))
-
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
@@ -811,6 +925,20 @@ def add_strain(window):
 
         window.strain_buttons.append((strain_label, assign_btn))
         update_plate_display(window)
+
+
+def create_plate_canvas(window):
+    window.plate_canvas = tk.Canvas(
+        window.plate_frame,
+        bg=DARK,
+        highlightthickness=0
+    )
+    window.plate_canvas.pack(expand=True, fill='both')
+    window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, window.current_plate, e))
+    
+    # Force initial update with current plate index
+    window.plate_canvas.after(100, lambda: update_plate_display(window))
+
 
 def add_plate(window):
     global CURRENTPLATEINDEX
