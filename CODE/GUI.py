@@ -25,7 +25,7 @@ import pickle
 
 from Processing import *
 from outputs import *
-from metadataMaker import *
+# from metadataMaker import *
 from Style import *
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
@@ -252,7 +252,7 @@ def display_results(window):
     #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
     window.update()
 
-
+    
     #generates the PDF, the excel and the images 
     generate_all_outputs(window)
     #this will only display once the results are generated
@@ -337,31 +337,6 @@ def display_final_image(window, override =False):
         rows = window.all_plate_info[window.current_image_index]['layout']['rows']
         result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
         window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-        #print(window.all_plate_info)
-        # #comment out later, for testing and report
-        # path = "C:/Users/ThinkPad/Documents/AA ACADEMIC 2024/Thesis/Tests/GroundTuth/TESTS/Cropped/RESULTS/"
-        # cv2.imwrite(path +window.current_info['filename']+ '_result.png', marked_image)   
-        # # # cv2.imshow("marked", resize_for_display(marked_image))
-
-        # #checking to see if the window has current into to avoid cracshing
-        # if hasattr(window, 'current_info'):
-        #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-        #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-        #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
-
-        #     window.image_info[window.current_image_index] = window.current_info
-        #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # #     # print(f"Debug: Current image info: {window.current_info}")
-        # #     # print(f"Debug:098765 ALL INFO : {window.image_info}" )
-        # else:
-        #     print("Error: current_info not initialized")
-
-        # # print("TESTER INFORMATION:") 
-        # # print("_______________________________________________________________________")
-        # # print(window.current_info['filename'])
-        # print(ordered_counts["Strain 1"])    
-        # print(ordered_counts["Strain 2"])   
-        # print(ordered_counts["Strain 3"])   
 
     #make sure its the correct type
     if isinstance(marked_image, Image.Image):
@@ -387,16 +362,6 @@ def display_final_image(window, override =False):
     window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
     
     
-    ###HERE ABC
-    # window.image_info[window.current_image_index]["IMGgrid"] = marked_image
-    # cv2.imshow("marked", resize_for_display(marked_image))
-    # # cv2.imshow("contours", resize_for_display(window.marked_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-
-
-
     #Has to be PIL image for tkinkter, resizing and displaying
     resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
     img = Image.fromarray(resized_image)
@@ -1550,72 +1515,6 @@ def create_cropFrame(window):
     window.progress_label.pack(side="left")
     update_progress_bar(window)
 
-
-# db    db d8888b. db       .d88b.   .d8b.  d8888b. .d8888. 
-# 88    88 88  `8D 88      .8P  Y8. d8' `8b 88  `8D 88'  YP 
-# 88    88 88oodD' 88      88    88 88ooo88 88   88 `8bo.   
-# 88    88 88~~~   88      88    88 88~~~88 88   88   `Y8b. 
-# 88b  d88 88      88booo. `8b  d8' 88   88 88  .8D db   8D 
-# ~Y8888P' 88      Y88888P  `Y88P'  YP   YP Y8888D' `8888Y' 
-
-# def upload_txt_file(window):
-#     file_path = filedialog.askopenfilename(filetypes=[("Text files", "*.txt")])
-#     if file_path:
-
-#         window.image_info = []
-#         window.image_paths = []
-#         skipped_lines = []#store which liens where skipped
-
-#         with open(file_path, 'r') as file:
-#             lines = file.readlines()
-#             if len(lines) > 1:  #must be more than just header
-#                 header = lines[0].strip().split(',') #split based on comma
-#                 #print(f"Debug: Header: {header}")
-#                 for i, line in enumerate(lines[1:], start=2):#start from second line (header in first)
-#                     parts = line.strip().split(',')
-#                     if len(parts) == 8:  # check correct number of parts
-#                         info = {
-#                             'filename': parts[0],
-#                             'type': parts[1],
-#                             'detergent': parts[2],
-#                             'treatment': parts[3],
-#                             'repeat': parts[4],
-#                             'strainA': parts[5],
-#                             'QuantificationA': None,
-#                             'strainB': parts[6],
-#                             'QuantificationB': None,
-#                             'strainC': parts[7],
-#                             'QuantificationC': None,
-#                             'IMGcontours': None,  
-#                             'IMGbinary': None,   
-#                             'IMGgrid': None, 
-#                             'threshold': 0,
-#                             'smallArea': 0   
-#                         }
-#                         window.image_info.append(info) 
-#                     else:
-#                         skipped_lines.append(i)  #line number for skipped line
-#         #display skipped lines
-#         if skipped_lines:
-#             messagebox.showwarning("Warning", f"Skipping {len(skipped_lines)} line(s) due to incorrect format.\nLine numbers: {', '.join(map(str, skipped_lines))} \nCorrect Format: FileName,Type,Detergent,Treatment,Repeat,StrainA_Name,StrainB_Name,StrainC_Name")
-#          #initialize info
-#         window.current_image_index = 0
-#         if window.image_info:
-#             window.current_info = window.image_info[0].copy() 
-#         else:
-#             window.current_info = None
-
-
-# #For testing so i can upload anything
-# def upload_images(window):
-#     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-
-#     if file_paths:
-#         window.image_paths = list(file_paths)
-#         window.current_image_index = 0
-#         load_current_image(window)
-#     else:
-#         messagebox.showwarning("Warning", "No images were selected.")
 def upload_images(window):
     """
     Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
@@ -1626,7 +1525,7 @@ def upload_images(window):
     if file_paths and hasattr(window, 'all_plate_info'):
         window.image_paths = []
         unmatched_filenames = []  # Collect unmatched filenames
-
+        print("Does have attribute")
         # Get the list of filenames from window.all_plate_info
         valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
         
@@ -1695,9 +1594,10 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
-        print("saved")
-        # processResults(window)
+        # save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
+        # print("saved")
+        # # 
+        processResults(window)
 
 import cv2
 import numpy as np
@@ -1744,28 +1644,45 @@ def process_tool_usage(window):
 
 def processResults(window):
     # restore_window_state(window, 'window_state_multipulAdditives.pkl')
-    process_tool_usage(window)
-    process_split_order_quantifications(window)
-    strain_data, dilution_series = generate_data_series(window)
-    sorted_positions = get_sorted_positions(dilution_series)
-    dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
+    if window.current_mode =='A':
+        process_tool_usage(window)
+        process_split_order_quantifications(window)
+        strain_data, dilution_series = generate_data_series(window)
+        sorted_positions = get_sorted_positions(dilution_series)
+        dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
 
-    exported_df = export_strain_data_to_excel(strain_data, dilution_series)
-    all_strain_data = []
+        exported_df = export_strain_data_to_excel(strain_data, dilution_series)
+        all_strain_data = []
     
-    for strain, series in strain_data.items():
-        # Get all figures and statistics for this strain
-        figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
-        all_strain_data.append((strain, figures_and_stats))
-    
-    # Generate single PDF report with all strains
-    output_filename = "growth_analysis_report_Test.pdf"
-    generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, output_filename)
-    
-    # Clean up matplotlib figures
-    for _, figures_and_stats in all_strain_data:
-        for fig, _, _ in figures_and_stats:
-            plt.close(fig)
+        for strain, series in strain_data.items():
+            # Get all figures and statistics for this strain
+            figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
+            all_strain_data.append((strain, figures_and_stats))
+        
+        # Generate single PDF report with all strains
+        output_filename = "growth_analysis_report_Test.pdf"
+        generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, output_filename)
+        
+        # Clean up matplotlib figures
+        for _, figures_and_stats in all_strain_data:
+            for fig, _, _ in figures_and_stats:
+                plt.close(fig)
+
+    else:
+        df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
+
+        # Save or display the figures
+        generate_pdf_report_MODEB(
+            window.all_plate_info,
+            'output_report_TESTINGMODEB.pdf',
+            mean_fig,
+            knockdown_fig,
+            individual_fig,
+            version="1.0.0"
+        )
+        df = export_plate_data_to_excel(window.all_plate_info, 'plate_analysis.xlsx')  
+
+
     #display_results(window)
     # # After processing plates
     # export_tidy_data_to_excel(window)  # Uses default filename
@@ -2098,79 +2015,6 @@ def brush_draw(window, x1, y1, x2, y2):
     cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
 
-def initialize_window_attributes(window):
-    #progress bar style
-    s = ttk.Style()
-    s.theme_use('clam')
-    s.configure("styled.Horizontal.TProgressbar", troughcolor=LIGHT,bordercolor=DARK, background=DARK, lightcolor=DARK, 
-                darkcolor=DARK)
-    style = ttk.Style()
-
-    #slider style
-    style.configure("TScale",
-                    background=DARK,
-                    troughcolor=LIGHT,
-                    sliderthickness=15,
-                    sliderlength=25)  # Adjust size of the knob to be rounder            
-
-    #default parameters
-    window.window_width = 1440
-    window.window_height = 1024
-    window.history = []
-    window.undo_btn = None
-    window.redo_btn = None
-    window.redo_stack = []
-    window.mode = "small_brush"
-    window.brush_size = 5
-    window.is_drawing = False
-    window.last_x = None
-    window.last_y = None
-    window.update_undo_redo_buttons = update_undo_redo_buttons
-    window.display_images = display_images
-    window.excludeSmallDots = 15
-    window.contrast_value = 20
-    window.block_size = 301
-    window.image_paths = []
-    window.current_image_index = 0
-    window.next_button = None
-    window.progress_bar = None
-    window.progress_label = None
-    window.current_image = None 
-
-
-# #creating the frame with title and icon
-window = Tk()
-window.geometry("1440x1000")
-window.configure(bg=LIGHT)
-window.title("SpotPlotter")
-window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
-
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
-
-window.resizable(False, False)
-window.mainloop()
-
-# restore_window_state(window, 'window_state_singleDilutionRepeatsEcoli.pkl')
-
-# df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
-
-# # Save or display the figures
-# generate_pdf_report_MODEB(
-#     window.all_plate_info,
-#     'output_report_TESTINGMODEB.pdf',
-#     mean_fig,
-#     knockdown_fig,
-#     individual_fig,
-#     version="1.0.0"
-# )
-# df = export_plate_data_to_excel(window.all_plate_info, 'plate_analysis.xlsx')  
-# process_split_order_quantifications(window)
-# strain_data, dilution_series = generate_data_series(window)
-# # df, fig = analyze_plate_data(strain_data)
-# print(df)
-# plt.show()
-# processResults(window)
 
 
 
@@ -2178,51 +2022,6 @@ window.mainloop()
 
 
 
-#Different saved states:
-
-#window_state.pkl   - real test its testing these images where https://www.dropbox.com/scl/fo/55v2k6p7hfb4hws18diod/AK-1lWdCixipX0rCeqPYjYc?rlkey=4uou81nqbu13wig1f8vwbx4ie&e=1&st=4vqqji7x&dl=0 
-#1 additive and 4 repeats for each
-
-#'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
-
-#window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
-#window_state_Test_Positions.pkl testing the postitions are correct
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-from pathlib import Path
-import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
-from tkinter import ttk
-import tkinter as tk
-import cv2
-import numpy as np
-from scipy.spatial import distance
-from PIL import Image, ImageTk, ImageDraw
-import copy
-from functools import partial
-import time
-import math 
-import sys
-import json
-import os
-from datetime import datetime
-from tkinter import Toplevel, Label
-from PIL import Image, ImageTk
-from Style import *
-from PIL import ImageFont
-from GUI import create_titleFrame
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -2232,8 +2031,7 @@ GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
+
 
 # d8888b. db       .d8b.  d888888b d88888b .d8888. 
 # 88  `8D 88      d8' `8b `~~88~~' 88'     88'  YP 
@@ -2383,6 +2181,140 @@ class RoundedCheckbox(tk.Canvas):
             self.itemconfigure(self.checkmark, state="normal")
         else:
             self.itemconfigure(self.checkmark, state="hidden")
+def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
+    # Calculate radius
+    rad = 2 * cornerradius
+
+    # Ensure each button has a unique tag if not provided
+    if button_tag is None:
+        button_tag = f"button_{x}_{y}"  # Unique tag based on position
+
+    # Draw the rounded rectangle shape at (x, y) position and give it a tag
+    canvas.create_polygon(
+        (x + padding, y + height - cornerradius - padding,
+         x + padding, y + cornerradius + padding,
+         x + padding + cornerradius, y + padding,
+         x + width - padding - cornerradius, y + padding,
+         x + width - padding, y + cornerradius + padding,
+         x + width - padding, y + height - cornerradius - padding,
+         x + width - padding - cornerradius, y + height - padding,
+         x + padding + cornerradius, y + height - padding),
+        fill=fill, outline=fill, tags=button_tag
+    )
+
+    # Draw rounded corners using arcs and add the same tag
+    canvas.create_arc(
+        (x + padding, y + padding + rad, x + padding + rad, y + padding),
+        start=90, extent=90, fill=fill, outline=fill, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
+        start=0, extent=90, fill=fill, outline=fill, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
+        start=270, extent=90, fill=fill, outline=fill, tags=button_tag
+    )
+    canvas.create_arc(
+        (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
+        start=180, extent=90, fill=fill, outline=fill, tags=button_tag
+    )
+
+    # Add text in the middle of the button and tag it
+    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=accent, font=(FONT, 12, "bold"), tags=button_tag)
+
+    # Bind the click event to the entire button with the unique tag
+    canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
+
+def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
+    frame = Frame(master, width=300, height=70, bg=DARK)
+    frame.place(x=position[0], y=position[1])
+    canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
+    canvas.pack()
+    
+    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
+    last_update_time = 0
+    update_interval = 100  # Update interval in milliseconds
+
+    def draw_slider(update_label=False):
+        canvas.delete("all")
+        filled_x = value_to_position(current_value.get())
+        canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
+        canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
+        
+        knob_x = value_to_position(current_value.get())
+        canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
+        
+        if update_label:
+            canvas.delete("value_text")
+            label_x = max(10, min(knob_x, 270))
+            canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
+                               font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
+
+    def value_to_position(value):
+        return (value - min_val) / (max_val - min_val) * 280 + 10
+
+    def position_to_value(x):
+        return (x - 10) / 280 * (max_val - min_val) + min_val
+
+    def on_drag(event):
+        nonlocal last_update_time
+        current_time = event.time
+        if 35 <= event.y <= 55:
+            new_value = position_to_value(event.x)
+            current_value.set(max(min_val, min(max_val, new_value)))
+            
+            if current_time - last_update_time >= update_interval:
+                draw_slider(update_label=True)
+                last_update_time = current_time
+            else:
+                draw_slider(update_label=False)
+            
+            if command:
+                command(int(current_value.get()))
+
+    def on_release(event):
+        draw_slider(update_label=True)
+        if command:
+            command(int(current_value.get()))
+
+    canvas.bind("<B1-Motion>", on_drag)
+    canvas.bind("<ButtonRelease-1>", on_release)
+
+    def set_value(value):
+        current_value.set(max(min_val, min(max_val, value)))
+        draw_slider(update_label=True)
+
+    draw_slider(update_label=True)
+    frame.set = set_value
+    frame.get = lambda: int(current_value.get())
+    return frame
+        
+
+def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
+        
+    points = [x1+radius, y1,
+              x1+radius, y1,
+              x2-radius, y1,
+              x2-radius, y1,
+              x2, y1,
+              x2, y1+radius,
+              x2, y1+radius,
+              x2, y2-radius,
+              x2, y2-radius,
+              x2, y2,
+              x2-radius, y2,
+              x2-radius, y2,
+              x1+radius, y2,
+              x1+radius, y2,
+              x1, y2,
+              x1, y2-radius,
+              x1, y2-radius,
+              x1, y1+radius,
+              x1, y1+radius,
+              x1, y1]
+
+    return canvas.create_polygon(points, **kwargs, smooth=True)
 
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
@@ -3585,7 +3517,8 @@ def export_data(window):
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
     
-    
+    window.all_plate_info = all_plate_info
+    create_titleFrame(window)
     return all_plate_info
 
 def save_to_file(data, filename):
@@ -3660,7 +3593,19 @@ def upload_metadata_handler(window):
             
         print("-" * 50)
         print(f"Successfully loaded data from: {filename}")
-        
+
+        mode_b_criteria = (
+            window.strains.get() == 1 and
+            window.x_dilution.get() == 1 and
+            window.y_dilution.get() == 1
+        )
+        if mode_b_criteria:
+            window.current_mode = 'B'
+        else:
+            window.current_mode = 'A'
+            
+        print("CURRENT MODE")
+        print(window.current_mode)
         return loaded_data
         
     except json.JSONDecodeError:
@@ -3902,6 +3847,151 @@ def setup_frames(window):
     create_strain_controls(window)  # You'll need to define this function
     create_navigation_controls(window)
     create_plate_canvas(window)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+def initialize_window_attributes(window):
+    #progress bar style
+    s = ttk.Style()
+    s.theme_use('clam')
+    s.configure("styled.Horizontal.TProgressbar", troughcolor=LIGHT,bordercolor=DARK, background=DARK, lightcolor=DARK, 
+                darkcolor=DARK)
+    style = ttk.Style()
+
+    #slider style
+    style.configure("TScale",
+                    background=DARK,
+                    troughcolor=LIGHT,
+                    sliderthickness=15,
+                    sliderlength=25)  # Adjust size of the knob to be rounder            
+
+    #default parameters
+    window.window_width = 1440
+    window.window_height = 1024
+    window.history = []
+    window.undo_btn = None
+    window.redo_btn = None
+    window.redo_stack = []
+    window.mode = "small_brush"
+    window.brush_size = 5
+    window.is_drawing = False
+    window.last_x = None
+    window.last_y = None
+    window.update_undo_redo_buttons = update_undo_redo_buttons
+    window.display_images = display_images
+    window.excludeSmallDots = 15
+    window.contrast_value = 20
+    window.block_size = 301
+    window.image_paths = []
+    window.current_image_index = 0
+    window.next_button = None
+    window.progress_bar = None
+    window.progress_label = None
+    window.current_image = None 
+
+
+# #creating the frame with title and icon
+window = Tk()
+window.geometry("1440x1000")
+window.configure(bg=LIGHT)
+window.title("SpotPlotter")
+window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
+
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
+
+window.resizable(False, False)
+window.mainloop()
+
+# restore_window_state(window, 'window_state_singleDilutionRepeatsEcoli.pkl')
+
+
+# process_split_order_quantifications(window)
+# strain_data, dilution_series = generate_data_series(window)
+# # df, fig = analyze_plate_data(strain_data)
+# print(df)
+# plt.show()
+# processResults(window)
+
+
+
+
+
+
+
+#Different saved states:
+
+#window_state.pkl   - real test its testing these images where https://www.dropbox.com/scl/fo/55v2k6p7hfb4hws18diod/AK-1lWdCixipX0rCeqPYjYc?rlkey=4uou81nqbu13wig1f8vwbx4ie&e=1&st=4vqqji7x&dl=0 
+#1 additive and 4 repeats for each
+
+#'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
+
+#window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
+#window_state_Test_Positions.pkl testing the postitions are correct
+
+
 
 
 

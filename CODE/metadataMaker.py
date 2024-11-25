@@ -1382,7 +1382,7 @@ def export_data(window):
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
     
-    create_titleFrame(window)
+    
     return all_plate_info
 
 def save_to_file(data, filename):
