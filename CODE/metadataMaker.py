@@ -15,9 +15,11 @@ import sys
 import json
 import os
 from datetime import datetime
-
+from tkinter import Toplevel, Label
+from PIL import Image, ImageTk
 from Style import *
-
+from PIL import ImageFont
+from GUI import create_titleFrame
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -26,6 +28,7 @@ CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
+FONT = "Microsoft New Tai Lue"
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
@@ -178,38 +181,38 @@ class RoundedCheckbox(tk.Canvas):
         else:
             self.itemconfigure(self.checkmark, state="hidden")
 
-def create_controls(control_frame, window):
+def create_mode_switcher(control_frame, window):
+    def switch_mode(new_mode):
+        create_plate_designer(window, mode=new_mode)
+    
+    # Label for mode selection
+    mode_label = Label(
+        control_frame,
+        text="Select Mode:",
+        font=(FONT, 12, "bold"),
+        fg=LIGHT,
+        bg=DARK
+    )
+    mode_label.place(x=10, y=10)
+    
+    # Dropdown menu for mode selection
+    mode_var = tk.StringVar(value=window.current_mode)  # Keep track of the current mode
+    mode_dropdown = ttk.Combobox(
+        control_frame,
+        textvariable=mode_var,
+        values=["A", "B"],
+        state="readonly",
+        font=(FONT, 11)
+    )
+    mode_dropdown.place(x=110, y=10, width=100)
+    
+    # Bind selection change to switch_mode function
+    mode_dropdown.bind("<<ComboboxSelected>>", lambda event: switch_mode(mode_var.get()))
 
-    if not hasattr(window, 'plates'):
-        window.plates = []
-    if not hasattr(window, 'current_plate'):
-        window.current_plate = 0
-    if not hasattr(window, 'plate_layout'):
-        window.plate_layout = {
-            'rows': tk.IntVar(value=8),
-            'columns': tk.IntVar(value=12),
-            'strains': tk.IntVar(value=1),
-            'x_dilution': tk.IntVar(value=2),
-            'y_dilution': tk.IntVar(value=2),
-            'gap_between_strains': tk.BooleanVar(value=False),
-            'removed_positions': set(),
-            'strain_positions': {}
-        }
-
-
-    y_offset = 20
+def create_controls(control_frame, window, mode):
+    y_offset = 60
     spacing = 80
     label_width = 100  # Width for right-aligned labels
-    
-    # Create a canvas for the controls
-    control_canvas = tk.Canvas(
-        control_frame,
-        bg=DARK,
-        highlightthickness=0,
-        width=282,
-        height=638
-    )
-    control_canvas.pack(fill="both", expand=True)
     
     # Function to create styled input row
     def create_input_row(label_text, variable, y_pos):
@@ -220,8 +223,8 @@ def create_controls(control_frame, window):
             font=(FONT, 12, 'bold'),
             fg=LIGHT,
             bg=DARK,
-            width=10,  # Fixed width for alignment
-            anchor="e"  # Right alignment
+            width=10,
+            anchor="e"
         )
         label.place(x=10, y=y_pos)
         
@@ -232,24 +235,24 @@ def create_controls(control_frame, window):
         
         return entry_frame.entry
     
-    # Create all input rows
-    entries = {
-        'rows': create_input_row("Rows:", window.plate_layout['rows'], y_offset),
-        'columns': create_input_row("Columns:", window.plate_layout['columns'], y_offset + spacing),
-        'strains': create_input_row("Strains:", window.plate_layout['strains'], y_offset + spacing * 2),
-        'x_dilution': create_input_row("X-Dilution:", window.plate_layout['x_dilution'], y_offset + spacing * 3),
-        'y_dilution': create_input_row("Y-Dilution:", window.plate_layout['y_dilution'], y_offset + spacing * 4)
-    }
+    # Create input rows based on the mode
+    create_input_row("Rows:", window.plate_layout['rows'], y_offset)
+    create_input_row("Columns:", window.plate_layout['columns'], y_offset + spacing)
     
-    # Create custom checkbox
-    checkbox = RoundedCheckbox(
-        control_frame,
-        text="Gap Between Strains",
-        variable=window.plate_layout['gap_between_strains'],
-        command=lambda: update_plate_display_layout_designer(window)
-    )
-    checkbox.place(x=20, y=y_offset + spacing * 5)
-    checkbox.label.place(x=50, y=y_offset + spacing * 5)
+    if mode == "A":  # Show additional options in Mode A
+        create_input_row("Strains:", window.plate_layout['strains'], y_offset + spacing * 2)
+        create_input_row("X-Dilution:", window.plate_layout['x_dilution'], y_offset + spacing * 3)
+        create_input_row("Y-Dilution:", window.plate_layout['y_dilution'], y_offset + spacing * 4)
+        
+        # Create checkbox for gap between strains
+        checkbox = RoundedCheckbox(
+            control_frame,
+            text="Gap Between Strains",
+            variable=window.plate_layout['gap_between_strains'],
+            command=lambda: update_plate_display_layout_designer(window)
+        )
+        checkbox.place(x=20, y=y_offset + spacing * 5)
+        checkbox.label.place(x=50, y=y_offset + spacing * 5)
     
     # Bind all variables to update function
     for var_name in ['rows', 'columns', 'strains', 'x_dilution', 'y_dilution']:
@@ -257,6 +260,9 @@ def create_controls(control_frame, window):
             "write",
             lambda *args: update_plate_display_layout_designer(window)
         )
+
+
+
 
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
@@ -312,19 +318,9 @@ def update_plate_display_layout_designer(window):
         if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
             current_col += 1
     
-    draw_dilution_labels(window, rows, y_dil, margin, cell_height)
+    
     draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows)
 
-def draw_dilution_labels(window, rows, y_dil, margin, cell_height):
-    for row in range(rows):
-        y_value = y_dil ** row
-        window.plate_canvas.create_text(
-            margin - 20,
-            margin + row * cell_height + cell_height/2,
-            text=y_value,
-            fill=LIGHT,
-            font=(FONT, 8)
-        )
 
 def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows):
     for strain in range(strains):
@@ -334,13 +330,14 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows):
             x_value = x_dil ** col_offset
             x_pos = margin + actual_col * cell_width + cell_width/2
             
-            window.plate_canvas.create_text(
-                x_pos,
-                margin - 20,
-                text=x_value,
-                fill=LIGHT,
-                font=(FONT, 8)
-            )
+            if window.current_mode =='A':
+                window.plate_canvas.create_text(
+                    x_pos,
+                    margin - 20,
+                    text=x_value,
+                    fill=LIGHT,
+                    font=(FONT, 8)
+                )
             
             for row in range(rows):
                 pos_key = f"{row}-{actual_col}"
@@ -463,10 +460,13 @@ def create_strain_designer(window):
     create_rounded_button(
         canvas=window.canvas,
         text="Next",
-        command=lambda: print("processMetadata"),
+        command=lambda:export_data(window),
         x=buttonPosX,
         y=buttonPosY
     )
+
+
+
 
 def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height):
     if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
@@ -535,8 +535,9 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
             current_x += cell_width
 
+
+
 def update_plate_display(window):
-    print("======== UPDATING PLATE DISPLAY ========")
     print(f"Total plates: {len(window.plates)}")
     
     if not window.plates:
@@ -549,9 +550,7 @@ def update_plate_display(window):
         return
 
     current_plate = window.plates[CURRENTPLATEINDEX]
-    print(f"Current Plate Index: {CURRENTPLATEINDEX}")
-    print(f"Current Plate Name: {current_plate.get('name', 'NO NAME')}")
-    print(f"Plate Assignments: {current_plate.get('assignments', 'NO ASSIGNMENTS')}")
+
 
     # Verify plate_canvas exists
     if not hasattr(window, 'plate_canvas'):
@@ -717,37 +716,38 @@ def rename_current_plate(window):
 
 
 def create_strain_controls(window):
-    # "Add a strain" header
-    strain_header = tk.Label(window.control_frame, text="Add a Strain", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
-    strain_header.pack(pady=(10, 5))
-    
-    # Strain name frame
-    strain_frame = tk.Frame(window.control_frame, bg=DARK)
-    strain_frame.pack(fill=tk.X, padx=10)
-    
-    # Initialize strains attribute if not exists
-    if not hasattr(window, 'strains'):
-        window.strains = []
-    
-    # Strain entry
-    window.strain_entry = ttk.Entry(strain_frame, width=25)
-    window.strain_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
-    
-    # Add strain button (now a + button)
-    add_strain_btn = tk.Button(
-        strain_frame,
-        text="+",
-        command=lambda: add_strain(window),
-        font=(FONT, 10),
-        bg=LIGHT,
-        fg=DARK,
-        width=3
-    )
-    add_strain_btn.pack(side=tk.RIGHT)
-    
-    # Blank space for added strains
-    window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
+    if window.current_mode =='A':
+        # "Add a strain" header
+        strain_header = tk.Label(window.control_frame, text="Add a Strain", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
+        strain_header.pack(pady=(10, 5))
+        
+        # Strain name frame
+        strain_frame = tk.Frame(window.control_frame, bg=DARK)
+        strain_frame.pack(fill=tk.X, padx=10)
+        
+        # Initialize strains attribute if not exists
+        if not hasattr(window, 'strains'):
+            window.strains = []
+        
+        # Strain entry
+        window.strain_entry = ttk.Entry(strain_frame, width=25)
+        window.strain_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
+        
+        # Add strain button (now a + button)
+        add_strain_btn = tk.Button(
+            strain_frame,
+            text="+",
+            command=lambda: add_strain(window),
+            font=(FONT, 10),
+            bg=LIGHT,
+            fg=DARK,
+            width=3
+        )
+        add_strain_btn.pack(side=tk.RIGHT)
+        
+        # Blank space for added strains
+        window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
+        window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
@@ -810,21 +810,16 @@ def create_plate_canvas(window):
 def add_plate(window):
     global CURRENTPLATEINDEX
     name = window.plate_entry.get().strip()
-    atc = window.atc_var.get().strip()  # Get ATC value
     if name:
         additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
         new_plate = {
             'name': name,
-            'atc': atc,  # Add ATC to plate metadata
             'additive': additive_name,
             'assignments': {},
             'column_assignments': {}
         }
         window.plates.append(new_plate)
         window.plate_entry.delete(0, tk.END)
-        window.atc_var.set("")  # Clear ATC entry
-        window.additive_var.set(False)
-        window.additive_entry.delete(0, tk.END)
         window.current_plate = len(window.plates) - 1
         window.column_assignments = {}
         CURRENTPLATEINDEX = (len(window.plates) - 1)
@@ -879,33 +874,34 @@ def update_strain_menu(window):
 
 
 def assign_strain_to_group(window, strain):
-    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
-        messagebox.showwarning("Warning", "Please create a plate first")
-        return
+    if window.current_mode =='A':
+        if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+            messagebox.showwarning("Warning", "Please create a plate first")
+            return
 
-    # Create menu of available positions
-    available_positions = []
-    for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
-        position_key = f"{start_col}-{end_col}"
-        if position_key not in window.column_assignments:
-            available_positions.append((strain_idx, start_col, end_col))
+        # Create menu of available positions
+        available_positions = []
+        for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
+            position_key = f"{start_col}-{end_col}"
+            if position_key not in window.column_assignments:
+                available_positions.append((strain_idx, start_col, end_col))
 
-    if available_positions:
-        strain_location_menu = tk.Menu(window, tearoff=0)
-        for strain_idx, start_col, end_col in available_positions:
-            label = f"Position {window.position_labels[strain_idx]}"
-            strain_location_menu.add_command(
-                label=label,
-                command=lambda s=start_col, e=end_col, idx=strain_idx: 
-                    assign_strain_to_columns(window, strain, s, e, idx)
-            )
+        if available_positions:
+            strain_location_menu = tk.Menu(window, tearoff=0)
+            for strain_idx, start_col, end_col in available_positions:
+                label = f"Position {window.position_labels[strain_idx]}"
+                strain_location_menu.add_command(
+                    label=label,
+                    command=lambda s=start_col, e=end_col, idx=strain_idx: 
+                        assign_strain_to_columns(window, strain, s, e, idx)
+                )
 
-        try:
-            strain_location_menu.tk_popup(window.winfo_pointerx(), window.winfo_pointery())
-        finally:
-            strain_location_menu.grab_release()
-    else:
-        messagebox.showwarning("Warning", "All positions are already assigned.")
+            try:
+                strain_location_menu.tk_popup(window.winfo_pointerx(), window.winfo_pointery())
+            finally:
+                strain_location_menu.grab_release()
+        else:
+            messagebox.showwarning("Warning", "All positions are already assigned.")
 
 
 def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
@@ -943,13 +939,10 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
         return
         
     plate = window.plates[CURRENTPLATEINDEX]
-    print("____________________________________________________DRAW PLATE GRID")
-    print(CURRENTPLATEINDEX)
-    print(plate)
     num_strains = window.layout_data['strains']
 
     # Draw plate header
-    additive_display = f"  (Additive: {plate['additive_name']})" if plate.get('has_additive') and plate.get('additive_name') else ''
+    additive_display = f"( Additive: {plate['additive']})" if plate.get('additive') is not None else ''
     
     # Draw plate header with corrected syntax
     window.plate_canvas.create_text(
@@ -985,15 +978,16 @@ def draw_positions_and_spots(window, margin_left, margin_top,
                 assigned_strain = plate['assignments'][pos_key]
                 break
         
-        # Draw position label
-        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
-        window.plate_canvas.create_text(
-            current_x + position_width/2,
-            margin_top,
-            text=label_text,
-            font=(FONT, 16, 'bold'),
-            fill=LIGHT
-        )
+        if window.current_mode =='A':
+            # Draw position label
+            label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+            window.plate_canvas.create_text(
+                current_x + position_width/2,
+                margin_top,
+                text=label_text,
+                font=(FONT, 16, 'bold'),
+                fill=LIGHT
+            )
 
         
         current_x += position_width
@@ -1063,11 +1057,17 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
     
     # Try to load fonts (fallback to default if not available)
     try:
-        label_font = ImageFont.truetype("arial.ttf", 16)
-        strain_font = ImageFont.truetype("arial.ttf", 16)
-    except:
-        label_font = ImageFont.load_default()
-        strain_font = ImageFont.load_default()
+        # Try to load Helvetica Bold
+        label_font = ImageFont.truetype("arial.ttf", 45)
+        strain_font = ImageFont.truetype("arial.ttf", 45)
+    except IOError:
+        try:
+            # Fallback to default font if Helvetica-Bold is not found
+            label_font = ImageFont.load_default()
+            strain_font = ImageFont.load_default()
+            print("Helvetica Bold not found, using default font")
+        except:
+            print("Failed to load default font")
     
     # Draw strain sections and labels
     current_x = margin
@@ -1080,7 +1080,7 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
         for pos_key, assignment in plate.get('assignments', {}).items():
             row, col = map(int, pos_key.split('-'))
             if start_col <= col <= end_col:
-                assigned_strain = assignment
+                assigned_strain = assignment 
                 break
         
         # Draw strain label if assigned
@@ -1111,8 +1111,9 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
                         spot_color = window.strain_colors[strain_index]
                     
                     # Draw spot (circle)
+                    size = 16
                     draw.ellipse(
-                        [x_pos-8, y_pos-8, x_pos+8, y_pos+8],
+                        [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
                         fill=spot_color,
                         outline=spot_color
                     )
@@ -1226,18 +1227,19 @@ def draw_plate_preview(window, canvas, plate):
                 assigned_strain = assignment
                 break
        
-        # Draw position label
-        position_label = f"Position {window.position_labels[position_idx]}"
-        canvas.create_text(
-            current_x + position_width/2,
-            margin,
-            text=position_label,
-            font=(FONT, 16, 'bold'),
-            fill=DARK,
-            anchor='s',
+        if window.current_mode =='A':
+            # Draw position label
+            position_label = f"Position {window.position_labels[position_idx]}"
+            canvas.create_text(
+                current_x + position_width/2,
+                margin,
+                text=position_label,
+                font=(FONT, 12, 'bold'),
+                fill=DARK,
+                anchor='s',
 
 
-        )
+            )
        
         # # Draw strain label if assigned - moved higher up
         # if assigned_strain:
@@ -1379,7 +1381,8 @@ def export_data(window):
         
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
-   
+    
+    create_titleFrame(window)
     return all_plate_info
 
 def save_to_file(data, filename):
@@ -1629,12 +1632,7 @@ def create_navigation_controls(window):
     )
     preview_btn.pack(side=tk.LEFT, expand=True, padx=2)
     
-    export_btn = create_nav_button(
-        action_frame,
-        "Export All",
-        lambda: export_data(window)
-    )
-    export_btn.pack(side=tk.LEFT, expand=True, padx=2)
+
 
 def setup_frames(window):
     # Main frames

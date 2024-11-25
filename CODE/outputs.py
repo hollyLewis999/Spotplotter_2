@@ -177,6 +177,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
     
     # Style plots
+# Style plots
     for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
                                (ax2, fig_average, "Average Growth Curves")]:
         ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
@@ -551,8 +552,133 @@ def resize_for_display(image, max_width=1280, max_height=720):
         new_size = (int(w*scale), int(h*scale))
         return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
     return image
+
+
+def add_info_page(plate_info, story, logo, title_style, body_style):
+    """Helper function to add plate information page"""  
+    # Add title with plate name + Log
+    story.append(Spacer(1, 10))
+    title_text = f"\n{plate_info['filename']} Log"
+    story.append(Paragraph(title_text, title_style))
+    story.append(Spacer(1, 10))
     
-def generate_pdf_report(all_plate_info, all_strain_data, output_filename, version="1.0.0"):
+    max_width = 280
+    max_height = 160
+    def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
+        """
+        Creates an image and caption for the PDF report using ReportLab components.
+        Handles both OpenCV images and base64-encoded preview images.
+        """
+        try:
+            if img_key == "IMGPreview":
+                # Check if the preview image exists in the nested structure
+                if plate_info.get('layout', {}).get('IMGPreview') is not None:
+                    # Decode base64 string to PIL Image
+                    img_data = base64.b64decode(plate_info['layout']['IMGPreview'])
+                    pil_img = Image.open(io.BytesIO(img_data))
+                else:
+                    raise KeyError("IMGPreview not found in layout")
+            else:
+                # Handle other image types
+                if plate_info.get(img_key) is not None:
+                    if img_key == "IMGgrid":
+                        pil_img = cv2_to_pil(plate_info[img_key], False)
+                    else:
+                        pil_img = cv2_to_pil(plate_info[img_key])
+                else:
+                    raise KeyError(f"{img_key} not found in plate_info")
+        
+            if pil_img:
+                # Convert to RGB if needed
+                if pil_img.mode != 'RGB':
+                    pil_img = pil_img.convert('RGB')
+            
+                # Resize image maintaining aspect ratio
+                img_width, img_height = get_image_size(pil_img, max_width, max_height)
+            
+                # Save to bytes buffer
+                img_data = BytesIO()
+                pil_img.save(img_data, format='JPEG', quality=40)
+                img_data.seek(0)
+            
+                # Create ReportLab image without border
+                img = ImageR(img_data, width=img_width, height=img_height)
+                
+                # Create bold and italic caption style
+                caption_style = ParagraphStyle(
+                    'CaptionStyle',
+                    parent=body_style,
+                    fontWeight='bold',
+                    fontStyle='italic'
+                )
+                
+                return [img, Paragraph(caption, caption_style)]
+
+        except Exception as e:
+            print(f"Error creating image with caption: {e}")
+            return []
+
+
+    def create_info_text(plate_info):
+        info_text = f"""
+        <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+        <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+        <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
+        <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
+        <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
+        <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
+        <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
+        <b>Threshold:</b> {plate_info['threshold']}<br/>
+        <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+        <b>Block Size:</b> {plate_info['blocksize']}<br/>
+        """
+        return Paragraph(info_text, body_style)
+
+    # Row 1: Preview and Info
+    row1_data = [
+        [create_image_with_caption('IMGPreview', "Preview Image"),
+            create_info_text(plate_info)]
+    ]
+    row1_table = Table(row1_data, colWidths=[max_width, max_width])
+    
+    # Row 2: Binary Images
+    row2_data = [
+        # [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
+        [create_image_with_caption('IMGbinary', "Tool Usage: Red(+) Blue(-))"),
+        create_image_with_caption('IMGbinary', "Binary Image")]
+    ]
+    row2_table = Table(row2_data, colWidths=[max_width, max_width])
+    # Row 3: Grid and Contours
+    row3_data = [
+        [create_image_with_caption('IMGgrid', "Grid Image"),
+            create_image_with_caption('IMGcontours', "Contours Image")]
+    ]
+    row3_table = Table(row3_data, colWidths=[max_width, max_width])
+    
+    # Apply consistent styling to all tables
+    table_style = TableStyle([
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 10),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+        ('TOPPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+    ])
+    
+    for table in [row1_table, row2_table, row3_table]:
+        table.setStyle(table_style)
+        story.append(table)
+        story.append(Spacer(1, 20))
+    story.append(PageBreak())    
+    
+
+
+
+
+
+
+def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, version="1.0.0"):
+    
     """
     Generates a single PDF report containing data for all strains.
     Each strain's figures are on consecutive pages with statistics underneath.
@@ -609,6 +735,10 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
     # Add logo
     logo_path = relative_to_assets("LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
+
+
+
+
     def add_final_info_page():
         story.append(logo)
         story.append(Spacer(1, 6))
@@ -646,124 +776,7 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
             story.append(Spacer(1, 6))
 
 
-    def add_info_page(plate_info, story, logo, title_style, body_style):
-        """Helper function to add plate information page"""  
-        # Add title with plate name + Log
-        story.append(Spacer(1, 10))
-        title_text = f"\n{plate_info['filename']} Log"
-        story.append(Paragraph(title_text, title_style))
-        story.append(Spacer(1, 10))
-        
-        max_width = 280
-        max_height = 180
-        
-        def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
-            """
-            Creates an image and caption for the PDF report using ReportLab components.
-            Handles both OpenCV images and base64-encoded preview images.
-            """
-            try:
-                if img_key == "IMGPreview":
-                    # Check if the preview image exists in the nested structure
-                    if plate_info.get('layout', {}).get('IMGPreview') is not None:
-                        # Decode base64 string to PIL Image
-                        img_data = base64.b64decode(plate_info['layout']['IMGPreview'])
-                        pil_img = Image.open(io.BytesIO(img_data))
-                    else:
-                        raise KeyError("IMGPreview not found in layout")
-                else:
-                    # Handle other image types
-                    if plate_info.get(img_key) is not None:
-                        if img_key == "IMGgrid":
-                            pil_img = cv2_to_pil(plate_info[img_key], False)
-                        else:
-                            pil_img = cv2_to_pil(plate_info[img_key])
-                    else:
-                        raise KeyError(f"{img_key} not found in plate_info")
-            
-                if pil_img:
-                    # Convert to RGB if needed
-                    if pil_img.mode != 'RGB':
-                        pil_img = pil_img.convert('RGB')
-                
-                    # Resize image maintaining aspect ratio
-                    img_width, img_height = get_image_size(pil_img, max_width, max_height)
-                
-                    # Save to bytes buffer
-                    img_data = BytesIO()
-                    pil_img.save(img_data, format='JPEG', quality=40)
-                    img_data.seek(0)
-                
-                    # Create ReportLab image without border
-                    img = ImageR(img_data, width=img_width, height=img_height)
-                    
-                    # Create bold and italic caption style
-                    caption_style = ParagraphStyle(
-                        'CaptionStyle',
-                        parent=body_style,
-                        fontWeight='bold',
-                        fontStyle='italic'
-                    )
-                    
-                    return [img, Paragraph(caption, caption_style)]
 
-            except Exception as e:
-                print(f"Error creating image with caption: {e}")
-                return []
-
-
-        def create_info_text(plate_info):
-            info_text = f"""
-            <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
-            <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
-            <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
-            <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
-            <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
-            <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
-            <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
-            <b>Threshold:</b> {plate_info['threshold']}<br/>
-            <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
-            <b>Block Size:</b> {plate_info['blocksize']}<br/>
-            """
-            return Paragraph(info_text, body_style)
-
-        # Row 1: Preview and Info
-        row1_data = [
-            [create_image_with_caption('IMGPreview', "Preview Image"),
-             create_info_text(plate_info)]
-        ]
-        row1_table = Table(row1_data, colWidths=[max_width, max_width])
-        
-        # Row 2: Binary Images
-        row2_data = [
-            [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
-            create_image_with_caption('IMGbinary', "Binary Image")]
-        ]
-        row2_table = Table(row2_data, colWidths=[max_width, max_width])
-        # Row 3: Grid and Contours
-        row3_data = [
-            [create_image_with_caption('IMGgrid', "Grid Image"),
-             create_image_with_caption('IMGcontours', "Contours Image")]
-        ]
-        row3_table = Table(row3_data, colWidths=[max_width, max_width])
-        
-        # Apply consistent styling to all tables
-        table_style = TableStyle([
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 10),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 10),
-            ('TOPPADDING', (0, 0), (-1, -1), 10),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
-        ])
-        
-        for table in [row1_table, row2_table, row3_table]:
-            table.setStyle(table_style)
-            story.append(table)
-            story.append(Spacer(1, 20))
-        
-        story.append(PageBreak())
-    
     
     # Add plate info pages
     for plate_info in all_plate_info:
@@ -846,7 +859,21 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
             img_data = BytesIO()
             fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
             img_data.seek(0)
-            story.append(ImageR(img_data, width=6*inch, height=4*inch))
+
+            # Calculate aspect ratio
+            with Image.open(img_data) as img:
+                width, height = img.size
+                aspect_ratio = width / height
+
+            # Desired width while maintaining aspect ratio
+            desired_width = 7 * inch
+            desired_height = desired_width / aspect_ratio
+
+            # Reset img_data pointer
+            img_data.seek(0)
+
+            # Add image to the story
+            story.append(ImageR(img_data, width=desired_width, height=desired_height))
             story.append(Spacer(1, 20))
             
             # Split stats into groups of 4 and create multiple tables if needed
@@ -867,7 +894,121 @@ def generate_pdf_report(all_plate_info, all_strain_data, output_filename, versio
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
 
+def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdown_fig, individual_fig, version="1.0.0"):
+    from reportlab.lib.units import inch
+    from io import BytesIO
+    
+    # Create footer style
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=getSampleStyleSheet()['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=1  # Center alignment
+    )
+    
+    # Create footer function
+    def add_footer(canvas, doc):
+        footer_text = f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')} using Spotplotter v{version}"
+        footer = Paragraph(footer_text, footer_style)
+        w, h = footer.wrap(doc.width, doc.bottomMargin)
+        footer.drawOn(canvas, doc.leftMargin, h)
+    
+    doc = SimpleDocTemplate(
+        output_filename,
+        pagesize=letter,
+        topMargin=0.5*inch,
+        bottomMargin=0.5*inch,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='Title',
+        parent=styles['Heading1'],
+        fontSize=16,
+        alignment=1
+    )
 
+
+    strain_style = ParagraphStyle(
+        name='StrainTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        alignment=1,
+        spaceAfter=30
+    )
+    body_style = styles['Normal']
+    
+    
+    # Add logo
+    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)
+
+    def add_final_info_page():
+        story.append(logo)
+        story.append(Spacer(1, 6))
+        story.append(Spacer(1, 12))
+
+        current_date = datetime.now().strftime("%Y-%m-%d")
+        
+        
+        info_text = f"""
+        This report was generated by <b>Spotplotter</b> version <b>1.0</b> on <b>{current_date}</b>
+
+        Spotplotter was created by <b>Holly Lewis</b> with supervision from <b>R Verrinder</b> and <b>Dr. M Mason</b> as BSc (Eng) final year project submitted in partial fulfilment of the requirements for the degree of Bachelor of Science in Electrical and Computer Engineering in the Department of Electrical Engineering at the University of Cape Town.
+
+        To read the full report please see: <i>GITHUB LINK</i>
+        """
+
+        for paragraph in info_text.split('\n\n'):
+            story.append(Paragraph(paragraph.strip(), body_style))
+            story.append(Spacer(1, 6))
+    add_final_info_page()
+    story.append(PageBreak())
+    
+    def save_figure_for_pdf(fig, width=7.5*inch, height=3*inch):
+        """Save matplotlib figure to bytes buffer and return as ReportLab image"""
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=300, bbox_inches='tight')
+        buf.seek(0)
+        return ImageR(buf, width=width, height=height)
+    
+    
+        # Add logo
+    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)
+    # Add existing content (plate info pages)
+    for plate_info in all_plate_info:
+        add_info_page(plate_info, story, logo, title_style, body_style)
+    
+    # Save and add graphs to PDF
+    # Calculate dimensions to maintain 15:6 aspect ratio while fitting on page
+    page_width = 7.5 * inch  # Standard letter page width minus margins
+    graph_height = (page_width * 6) / 15  # Maintain 15:6 aspect ratio
+    
+    # Add Mean Plot
+    mean_image = save_figure_for_pdf(mean_fig, width=page_width, height=graph_height)
+    # Add Knockdown Plot
+    knockdown_image = save_figure_for_pdf(knockdown_fig, width=page_width, height=graph_height)
+    # Add Individual Plot
+    individual_image = save_figure_for_pdf(individual_fig, width=page_width, height=graph_height)
+
+
+    
+    story.append(mean_image)
+    story.append(knockdown_image)
+    story.append(individual_image)
+    story.append(PageBreak())
+
+
+    # Add final info page
+
+    
+    # Build the PDF with footer
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
