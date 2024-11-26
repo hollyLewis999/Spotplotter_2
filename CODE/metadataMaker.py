@@ -19,7 +19,6 @@ from tkinter import Toplevel, Label
 from PIL import Image, ImageTk
 from Style import *
 from PIL import ImageFont
-from GUI import create_titleFrame
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -29,8 +28,6 @@ GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
 
 # d8888b. db       .d8b.  d888888b d88888b .d8888. 
 # 88  `8D 88      d8' `8b `~~88~~' 88'     88'  YP 
@@ -39,152 +36,103 @@ def relative_to_assets(path: str) -> Path:
 # 88      88booo. 88   88    88    88.     db   8D 
 # 88      Y88888P YP   YP    YP    Y88888P `8888Y' 
 
-class RoundedEntry(tk.Frame):
-    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
-        super().__init__(parent, bg=DARK)
-        
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        
-        # Create rounded canvas background
-        self.canvas = tk.Canvas(
-            self,
-            width=width,
-            height=height,
-            bg=DARK,
-            highlightthickness=0
-        )
-        self.canvas.grid(row=0, column=0)
-        
-        # Draw rounded rectangle
-        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
-            x1+r, y1,
-            x1+r, y1,
-            x2-r, y1,
-            x2-r, y1,
-            x2, y1,
-            x2, y1+r,
-            x2, y2-r,
-            x2, y2,
-            x2-r, y2,
-            x1+r, y2,
-            x1, y2,
-            x1, y2-r,
-            x1, y1+r,
-            x1, y1,
-            smooth=True,
-            **kwargs
-        )
-        
-        bg_box = self.canvas.create_rounded_rectangle(
-            2, 2, width-2, height-2,
-            corner_radius,
-            fill="white",
-            outline="#cccccc"
-        )
-        
-        self.entry = tk.Entry(
-            self,
-            bg="white",
-            bd=0,
-            highlightthickness=0,
-            **kwargs
-        )
-        self.entry.place(
-            x=10,
-            y=height//2,
-            width=width-20,
-            anchor="w"
-        )
 
-    # Add these delegate methods
-    def get(self):
-        """Delegate get() to the internal entry widget"""
-        return self.entry.get()
+
+# def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
+#     frame = Frame(master, width=300, height=70, bg=DARK)
+#     frame.place(x=position[0], y=position[1])
+#     canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
+#     canvas.pack()
     
-    def delete(self, first, last=None):
-        """Delegate delete() to the internal entry widget"""
-        return self.entry.delete(first, last)
-    
-    def insert(self, index, string):
-        """Delegate insert() to the internal entry widget"""
-        return self.entry.insert(index, string)
-class RoundedCheckbox(tk.Canvas):
-    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
-        super().__init__(
-            parent,
-            width=24,
-            height=24,
-            highlightthickness=0,
-            bg=DARK,
-            **kwargs
-        )
-        self.variable = variable
-        self.command = command
+#     current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
+#     last_update_time = 0
+#     update_interval = 100  # Update interval in milliseconds
+
+#     def draw_slider(update_label=False):
+#         canvas.delete("all")
+#         filled_x = value_to_position(current_value.get())
+#         canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
+#         canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
         
-        # Create the rounded rectangle for the checkbox
-        self.box = self.create_rounded_rectangle(
-            2, 2, 22, 22,
-            5,  # corner radius
-            outline="#cccccc",
-            fill="white",
-            width=2
-        )
+#         knob_x = value_to_position(current_value.get())
+#         canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
         
-        # Create the checkmark (hidden initially)
-        self.checkmark = self.create_line(
-            6, 12, 10, 16, 18, 8,
-            fill=DARK,
-            width=3,
-            state="hidden"
-        )
+#         if update_label:
+#             canvas.delete("value_text")
+#             label_x = max(10, min(knob_x, 270))
+#             canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
+#                                font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
+
+#     def value_to_position(value):
+#         return (value - min_val) / (max_val - min_val) * 280 + 10
+
+#     def position_to_value(x):
+#         return (x - 10) / 280 * (max_val - min_val) + min_val
+
+#     def on_drag(event):
+#         nonlocal last_update_time
+#         current_time = event.time
+#         if 35 <= event.y <= 55:
+#             new_value = position_to_value(event.x)
+#             current_value.set(max(min_val, min(max_val, new_value)))
+            
+#             if current_time - last_update_time >= update_interval:
+#                 draw_slider(update_label=True)
+#                 last_update_time = current_time
+#             else:
+#                 draw_slider(update_label=False)
+            
+#             if command:
+#                 command(int(current_value.get()))
+
+#     def on_release(event):
+#         draw_slider(update_label=True)
+#         if command:
+#             command(int(current_value.get()))
+
+#     canvas.bind("<B1-Motion>", on_drag)
+#     canvas.bind("<ButtonRelease-1>", on_release)
+
+#     def set_value(value):
+#         current_value.set(max(min_val, min(max_val, value)))
+#         draw_slider(update_label=True)
+
+#     draw_slider(update_label=True)
+#     frame.set = set_value
+#     frame.get = lambda: int(current_value.get())
+#     return frame
         
-        # Bind click event
-        self.bind("<Button-1>", self.toggle)
+
+def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
         
-        # Create label
-        self.label = Label(
-            parent,
-            text=text,
-            bg=DARK,
-            fg=LIGHT,
-            font=(FONT, 12)
-        )
-        
-    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
-        points = [
-            x1+radius, y1,
-            x2-radius, y1,
-            x2, y1,
-            x2, y1+radius,
-            x2, y2-radius,
-            x2, y2,
-            x2-radius, y2,
-            x1+radius, y2,
-            x1, y2,
-            x1, y2-radius,
-            x1, y1+radius,
-            x1, y1
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-    
-    def toggle(self, event=None):
-        if self.variable:
-            self.variable.set(not self.variable.get())
-            self.update_state()
-            if self.command:
-                self.command()
-    
-    def update_state(self):
-        if self.variable and self.variable.get():
-            self.itemconfigure(self.checkmark, state="normal")
-        else:
-            self.itemconfigure(self.checkmark, state="hidden")
+    points = [x1+radius, y1,
+              x1+radius, y1,
+              x2-radius, y1,
+              x2-radius, y1,
+              x2, y1,
+              x2, y1+radius,
+              x2, y1+radius,
+              x2, y2-radius,
+              x2, y2-radius,
+              x2, y2,
+              x2-radius, y2,
+              x2-radius, y2,
+              x1+radius, y2,
+              x1+radius, y2,
+              x1, y2,
+              x1, y2-radius,
+              x1, y2-radius,
+              x1, y1+radius,
+              x1, y1+radius,
+              x1, y1]
+
+    return canvas.create_polygon(points, **kwargs, smooth=True)
+
 
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
         create_plate_designer(window, mode=new_mode)
-    
+   #bookmark 
     # Label for mode selection
     mode_label = Label(
         control_frame,
@@ -1000,6 +948,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
     preview_image = create_plate_preview_image(window, plate)
     
     return {
+        'mode': window.current_mode,
         'filename': plate['name'],
         'additive': plate.get('additive', None),
         'dilutions': [],
@@ -1382,7 +1331,8 @@ def export_data(window):
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
     
-    
+    window.all_plate_info = all_plate_info
+    create_titleFrame(window)
     return all_plate_info
 
 def save_to_file(data, filename):
@@ -1421,53 +1371,6 @@ def get_available_data_files():
     """
     files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
     return sorted(files, reverse=True)
-
-def upload_metadata_handler(window):
-    """
-    Handler for the Upload MetaData button.
-    Opens file dialog, loads data, and displays it.
-    """
-    try:
-        # Open file dialog for selecting the JSON file
-        filename = filedialog.askopenfilename(
-            title="Select Metadata File",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if not filename:  # User cancelled
-            return
-            
-        # Load the data
-        with open(filename, 'r') as file:
-            loaded_data = json.load(file)
-            
-        # Update the global data structure
-        window.all_plate_info = loaded_data
-        
-        # Print the loaded data in a formatted way
-        print("\nUploaded Metadata Contents:")
-        print("-" * 50)
-        
-        for idx, plate in enumerate(loaded_data, 1):
-            print(f"\nPlate {idx}:")
-            print("  Strains:", ", ".join(plate.get('strains', [])))
-            print("  Columns:", plate.get('column_indexes', []))
-            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
-            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
-            
-        print("-" * 50)
-        print(f"Successfully loaded data from: {filename}")
-        
-        return loaded_data
-        
-    except json.JSONDecodeError:
-        print("Error: Invalid JSON file format")
-        return None
-    except Exception as e:
-        print(f"Error loading metadata: {str(e)}")
-        return None
-
-
 
 
 def create_plate_controls(window):
@@ -1700,5 +1603,146 @@ def setup_frames(window):
     create_navigation_controls(window)
     create_plate_canvas(window)
 
+class RoundedEntry(tk.Frame):
+    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
+        super().__init__(parent, bg=DARK)
+        
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        # Create rounded canvas background
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=height,
+            bg=DARK,
+            highlightthickness=0
+        )
+        self.canvas.grid(row=0, column=0)
+        
+        # Draw rounded rectangle
+        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
+            x1+r, y1,
+            x1+r, y1,
+            x2-r, y1,
+            x2-r, y1,
+            x2, y1,
+            x2, y1+r,
+            x2, y2-r,
+            x2, y2,
+            x2-r, y2,
+            x1+r, y2,
+            x1, y2,
+            x1, y2-r,
+            x1, y1+r,
+            x1, y1,
+            smooth=True,
+            **kwargs
+        )
+        
+        bg_box = self.canvas.create_rounded_rectangle(
+            2, 2, width-2, height-2,
+            corner_radius,
+            fill="white",
+            outline="#cccccc"
+        )
+        
+        self.entry = tk.Entry(
+            self,
+            bg="white",
+            bd=0,
+            highlightthickness=0,
+            **kwargs
+        )
+        self.entry.place(
+            x=10,
+            y=height//2,
+            width=width-20,
+            anchor="w"
+        )
 
+    # Add these delegate methods
+    def get(self):
+        """Delegate get() to the internal entry widget"""
+        return self.entry.get()
+    
+    def delete(self, first, last=None):
+        """Delegate delete() to the internal entry widget"""
+        return self.entry.delete(first, last)
+    
+    def insert(self, index, string):
+        """Delegate insert() to the internal entry widget"""
+        return self.entry.insert(index, string)
+
+class RoundedCheckbox(tk.Canvas):
+    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
+        super().__init__(
+            parent,
+            width=24,
+            height=24,
+            highlightthickness=0,
+            bg=DARK,
+            **kwargs
+        )
+        self.variable = variable
+        self.command = command
+        
+        # Create the rounded rectangle for the checkbox
+        self.box = self.create_rounded_rectangle(
+            2, 2, 22, 22,
+            5,  # corner radius
+            outline="#cccccc",
+            fill="white",
+            width=2
+        )
+        
+        # Create the checkmark (hidden initially)
+        self.checkmark = self.create_line(
+            6, 12, 10, 16, 18, 8,
+            fill=DARK,
+            width=3,
+            state="hidden"
+        )
+        
+        # Bind click event
+        self.bind("<Button-1>", self.toggle)
+        
+        # Create label
+        self.label = Label(
+            parent,
+            text=text,
+            bg=DARK,
+            fg=LIGHT,
+            font=(FONT, 12)
+        )
+        
+    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
+        points = [
+            x1+radius, y1,
+            x2-radius, y1,
+            x2, y1,
+            x2, y1+radius,
+            x2, y2-radius,
+            x2, y2,
+            x2-radius, y2,
+            x1+radius, y2,
+            x1, y2,
+            x1, y2-radius,
+            x1, y1+radius,
+            x1, y1
+        ]
+        return self.create_polygon(points, smooth=True, **kwargs)
+    
+    def toggle(self, event=None):
+        if self.variable:
+            self.variable.set(not self.variable.get())
+            self.update_state()
+            if self.command:
+                self.command()
+    
+    def update_state(self):
+        if self.variable and self.variable.get():
+            self.itemconfigure(self.checkmark, state="normal")
+        else:
+            self.itemconfigure(self.checkmark, state="hidden")
 

@@ -22,15 +22,12 @@ import json
 from datetime import datetime
 from collections import defaultdict
 import pickle
-
 from Processing import *
 from outputs import *
-# from metadataMaker import *
 from Style import *
-sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 import openpyxl
-from singleDilutionTest import *
+from singleDilution import *
 
 
 DARK = "#092934"
@@ -42,13 +39,15 @@ ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH  / "Icons"
+
 buttonPosX = 1200
 buttonPosY = 885
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
-
+base_y = 212.0
+heading_y = 20
 
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
@@ -56,1972 +55,72 @@ def relative_to_assets(path: str) -> Path:
 
 
 
-
-
-# .88b  d88. d88888b d888888b  .d8b.  d8888b.  .d8b.  d888888b  .d8b.  
-# 88'YbdP`88 88'     `~~88~~' d8' `8b 88  `8D d8' `8b `~~88~~' d8' `8b 
-# 88  88  88 88ooooo    88    88ooo88 88   88 88ooo88    88    88ooo88 
-# 88  88  88 88~~~~~    88    88~~~88 88   88 88~~~88    88    88~~~88 
-# 88  88  88 88.        88    88   88 88  .8D 88   88    88    88   88 
-# YP  YP  YP Y88888P    YP    YP   YP Y8888D' YP   YP    YP    YP   YP 
-
-
-def create_plate_designer(window, mode="A"):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
-    
-    # Initialize plate layout attributes with defaults
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=1 if mode == "B" else 3),
-        'x_dilution': tk.IntVar(value=1 if mode == "B" else 10),
-        'y_dilution': tk.IntVar(value=1 if mode == "B" else 2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-    
-    # Store the current mode
-    window.current_mode = mode
-    
-    # Create canvas for layout
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    
-    # Add background images and frames
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
-    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
-    # Create frames for plate and controls
-    plate_frame = Frame(window, bg=DARK)
-    plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-    
-    # Create mode switcher and controls
-    create_mode_switcher(control_frame, window)
-    create_controls(control_frame, window, mode)
-    create_plate_display(plate_frame, window)
-    
-    # Add navigation buttons
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        x=buttonPosX,
-        y=buttonPosY
-    )
-    
-    create_rounded_button(
-        canvas=canvas,
-        text="Back",
-        command=lambda: create_titleFrame(window),
-        x=17.0,
-        y=buttonPosY
-    )
-
-
-
-
-
-
-
-######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
-##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
-##       ##     ## ##        ##   ##     ##    ##          ##       ##       ##     ## ##       ##       ####  ## ##       
-##       ########  ######   ##     ##    ##    ######       ######  ##       ########  ######   ######   ## ## ##  ######  
-##       ##   ##   ##       #########    ##    ##                ## ##       ##   ##   ##       ##       ##  ####       ## 
-##    ## ##    ##  ##       ##     ##    ##    ##          ##    ## ##    ## ##    ##  ##       ##       ##   ### ##    ## 
- ######  ##     ## ######## ##     ##    ##    ########     ######   ######  ##     ## ######## ######## ##    ##  ######  
-
-
-def create_titleFrame(window):
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-   
-    ###LOGO IMAGE
-    image_path_10 = relative_to_assets("image_10.png")
-    img_logobig = Image.open(image_path_10)
-    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS) #this resizing method maintains the quality
-
-    #has to be a photoimage for Tkinkter, 
-    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
-    canvas.image_image_10 = image_image_10
-    canvas.create_image(720.0, 420.0, image=image_image_10)
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Upload Assays",
-        command=lambda: upload_images(window),
-        x=730.0,
-        y=670.0, )
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Upload MetaData",
-        command=lambda: upload_txt_file(window),
-        x=510.0,
-        y=670.0,)
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: validate_and_proceed(window),
-        x=buttonPosX,
-        y=buttonPosY )
-
-        
-
-    create_rounded_button(
-    canvas=canvas,
-    text="Create Metadata",
-    command=lambda: create_plate_designer(window),
-    x=290.0,
-    y=670.0)    
-
-    create_rounded_button(
-    canvas=canvas,
-    text="Upload MetaData NEW",
-    command=lambda: upload_metadata_handler(window),
-    x=950.0,
-    y=670.0)
-
-    if hasattr(window, 'window.plates'):
-        print("works")
-
-    return canvas
-
-
-def display_results(window):
-
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    #logo
-    image_path_10 = relative_to_assets("image_10.png")
-    img_logobig = Image.open(image_path_10)
-    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
-
-    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
-    canvas.image_image_10 = image_image_10 
-    canvas.create_image(720.0, 420.0, image=image_image_10)
-
-
-    canvas.create_text(
-        720,  
-        750.0,
-        text="Results Downloading......",
-        fill=DARK,
-        font=(FONT, 12, "bold"),
-        anchor="center" 
-    )
-
-    #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
-    window.update()
-
-    
-    #generates the PDF, the excel and the images 
-    generate_all_outputs(window)
-    #this will only display once the results are generated
-    create_rounded_button(
-        canvas=canvas,
-        text="Finish",
-        command=lambda: window.quit(),#will exit the program
-        x=720 - (200 // 2),  
-        y=buttonPosY-100,
-        button_tag="Finish"
-    )
-
-    
-
-def display_final_image(window, override =False):
-    add_to_history(window) #incase the user goes back
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Redo Edit",
-        command=lambda: create_editFrame(window),
-        x=720-225,
-        y=buttonPosY,
-        button_tag = "back_button_edit" )
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Override Grid",
-        command=lambda: open_grid_override(window),
-        x=720+25,
-        y=buttonPosY,
-        button_tag = "override_button" )
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: next_image(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "DisplayNext" )
-
-
-
-
-    #frame where result will be displayed
-    frame = Frame(window, bg=LIGHT)
-    frame.place(relx=0.5, rely=0.5, anchor="center")
-    if (override):#ie if the user has over ridden the grid
-        marked_image = window.marked_image
-        result_grid = window.result_grid
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
-    else:   
-        gray_image = window.gray_image  
-        columns = window.all_plate_info[window.current_image_index]['layout']['columns']
-        rows = window.all_plate_info[window.current_image_index]['layout']['rows']
-        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-
-    #make sure its the correct type
-    if isinstance(marked_image, Image.Image):
-        marked_image = np.array(marked_image)
-        # print("yes is instance")
-
-    #this is also taking into account that the one uses RGB and the other uses BGR    
-    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)   
-
-
-    #resizing the image to fit
-    max_width, max_height = 1200, 700
-    h, w = marked_image.shape[:2]
-    scale = min(max_width / w, max_height / h)
-    new_size = (int(w * scale), int(h * scale))
-
-
-    #saving what values and images to be used in the PDF reort
-    window.all_plate_info [window.current_image_index]["threshold"] = window.contrast_value
-    window.all_plate_info [window.current_image_index]["smallArea"] = window.excludeSmallDots
-    window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
-    window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
-    window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
-    
-    
-    #Has to be PIL image for tkinkter, resizing and displaying
-    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
-    img = Image.fromarray(resized_image)
-    photo = ImageTk.PhotoImage(img)
-    x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2
-    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
-    canvas.image = photo
-
-
-
-
-
-    #progress bar was created with help from Chat GBT
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    
-    update_progress_bar(window)
-
-def create_slidersFrame(window):
-    # Create main canvas
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    image_image_1 = PhotoImage(
-        file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: create_editFrame(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "slidersNext" )
-
-    # Main dark rectangle for image area
-    round_rectangle(canvas,
-        17.0,
-        168.0,
-        1100.0,
-        826.0,
-        fill=DARK,
-        outline="")
-
-    # Control panel rectangle
-    round_rectangle(canvas,
-        1120.0,
-        168.0,
-        1422.0,
-        826.0,
-        fill=DARK,
-        outline="")
-
-    # Create frame for image canvas
-    main_frame = Frame(window, bg=DARK)
-    main_frame.place(x=27, y=178, width=1070, height=638)
-
-    # Create single canvas for image display
-    window.image_canvas = Canvas(
-        main_frame,
-        width=1050,
-        height=580,
-        bg=DARK,
-        highlightthickness=0
-    )
-    window.image_canvas.pack(expand=True, fill='both')
-
-    # Control panel
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-
-    # Sliders setup
-    y_offset = 20
-    spacing = 100
-
-    # Threshold Slider
-    threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    threshold_label.place(x=20, y=y_offset)
-    create_circular_slider(
-        control_frame, 
-        min_val=0, 
-        max_val=40,
-        position=(40, y_offset + 30),
-        command=lambda v: on_contrast_change(window, v, False),
-        initial_value=window.contrast_value
-    )
-
-    # Size Slider
-    size_label = Label(control_frame, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    size_label.place(x=20, y=y_offset + spacing)
-    create_circular_slider(
-        control_frame, 
-        min_val=1, 
-        max_val=100,
-        position=(40, y_offset + spacing + 30),
-        command=lambda v: on_excludeSmallDots(window, v, False),
-        initial_value=window.excludeSmallDots
-    )
-
-    # Block Size Slider
-    block_label = Label(control_frame, text="Block Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    block_label.place(x=20, y=y_offset + spacing * 2)
-    create_circular_slider(
-        control_frame, 
-        min_val=51, 
-        max_val=1001,
-        position=(40, y_offset + spacing * 2 + 30),
-        command=lambda v: on_block_size_change(window, v, False),
-        initial_value=window.block_size if hasattr(window, 'block_size') else 301
-    )
-
-    # Toggle Original/Processed Image
-    create_rounded_button(
-        canvas=canvas,
-        text="Toggle View",
-        command=lambda: toggle_image(window),
-        x=1130,
-        y=y_offset + spacing * 3 + 30,
-        button_tag="Toggle",
-        width=140,
-        height=40,
-        fill=LIGHT,
-        accent=DARK
-    )
-
-    # # Next button
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Next",
-    #     command=lambda: switch_to_edit_screen(window),
-    #     x=1130,
-    #     y=750,
-    #     button_tag="adjustmentNext"
-    # )
-
-    # Progress bar
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(
-        window.progress_frame, 
-        style="styled.Horizontal.TProgressbar", 
-        orient="horizontal",
-        length=150, 
-        mode="determinate", 
-        maximum=100, 
-        value=0
-    )
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
-
-    display_image(window)
-    return canvas
-
-def on_contrast_change(window, value, backToEdit = False):
-    global backToEdit2
-    if (backToEdit2 == False):
-        window.contrast_value = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-
-        #save new iamges
-        window.binarized_image = final_binary
-        window.contour_img = contour_img
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
-        # print("SAVED")
-        #cannot use undo redo buttons to undo this
-        display_image(window)
-    else:
-        backToEdit2 = False   
-
-
-def on_excludeSmallDots(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
-
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
-        display_image(window)
-    else:
-        backToEdit2 = False
-
-
-def on_block_size_change(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        if int(value)%2 ==0:
-            window.block_size = int(value)+1
-        else:   
-            window.block_size = int(value) 
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        display_image(window)
-    else:
-        backToEdit2 = False
-
-
-def display_image(window):
+def upload_metadata_handler(window):
+    """
+    Handler for the Upload MetaData button.
+    Opens file dialog, loads data, and displays it.
+    """
     try:
-        # Get original image dimensions
-        original_width = window.debug_image.shape[1]
-        original_height = window.debug_image.shape[0]
-        
-        # Calculate available space
-        canvas_width = 1050  # Fixed canvas width
-        canvas_height = 580  # Fixed canvas height
-        
-        # Calculate scaling factors
-        width_scale = canvas_width / original_width
-        height_scale = canvas_height / original_height
-        scale = min(width_scale, height_scale)
-        
-        # Calculate new dimensions
-        new_width = int(original_width * scale)
-        new_height = int(original_height * scale)
-        
-        # Calculate centering offsets
-        x_offset = (canvas_width - new_width) // 2
-        y_offset = (canvas_height - new_height) // 2
-
-
-        img_np = window.debug_image
-        img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-        contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        
-        contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
-        cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
-        
-        window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img
-        window.current_info["IMGcontours"] = contour_img
-        display_img = contour_img
-
-        # Convert to PIL Image and resize
-        img_pil = Image.fromarray(display_img)
-        img_pil = img_pil.resize((new_width, new_height), Image.LANCZOS)
-        window.photo_image = ImageTk.PhotoImage(img_pil)
-        
-        # Clear canvas and display new image
-        window.image_canvas.delete("all")
-        window.image_canvas.create_image(
-            x_offset,
-            y_offset,
-            anchor="nw",
-            image=window.photo_image
+        # Open file dialog for selecting the JSON file
+        filename = filedialog.askopenfilename(
+            title="Select Metadata File",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
         )
-
-    except Exception as e:
-        print(f"Error in display_image: {e}")
-
-def on_excludeSmallDots(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
-
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        display_image(window)
-    else:
-        backToEdit2 = False
-
-
-def on_block_size_change(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        if int(value)%2 ==0:
-            window.block_size = int(value)+1
-        else:   
-            window.block_size = int(value) 
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        display_image(window)
-    else:
-        backToEdit2 = False
-
-def create_editFrame(window, backToEdit = False):
-
-    global backToEdit2 #have to put this here if i want to edit it within this function
-    if backToEdit == False:
-        # Only set if not already set, or force overwrite is needed
-        if window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] is None:
-            window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
-            print("IMGbinaryAutomatic updated")
-
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    image_image_1 = PhotoImage(
-        file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-    window.show_original = False 
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: display_final_image(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "editNext" )
-
-    round_rectangle(canvas,
-       1362.0,
-        168.0,
-        1422.0,
-        826.0,
-        fill=DARK,
-        outline="")
-
-    round_rectangle(canvas,
-        17.0,
-        168.0,
-        1350.0,
-        826.0,
-        fill=DARK,
-        outline="")
-
-    # #displaying metadata fro mthe textfile, checking if current_info is initilised
-    # #TODO HERE
-    # if hasattr(window, 'current_info'):
-    #     current_info = window.current_info
-    #     metadata_text = f"Filename: {current_info['filename']}\n"
-    #     metadata_text += f"StrainA: {current_info['strainA']}\n"
-    #     metadata_text += f"StrainB: {current_info['strainB']}\n"
-    #     metadata_text += f"StrainC: {current_info['strainC']}"
-    # else:
-    #     metadata_text = "No metadata available1"
-
-    # #fixing issue of only metadata displaying
-    # if hasattr(window, 'metadata_label'):
-    #     window.metadata_label.destroy()  # Destroy the old label
-
-    # window.metadata_label = Label(window, text=metadata_text, font=(FONT, 16 * -1, 'bold'), bg=LIGHT, fg=DARK, justify=LEFT)
-    # window.metadata_label.place(x=50, y=850)
-
-
-    canvas.create_text(
-        1391.0,
-        400.0,
-        text="Add",
-        fill=LIGHT,
-        font=(FONT, 14 * -1,'bold')
-    )
-
-    canvas.create_text(
-        1391.0,
-        580.0,
-        text="Delete",
-        fill=LIGHT,
-        font=(FONT, 14* -1,'bold')
-    )
-
-
-
-    image_path_2 = relative_to_assets("image_2.png")
-    img_thinPen = Image.open(image_path_2) 
-    #resizing image, using the othermethod made it super pixelated
-    img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
-
-
-    image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
-    window.edit_images.append(image_image_2)
-    button_thin_pen = Button(
-        window,
-        image=image_image_2,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: set_mode(window, "thin_brush"),
-        bg= DARK
-   
-    )
-    
-    button_thin_pen.place(x=1377.0, y=420.0)
-
-
-    # image_path_3 = relative_to_assets("image_3.png")
-    # img_adder = Image.open(image_path_3) 
-    # img_adder_resized = img_adder.resize((img_adder.width // 11, img_adder.height // 11), Image.LANCZOS)
-    # image_image_3 = ImageTk.PhotoImage(img_adder_resized)    
-    # window.edit_images.append(image_image_3)
-    # magic_adder_button = Button(
-    #     window,
-    #     image=image_image_3,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: print("adder"),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # magic_adder_button.place(x=1376,y=402)
-
-
-    #big eraser
-    image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
-    image_image_4 = image_image_4.subsample(11, 11) 
-    window.edit_images.append(image_image_4)
-    big_eraser_button = Button(
-        window,
-        image=image_image_4,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: set_mode(window, "large_brush"),
-        relief="flat",
-        bg = DARK
-    )
-    big_eraser_button.place(x=1377.0, y=655.0)
-
-    image_path_5 = relative_to_assets("image_5.png")
-    img_thickPen = Image.open(image_path_5) 
-    img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
-
-
-    image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
-    window.edit_images.append(image_image_5)
-    big_pen_button = Button(
-        window,
-        image=image_image_5,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: set_mode(window, "large_brush"),
-        relief="flat",
-        bg = DARK
-    )
-    big_pen_button.place(x=1377, y=460)
-
-
-    image_path_6 = relative_to_assets("image_6.png")
-    img_flood = Image.open(image_path_6) 
-    img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
-
-
-    image_image_6 = ImageTk.PhotoImage(img_flood_resized)
-    window.edit_images.append(image_image_6)
-    flood_eraser_button = Button(
-        window,
-        image=image_image_6,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: set_mode(window, "flood"),
-        relief="flat",
-        bg = DARK
-    )
-    flood_eraser_button.place(x=1376.0, y=616.0)
-
-    image_path_7 = relative_to_assets("image_7.png")
-    img_redo = Image.open(image_path_7)
-    img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
-
-    image_image_7 = ImageTk.PhotoImage(img_redo_resized)
-    window.edit_images.append(image_image_7)
-    redo_button = Button(
-        window,
-        image=image_image_7,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: redo(window),
-        relief="flat",
-        bg = DARK
-    )
-    redo_button.place(x=1376.0, y=251.0)
-
-
-    #undo
-    image_path_8 = relative_to_assets("image_8.png")
-    img_undo = Image.open(image_path_8) 
-    img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
-    image_image_8 = ImageTk.PhotoImage(img_undo_resized)
-    window.edit_images.append(image_image_8)
-    undo_button = Button(
-        window,
-        image=image_image_8,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: undo(window),
-        relief="flat",
-        bg = DARK
-    )
-    undo_button.place(x=1376.0, y=212.0)
-
-
-    # thin eraser
-    image_path_9 = relative_to_assets("image_9.png")
-    img_thinEraser = Image.open(image_path_9)
-    img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
-    image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
-    window.edit_images.append(image_image_9)
-    thin_eraser_button = Button(
-        window,
-        image=image_image_9,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: set_mode(window, "small_brush"),
-        relief="flat",
-        bg = DARK
-    )
-    thin_eraser_button.place(x=1376.0, y=693.0)
-
-    window.undo_button = undo_button
-    window.redo_button = redo_button
-
-    total_width = 1295 - 34
-    total_height = 783 - 203 - 100
-    img_width = total_width // 2
-    img_height = total_height
-
-    # Create frames to hold canvas and scrollbars
-    left_frame = Frame(window, bg=DARK)
-    right_frame = Frame(window, bg=DARK)
-    
-    # Create canvases with scrollbars
-    window.left_canvas = Canvas(
-        left_frame,
-        width=img_width,
-        height=img_height,
-        bg=DARK,
-        highlightthickness=0
-    )
-    left_scroll_y = Scrollbar(left_frame, orient="vertical", command=window.left_canvas.yview)
-    left_scroll_x = Scrollbar(left_frame, orient="horizontal", command=window.left_canvas.xview)
-
-
-    window.right_canvas = Canvas(
-        right_frame,
-        width=img_width,
-        height=img_height,
-        bg=DARK,
-        highlightthickness=0
-    )
-    right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
-    right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
-
-    # Synchronization functions
-    def sync_scroll_y_left(*args):
-        window.right_canvas.yview_moveto(args[0])
-
-    def sync_scroll_y_right(*args):
-        window.left_canvas.yview_moveto(args[0])
-
-    def sync_scroll_x_left(*args):
-        window.right_canvas.xview_moveto(args[0])
-
-    def sync_scroll_x_right(*args):
-        window.left_canvas.xview_moveto(args[0])
-
-    # Configure scrollbar synchronization
-    window.left_canvas.configure(
-        xscrollcommand=lambda *args: (left_scroll_x.set(*args), sync_scroll_x_left(*args)),
-        yscrollcommand=lambda *args: (left_scroll_y.set(*args), sync_scroll_y_left(*args))
-    )
-
-    window.right_canvas.configure(
-        xscrollcommand=lambda *args: (right_scroll_x.set(*args), sync_scroll_x_right(*args)),
-        yscrollcommand=lambda *args: (right_scroll_y.set(*args), sync_scroll_y_right(*args))
-    )
-
-    # Configure scrollbar commands to update both canvases
-    left_scroll_y.configure(command=lambda *args: (window.left_canvas.yview(*args), window.right_canvas.yview(*args)))
-    left_scroll_x.configure(command=lambda *args: (window.left_canvas.xview(*args), window.right_canvas.xview(*args)))
-    right_scroll_y.configure(command=lambda *args: (window.right_canvas.yview(*args), window.left_canvas.yview(*args)))
-    right_scroll_x.configure(command=lambda *args: (window.right_canvas.xview(*args), window.left_canvas.xview(*args)))
-
-    # Grid layout for scrollbars
-    window.left_canvas.grid(row=0, column=0, sticky="nsew")
-    left_scroll_y.grid(row=0, column=1, sticky="ns")
-    left_scroll_x.grid(row=1, column=0, sticky="ew")
         
-    window.right_canvas.grid(row=0, column=0, sticky="nsew")
-    right_scroll_y.grid(row=0, column=1, sticky="ns")
-    right_scroll_x.grid(row=1, column=0, sticky="ew")
-
-    # Configure grid weights
-    left_frame.grid_rowconfigure(0, weight=1)
-    left_frame.grid_columnconfigure(0, weight=1)
-    right_frame.grid_rowconfigure(0, weight=1)
-    right_frame.grid_columnconfigure(0, weight=1)
-
-    yposFrames= 300
-    # Position the frames
-    left_frame.place(x=30, y=yposFrames, width=img_width + 20, height=img_height + 20)
-    right_frame.place(x=690, y=yposFrames, width=img_width + 20, height=img_height + 20)
-
-    # Initialize zoom level
-    window.zoom_level = 1.0
-    
-    # Set up zoom controls and bindings
-    setup_zoom_controls(window)
-
-
-    # Display images
-    display_images(window)
-    
-    create_rounded_button(
-        canvas=canvas,
-        text="Toggle",
-        command=lambda: toggle_image(window),
-        x=1200,
-        y=205,
-        button_tag = "Toggle",
-        width = 100, 
-        height = 60,
-        fill = LIGHT,
-        accent = DARK)
-
-
-    #bind mouse clicks to start the drawing mode, binding it like this allows the user to draw continiously until they let go of the click
-    for canvas in [window.left_canvas, window.right_canvas]:
-        canvas.bind("<ButtonPress-1>", lambda event: start_draw(window, event))
-        canvas.bind("<B1-Motion>", lambda event: draw(window, event))
-        canvas.bind("<ButtonRelease-1>", lambda event: stop_draw(window, event))
-    #configuring buttonts to theit associated fucntions/modes
-    button_thin_pen.config(command=lambda: set_mode(window, "small_brush"))
-    big_pen_button.config(command=lambda: set_mode(window, "large_brush"))
-    thin_eraser_button.config(command=lambda: set_mode(window, "small_eraser"))
-    big_eraser_button.config(command=lambda: set_mode(window, "large_eraser"))
-    flood_eraser_button.config(command=lambda: set_mode(window, "flood"))
-    undo_button.config(command=lambda: undo(window))
-    redo_button.config(command=lambda: redo(window))
-
-
-
-
-    #progress bar (same code for all screens), created with help from chatGBT
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    #making the position a global variable so if i move it i dont have to change it for all screens
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
-
-    return canvas
-
-
-    
-def update_zoomed_images(window):
-    """Update both canvases with zoomed images, maintaining scrollable content"""
-    window.left_canvas.delete("all")
-    window.right_canvas.delete("all")
-    
-    left_img = window.current_image
-    right_img = window.processed_image
-    
-    if left_img and right_img:
-        # Calculate zoomed dimensions
-        new_width = int(left_img.width * window.zoom_level)
-        new_height = int(left_img.height * window.zoom_level)
-        
-        # Resize images
-        left_img_zoomed = left_img.resize((new_width, new_height), Image.LANCZOS)
-        right_img_zoomed = right_img.resize((new_width, new_height), Image.LANCZOS)
-        
-        # Convert to PhotoImage
-        window.left_photo = ImageTk.PhotoImage(left_img_zoomed)
-        window.right_photo = ImageTk.PhotoImage(right_img_zoomed)
-        
-        # Set scroll region to the full size of the zoomed image
-        window.left_canvas.config(scrollregion=(0, 0, new_width, new_height))
-        window.right_canvas.config(scrollregion=(0, 0, new_width, new_height))
-        
-        # Display images at (0,0) - scrolling will handle visibility
-        window.left_canvas.create_image(0, 0, anchor=NW, image=window.left_photo)
-        window.right_canvas.create_image(0, 0, anchor=NW, image=window.right_photo)
-
-
-def open_grid_override(window):
-    for widget in window.winfo_children():
-        widget.destroy()
-   
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-    binary_image = window.binarized_image.copy()
-    window.binary_image = binary_image
-
-    rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
-   
-    #resizing as the dataset images are HUGE
-    max_width, max_height = 1200, 700
-    h, w = rgb_image.shape[:2]
-    scale = min(max_width / w, max_height / h)
-    new_size = (int(w * scale), int(h * scale))
-    resized_image = cv2.resize(rgb_image, new_size, interpolation=cv2.INTER_AREA)
-   
-    img = Image.fromarray(resized_image)
-    photo = ImageTk.PhotoImage(img)
-    x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2
-    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
-    canvas.image = photo
-   
-    #use scale factor for pen tools so it maps correcly on the image
-    window.grid_override_scale = scale
-    window.grid_override_offset = (x_position, y_position)
-   
-    #find the blobs so the centerpoints are displayed if the user tries to override the grid. Finding blobs is based on the size of the image incase the image is much bigger/smaller it cant be a set pixel size
-    height, width = window.binary_image.shape
-    coloums = window.all_plate_info[window.current_image_index]['layout']['columns']
-
-    max_radius = int(width/(coloums*2))
-    min_radius = int(max_radius/3)
-    max_area = max_radius**2*(math.pi)
-    min_area = min_radius**2*(math.pi)
-    # cv2.imshow("marked image1244443", resize_for_display(marked_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-    x_coords, y_coords, _ = findBlobs(binary_image, min_area, max_area)
-    window.center_points = list(zip(x_coords, y_coords))
-
-    window.blob_points = list(zip(x_coords, y_coords))
-    print("window.blob_points")
-    print(window.blob_points)
-    window.clicked_points = []
-
-    #allows the user to add points
-    def draw_points():
-        canvas.delete("point")
-        for x, y in window.blob_points:
-            scaled_x = x * scale + x_position
-            scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
-        for x, y in window.clicked_points:
-            scaled_x = x * scale + x_position
-            scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
-    draw_points()
-
-    #allows the user to remove points that they made OR points detected from find blobs
-    def remove_point(event):
-        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
-        remove_radius = 50  #this allows the user to not be so exact with where they click
-        blob_points = []
-
-        #checking to see if point must be removed
-        for point in window.blob_points:
-            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
-            if distance > remove_radius:
-                blob_points.append(point)
-
-        window.blob_points = blob_points
-        #same thing for the clicked points
-        clicked_points = []
-        for point in window.clicked_points:
-            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
-            if distance > remove_radius:
-                clicked_points.append(point)
-
-        window.clicked_points = clicked_points
-        #redraw everyhting
-        draw_points()
-
-    #if the user clicks
-    def add_point(event):
-        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
-        #check if the point is within the image boundaries (otherwise it draws when you click on the add button)
-        if (0 <= x < window.binary_image.shape[1] and 
-            0 <= y < window.binary_image.shape[0]):
-            window.clicked_points.append((int(x), int(y)))
-            draw_points()
-
-    #moves the crosshairs
-    def on_mouse_move(event):
-        canvas.delete("hover_line")
-        x, y = event.x, event.y
-        
-        #checking how far they must expand so they are not outside the image boundaries
-        left_boundary = x_position
-        right_boundary = x_position + new_size[0]
-        top_boundary = y_position
-        bottom_boundary = y_position + new_size[1]
-
-        #drawing them
-        if top_boundary <= y <= bottom_boundary:
-            canvas.create_line(left_boundary, y, right_boundary, y, fill=ACCENT, tags="hover_line")
-        
-        if left_boundary <= x <= right_boundary:
-            canvas.create_line(x, top_boundary, x, bottom_boundary, fill=ACCENT, tags="hover_line")
-
-    #this was the other option instead of the buttons, it binds to left and right mouse clicks
-    canvas.bind("<Button-1>", add_point)
-    canvas.bind("<Button-3>", remove_point)
-    canvas.bind("<Motion>", on_mouse_move)
-
-    #buttons
-    create_rounded_button(
-        canvas=canvas,
-        text="Remove Points",
-        command=lambda: canvas.bind("<Button-1>", remove_point),
-        x=720+25,
-        y=buttonPosY,
-        button_tag = "Remove_Points" )
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Add Points",
-        command=lambda: canvas.bind("<Button-1>", add_point),
-        x=720-225,
-        y=buttonPosY,
-        button_tag = "Add_points" )
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Recalculate Grid",
-        command=lambda: recalculate_grid(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "Recalculate" )
-
-
-    window.mainloop()
-
-
-def recalculate_grid(window):
-    #user clicked and previously detected
-    all_points = window.blob_points + window.clicked_points
-    if len(all_points) < 12:
-        messagebox.showwarning("Not enough points", "Please ensure there are at least 12 points before recalculating the grid.")
-        return
-
-    #convert to numpy array so its the same type as the senterpoints
-    window.clicked_pointsx = [point[0] for point in all_points]
-    window.clicked_pointsy = [point[1] for point in all_points]
-    height, width = window.gray_image.shape
-    #new grid using user clicked AND previously detected
-    columns = window.all_plate_info[window.current_image_index]['layout']['columns']
-    rows = window.all_plate_info[window.current_image_index]['layout']['rows']
-    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows)
-
-    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size,columns, rows)
-
-    window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
-    # #SAVING INFO
-    # if hasattr(window, 'current_info'):
-    #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-    #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-    #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
-    #     # Update the window.image_info with the modified current_info
-    #     window.image_info[window.current_image_index] = window.current_info.copy()
-        
-    #     # print("RECALCULATED:      TESTER INFORMATION:") 
-    #     # print("_______________________________________________________________________")
-    #     # print(ordered_counts["Strain 1"])    
-    #     # print(ordered_counts["Strain 2"])   
-    #     # print(ordered_counts["Strain 3"])   
-
-    #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-    #     # print(f"Debug: Current image info: {window.current_info}")
-    #     # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
-
-    # else:
-    #     print("Error: current_info not initialized")
-
-    #update so the new override one is used
-    window.result_grid= counts
-    window.marked_image = marked_image
-    display_final_image(window, True)
-
-
-#progress bar update - help from chatGBT
-def update_progress_bar(window):
-    if hasattr(window, 'progress_bar') and window.progress_bar:
-        progress = (window.current_image_index + 1) / len(window.image_paths) * 100
-        window.progress_bar['value'] = progress
-        window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
-
-def validate_and_proceed(window):
-    """
-    Validates if the image paths and image info are properly initialized and match entries in window.all_plate_info.
-    Proceeds to create the crop frame if valid, otherwise shows a warning.
-    """
-    # Ensure `window.image_paths`, `window.all_plate_info`, and `window.image_info` are initialized
-    if (
-        hasattr(window, 'image_paths') and window.image_paths
-        and hasattr(window, 'all_plate_info') and window.all_plate_info
-    ):
-        # Check if all filenames in `window.image_info` exist in `window.all_plate_info`
-        all_filenames = {info['filename'].lower() for info in window.all_plate_info}
-        
-        # Debugging: Print out expected filenames from the metadata
-        # print("Expected filenames from metadata:")
-        # for filename in all_filenames:
-        #     print(f"- {filename}")
-        
-        # if unmatched:
-        #     messagebox.showwarning(
-        #         "Warning",
-        #         f"The following filenames do not match metadata entries:\n{', '.join(unmatched)}"
-        #     )
-       # else:
-        create_cropFrame(window)
-    else:
-        messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
-
-
-def process_image(window):
-    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
-    window.contrast_value = idealContrast
-
-    window.gray_image = gray_image
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
-
-    window.contour_img = contour_img
-    window.binarized_image = final_binary
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-    
-    # only initialize history if it's empty, othewise its adding doubles
-    if not window.history:
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
-    
-    update_undo_redo_buttons(window)
-    #create_editFrame(window)
-    create_slidersFrame(window)
-
-
-#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
-# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
-# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
-# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
-# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
-#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
-
-
-#makes sure that the crop takes into account the scale of the image, since its downsized
-def resize_for_display_crop(image, max_width=1000, max_height=650):
-    h, w = image.shape[:2]
-    scale = min(max_width/w, max_height/h)
-    new_size = (int(w*scale), int(h*scale))
-    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
-
-
-#get the co-ordnates of the click , where the crop starts
-def start_crop(event, window):
-    window.cropping = True
-    window.x_start, window.y_start = event.x, event.y
-
-
-
-def crop(event, window, canvas):
-
-    #removes old rectangle and creates a new one
-    if window.cropping:
-        window.x_end, window.y_end = event.x, event.y
-        canvas.delete("crop_rectangle")
-
-        # Create the rectangle
-        canvas.create_rectangle(
-            window.x_start, window.y_start, window.x_end, window.y_end,
-            outline=LIGHT,
-            width=2,
-            fill=LIGHT,
-            stipple="gray50", #only had this option for low opacity
-            tags="crop_rectangle"
-        )
-
-def end_crop(event, window, canvas):
-    window.cropping = False
-
-def apply_crop(window):
-    if window.x_start != window.x_end and window.y_start != window.y_end:
-        #dimensions of the original image
-        original_height, original_width = window.original_image.shape[:2]
-        
-        #scaling factors
-        scale_x = original_width / window.display_width
-        scale_y = original_height / window.display_height
-        
-        #offset of the image on the canvas
-        canvas_width = 1440  # From your create_cropFrame function
-        canvas_height = 1024  # From your create_cropFrame function
-        offset_x = (canvas_width - window.display_width) // 2 
-        offset_y = (canvas_height - window.display_height) // 2
-        
-        #scaling to crop coordinates, accounting for the offset
-        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
-        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
-        
-        #check within image bounds, or map to beinging end of bounds
-        x_start = max(0, x_start)
-        y_start = max(0, y_start)
-        x_end = min(x_end, original_width)
-        y_end = min(y_end, original_height)
-        
-        #actual crop
-        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        h, w = window.current_image.shape[:2]
-        # print("width")
-        # print(w)
-        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
-        process_image(window)
-    else:
-        messagebox.showwarning("Warning", "Please select an area to crop.")
-
-
-def create_cropFrame(window):
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    window.edit_images = []
-
-    image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-    canvas.create_text(
-        720,
-        TITLEHEIGHT,
-        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
-        fill=DARK,
-        font=(FONT, 12, 
-        "bold")
-    )
-
-    #resize image
-    display_image, scale_factor = resize_for_display_crop(window.original_image)
-    window.scale_factor = scale_factor
-
-    #convert OpenCV to PhotoImage for Tkinkter to use
-    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(image)
-    photo = ImageTk.PhotoImage(image=image)
-
-    #place image on canvas
-    canvas.create_image(720, 512, image=photo, anchor="center")
-    canvas.image = photo
-
-    #keep dimensions
-    window.display_width = photo.width()
-    window.display_height = photo.height()
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Crop",
-        command=lambda: apply_crop(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "cropNext" )
-
-
-    #default cropping variables
-    window.cropping = False
-    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
-
-    #bind mouse events
-    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
-    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
-    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
-
-    #progress bar things - same as other screens
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
-
-def upload_images(window):
-    """
-    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
-    """
-    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-   
-    # Ensure file_paths are selected and window.all_plate_info is initialized
-    if file_paths and hasattr(window, 'all_plate_info'):
-        window.image_paths = []
-        unmatched_filenames = []  # Collect unmatched filenames
-        print("Does have attribute")
-        # Get the list of filenames from window.all_plate_info
-        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
-        
-        # Debugging: Print out expected filenames from the metadata
-        print("Expected filenames from metadata:")
-        for filename in valid_filenames:
-            print(f"- {filename}")
-
-        # Check the selected files for matches
-        for path in file_paths:
-            filename = os.path.basename(path).lower()
-            if filename in valid_filenames:
-                window.image_paths.append(path)
-            else:
-                unmatched_filenames.append(filename)
-
-        # Handle matching and unmatched files
-        if window.image_paths:
-            window.current_image_index = 0
-            load_current_image(window)  # Load the first matching image
-            # if unmatched_filenames:
-            #     messagebox.showwarning(
-            #         "Warning",
-            #         f"No matching entries found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}"
-            #     )
-        else:
-            messagebox.showwarning(
-                "Warning",
-                "No matching images found for any entries in the metadata."
-            )
-    else:
-        messagebox.showwarning(
-            "Warning",
-            "No files selected or metadata not initialized."
-        )
-
-def load_current_image(window):
-    #within correct bounds
-    if 0 <= window.current_image_index < len(window.image_paths):
-        window.image_path = window.image_paths[window.current_image_index]
-        window.original_image = cv2.imread(window.image_path)
-        if window.original_image is None:
-            messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
+        if not filename:  # User cancelled
             return
-        window.current_image = window.original_image.copy()
-       
-        # # Update the current image info
-        # print("IS IT HERE??????")
+            
+        # Load the data
+        with open(filename, 'r') as file:
+            loaded_data = json.load(file)
+            
+        # Update the global data structure
+        window.all_plate_info = loaded_data
+        
+        # Print the loaded data in a formatted way
+        print("\nUploaded Metadata Contents:")
+        print("-" * 50)
+        
+        for idx, plate in enumerate(loaded_data, 1):
+            print(f"\nPlate {idx}:")
+            print("  Strains:", ", ".join(plate.get('strains', [])))
+            print("  Columns:", plate.get('column_indexes', []))
+            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
+            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
+            
+        print("-" * 50)
+        print(f"Successfully loaded data from: {filename}")
 
-        # print("AFTER")
+        return loaded_data
+        
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON file format")
+        return None
+    except Exception as e:
+        print(f"Error loading metadata: {str(e)}")
+        return None
 
-        #TODO NEED TO FIX HERE TO LOAD THE INFO
-        window.current_info = window.all_plate_info[window.current_image_index].copy()
-        # print(f"Debug: Loading image {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-    else:
-        messagebox.showerror("Error", "No image to load")
-
-def next_image(window):
-    if window.current_image_index < len(window.image_paths) - 1:
-        window.current_image_index += 1
-        load_current_image(window)
-        create_cropFrame(window)
-        update_progress_bar(window)
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: ALL INFO : {window.image_info}" )
-    else:
-        # save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
-        # print("saved")
-        # # 
-        processResults(window)
-
+from pathlib import Path
+import os
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
+from tkinter import ttk
+import tkinter as tk
 import cv2
 import numpy as np
-
-def process_tool_usage(window):
-    """
-    Process binary images to create a color-coded visualization of tool usage.
-    
-    Args:
-        window: Window object containing all_plate_info with binary images
-    """
-    # print(window.all_plate_info)
-    for plate_info in window.all_plate_info:
-        # Skip if either image is None
-        if plate_info['IMGbinary'] is None or plate_info['IMGbinaryAutomatic'] is None:
-            print("IS NONE")
-            continue
-            
-        # Get the binary images
-        manual_binary = plate_info['IMGbinary']
-        auto_binary = plate_info['IMGbinaryAutomatic']
-        
-        # Ensure both images are binary (0 or 255)
-        _, manual_binary = cv2.threshold(manual_binary, 127, 255, cv2.THRESH_BINARY)
-        _, auto_binary = cv2.threshold(auto_binary, 127, 255, cv2.THRESH_BINARY)
-        
-        # Create blank RGB image
-        height, width = manual_binary.shape
-        tool_usage = np.zeros((height, width, 3), dtype=np.uint8)
-        
-        # Where both are white (255)
-        both_white = cv2.bitwise_and(manual_binary, auto_binary)
-        tool_usage[both_white == 255] = [255, 255, 255]  # White
-        
-        # Where only manual is white
-        only_manual = cv2.bitwise_and(manual_binary, cv2.bitwise_not(auto_binary))
-        tool_usage[only_manual == 255] = [0, 0, 255]  # Red
-        
-        # Where only automatic is white
-        only_auto = cv2.bitwise_and(auto_binary, cv2.bitwise_not(manual_binary))
-        tool_usage[only_auto == 255] = [255, 0, 0]  # Blue
-        # Save the result back to the plate info
-        plate_info['IMGToolUsage'] = tool_usage
-
-def processResults(window):
-    # restore_window_state(window, 'window_state_multipulAdditives.pkl')
-    if window.current_mode =='A':
-        process_tool_usage(window)
-        process_split_order_quantifications(window)
-        strain_data, dilution_series = generate_data_series(window)
-        sorted_positions = get_sorted_positions(dilution_series)
-        dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
-
-        exported_df = export_strain_data_to_excel(strain_data, dilution_series)
-        all_strain_data = []
-    
-        for strain, series in strain_data.items():
-            # Get all figures and statistics for this strain
-            figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
-            all_strain_data.append((strain, figures_and_stats))
-        
-        # Generate single PDF report with all strains
-        output_filename = "growth_analysis_report_Test.pdf"
-        generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, output_filename)
-        
-        # Clean up matplotlib figures
-        for _, figures_and_stats in all_strain_data:
-            for fig, _, _ in figures_and_stats:
-                plt.close(fig)
-
-    else:
-        df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
-
-        # Save or display the figures
-        generate_pdf_report_MODEB(
-            window.all_plate_info,
-            'output_report_TESTINGMODEB.pdf',
-            mean_fig,
-            knockdown_fig,
-            individual_fig,
-            version="1.0.0"
-        )
-        df = export_plate_data_to_excel(window.all_plate_info, 'plate_analysis.xlsx')  
-
-
-    #display_results(window)
-    # # After processing plates
-    # export_tidy_data_to_excel(window)  # Uses default filename
-    # # Or specify a custom filename
-    # export_tidy_data_to_excel(window, 'my_plate_data.xlsx')
-
-def save_window_state(window, filename):
-    # Extract the all_plate_info from the window object
-    all_plate_info = window.all_plate_info
-    
-    # Serialize and save it to a file using pickle
-    with open(filename, 'wb') as file:
-        pickle.dump(all_plate_info, file)
-
-def restore_window_state(window, filename):
-    # Deserialize the state from the pickle file
-    with open(filename, 'rb') as file:
-        all_plate_info = pickle.load(file)
-    
-    # Restore the all_plate_info attribute in the window object
-    window.all_plate_info = all_plate_info
-
-def process_split_order_quantifications(window):
-    """
-    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
-    into split_quantifications based on strain_positions, and saving ordered quantifications.
-
-    Parameters:
-    window (object): The window object containing all_plate_info
-    """
-    for plate in window.all_plate_info:
-        # Extract plate layout and dilution factors
-        rows = plate['layout']['rows']
-        cols = len(plate['column_indexes'])
-        x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
-        y_dilution_factor = plate['layout']['y_dilution']
-        
-        # Calculate the dilution series
-        dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
-        plate['dilutions'] = dilution_array 
-        # Get sorted positions based on dilution series
-        sorted_positions = get_sorted_positions(dilution_array)
-        
-        # Split unorderedquantifications into split_quantifications
-        unordered_quantifications = np.array(plate['unorderedquantifications'])
-        strain_positions = plate['strain_positions']
-        
-        split_quantifications = []
-        for strain, pos_range in strain_positions.items():
-            start, end = pos_range
-            split_quantifications.append(unordered_quantifications[:, start:end + 1])
-        
-        # Save split_quantifications to the plate
-        plate['split_quantifications'] = split_quantifications
-        
-        # Create ordered_quantifications based on sorted positions
-        ordered_quantifications = []
-        for strain_data in split_quantifications:
-            ordered_strain_values = extract_values_at_positions(strain_data, sorted_positions)
-            ordered_quantifications.append(ordered_strain_values)
-        
-        # Save ordered_quantifications to the plate
-        plate['ordered_quantifications'] = ordered_quantifications
-
-
-
-
-
-
-
-
-##     ##  #######  ########  ########  ######  
-###   ### ##     ## ##     ## ##       ##    ## 
-#### #### ##     ## ##     ## ##       ##       
-## ### ## ##     ## ##     ## ######    ######  
-##     ## ##     ## ##     ## ##             ## s
-##     ## ##     ## ##     ## ##       ##    ## 
-##     ##  #######  ########  ########  ###### 
-
-
-
-def set_mode(window, mode):
-    window.mode = mode
-    if mode == "small_brush" or mode == "small_eraser":
-        window.brush_size = 40
-    elif mode == "large_brush" or mode == "large_eraser":
-        window.brush_size = 120
-
-def toggle_image(window):
-    window.show_original = not window.show_original
-    display_images(window)
-
-
-def setup_zoom_controls(window):
-    """Set up zoom controls and initialize zoom-related variables"""
-    window.zoom_level = 1.0
-    window.zoom_min = 0.5
-    window.zoom_max = 5.0
-    
-    # Create zoom frame
-    zoom_frame = Frame(window, bg=DARK)
-    zoom_frame.place(x=1376, y=300)
-    
-    # Zoom in button
-    zoom_in_btn = Button(
-        zoom_frame,
-        text="+",
-        command=lambda: adjust_zoom(window, 1.2),
-        font=(FONT, 12, 'bold'),
-        bg=DARK,
-        fg=LIGHT,
-        width=2
-    )
-    zoom_in_btn.pack(pady=2)
-    
-    # Zoom out button
-    zoom_out_btn = Button(
-        zoom_frame,
-        text="-",
-        command=lambda: adjust_zoom(window, 0.8),
-        font=(FONT, 12, 'bold'),
-        bg=DARK,
-        fg=LIGHT,
-        width=2
-    )
-    zoom_out_btn.pack(pady=2)
-    
-
-def adjust_zoom(window, factor):
-    """Adjust zoom level and trigger display update"""
-    new_zoom = window.zoom_level * factor
-    if window.zoom_min <= new_zoom <= window.zoom_max:
-        window.zoom_level = new_zoom
-        display_images(window)
-
-def display_images(window):
-    """Display images while maintaining original aspect ratio with zoom support"""
-    try:
-        # Get original image dimensions
-        original_width = window.debug_image.shape[1]
-        original_height = window.debug_image.shape[0]
-        
-        # Calculate available space
-        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
-        max_height = int((window.winfo_height() - 200) * window.zoom_level)
-        
-        # Calculate scaling factors for both dimensions
-        width_scale = max_width / original_width
-        height_scale = max_height / original_height
-        
-        # Use the smaller scaling factor to maintain aspect ratio
-        scale = min(width_scale, height_scale)
-        
-        # Calculate new dimensions
-        zoomed_width = int(original_width * scale)
-        zoomed_height = int(original_height * scale)
-        
-        # Right image (editing image)
-        img_editing = Image.fromarray(window.debug_image)
-        img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
-        window.photo_editing = ImageTk.PhotoImage(img_editing)
-        
-        # Configure right canvas
-        window.right_canvas.config(
-            width=window.photo_editing.width(),
-            height=window.photo_editing.height(),
-            scrollregion=(0, 0, zoomed_width, zoomed_height)
-        )
-        window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
-        
-        # Store display dimensions
-        window.display_width = window.photo_editing.width()
-        window.display_height = window.photo_editing.height()
-        
-        # Left image (toggleable)
-        if window.show_original:
-            img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
-        else:
-            img_np = window.current_image
-            img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
-            img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
-            contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contour_img = img_np.copy()
-            for cntr in contours:
-                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
-            window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
-            window.current_info["IMGcontours"] = contour_img
-            img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-            
-        # Resize left image with zoom while maintaining aspect ratio
-        img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
-        window.photo_left = ImageTk.PhotoImage(img_left)
-        
-        # Configure left canvas
-        window.left_canvas.config(
-            width=window.photo_left.width(),
-            height=window.photo_left.height(),
-            scrollregion=(0, 0, zoomed_width, zoomed_height)
-        )
-        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
-    except Exception as e:
-        print(f"Error in display_images: {e}")
-
-# Update the draw functions to work with zoom
-def start_draw(window, event):
-    window.is_drawing = True
-    window.last_x = event.widget.canvasx(event.x)
-    window.last_y = event.widget.canvasy(event.y)
-    window.active_canvas = event.widget
-    draw(window, event)
-
-def draw(window, event):
-    if window.is_drawing:
-        # Get current canvas coordinates considering scroll
-        x = window.active_canvas.canvasx(event.x)
-        y = window.active_canvas.canvasy(event.y)
-        
-        # Get actual image dimensions
-        img_height, img_width = window.binarized_image.shape[:2]
-        
-        # Calculate scaling factors considering zoom
-        scale_x = img_width / (window.display_width / window.zoom_level)
-        scale_y = img_height / (window.display_height / window.zoom_level)
-        
-        # Convert coordinates
-        x_img = int(x / window.zoom_level * scale_x)
-        y_img = int(y / window.zoom_level * scale_y)
-        last_x_img = int(window.last_x / window.zoom_level * scale_x)
-        last_y_img = int(window.last_y / window.zoom_level * scale_y)
-        
-        # Apply drawing operation
-        if window.mode == "flood":
-            flood_erase(window, x_img, y_img)
-        else:
-            # Scale brush size with zoom
-            original_brush_size = window.brush_size
-            window.brush_size = max(1, int(window.brush_size / window.zoom_level))
-            brush_draw(window, last_x_img, last_y_img, x_img, y_img)
-            window.brush_size = original_brush_size
-        
-        window.last_x = x
-        window.last_y = y
-        display_images(window)
-
-
-
-
-
-def stop_draw(window, event):
-    window.is_drawing = False
-    current_state = window.binarized_image.copy()
-    if len(window.history) == 0 or not np.array_equal(current_state, window.history[-1]):
-        add_to_history(window)
-    update_undo_redo_buttons(window)
-
-def flood_erase(window, x, y):
-    if window.binarized_image[y, x] == 255:  # If the clicked pixel is white
-        cv2.floodFill(window.binarized_image, None, (x, y), 0)  # Fill with black
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-
-def brush_draw(window, x1, y1, x2, y2):
-    if window.mode in ["small_brush", "large_brush"]:
-        color = 255  #white drawing
-    else:
-        color = 0  #black erasing
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-def brush_erase(window, x1, y1, x2, y2):
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), 0, window.brush_size * 2)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-def add_to_history(window):
-    current_state = window.binarized_image.copy()
-    if not window.history or not np.array_equal(current_state, window.history[-1]):
-        window.history.append(current_state)
-        window.redo_stack.clear()
-        update_undo_redo_buttons(window)
-
-def clear_history(window): 
-    window.history.clear()
-    window.redo_stack.clear()
-
-    current_state = window.binarized_image.copy()
-    window.history.append(current_state)
-
-    update_undo_redo_buttons(window)
-
-def undo(window):
-    if len(window.history) > 1:
-        current_state = window.binarized_image.copy()
-        window.redo_stack.append(current_state)
-        window.binarized_image = window.history.pop().copy()
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-        display_images(window)
-    elif len(window.history) == 1:
-        # If there's only one item in history, it's the original image
-        current_state = window.binarized_image.copy()
-        if not np.array_equal(current_state, window.history[0]):
-            window.redo_stack.append(current_state)
-            window.binarized_image = window.history[0].copy()
-            window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-            display_images(window)
-    update_undo_redo_buttons(window)
-
-def redo(window):
-    if window.redo_stack:
-        window.history.append(window.binarized_image.copy())
-        window.binarized_image = window.redo_stack.pop().copy()
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-        display_images(window)
-        update_undo_redo_buttons(window)
-
-def update_undo_redo_buttons(window):
-    if hasattr(window, 'undo_btn') and window.undo_btn is not None:
-        window.undo_btn['state'] = "normal" if len(window.history) > 1 else "disabled"
-    if hasattr(window, 'redo_btn') and window.redo_btn is not None:
-        window.redo_btn['state'] = "normal" if window.redo_stack else "disabled"
-
-
-#used for both eraser and pen, 
-def brush_draw(window, x1, y1, x2, y2):
-    if window.mode in ["small_brush", "large_brush"]:
-        color = 255  #white if drawing
-    else:
-        color = 0  #black if erasing
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-
-
-
-
-
-
-
-
+from scipy.spatial import distance
+from PIL import Image, ImageTk, ImageDraw
+import copy
+from functools import partial
+import time
+import math 
+import sys
+import json
+import os
+from datetime import datetime
+from tkinter import Toplevel, Label
+from PIL import Image, ImageTk
+from Style import *
+from PIL import ImageFont
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -2032,7 +131,6 @@ GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
 FONT = "Microsoft New Tai Lue"
 
-
 # d8888b. db       .d8b.  d888888b d88888b .d8888. 
 # 88  `8D 88      d8' `8b `~~88~~' 88'     88'  YP 
 # 88oodD' 88      88ooo88    88    88ooooo `8bo.   
@@ -2040,255 +138,71 @@ FONT = "Microsoft New Tai Lue"
 # 88      88booo. 88   88    88    88.     db   8D 
 # 88      Y88888P YP   YP    YP    Y88888P `8888Y' 
 
-class RoundedEntry(tk.Frame):
-    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
-        super().__init__(parent, bg=DARK)
-        
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        
-        # Create rounded canvas background
-        self.canvas = tk.Canvas(
-            self,
-            width=width,
-            height=height,
-            bg=DARK,
-            highlightthickness=0
-        )
-        self.canvas.grid(row=0, column=0)
-        
-        # Draw rounded rectangle
-        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
-            x1+r, y1,
-            x1+r, y1,
-            x2-r, y1,
-            x2-r, y1,
-            x2, y1,
-            x2, y1+r,
-            x2, y2-r,
-            x2, y2,
-            x2-r, y2,
-            x1+r, y2,
-            x1, y2,
-            x1, y2-r,
-            x1, y1+r,
-            x1, y1,
-            smooth=True,
-            **kwargs
-        )
-        
-        bg_box = self.canvas.create_rounded_rectangle(
-            2, 2, width-2, height-2,
-            corner_radius,
-            fill="white",
-            outline="#cccccc"
-        )
-        
-        self.entry = tk.Entry(
-            self,
-            bg="white",
-            bd=0,
-            highlightthickness=0,
-            **kwargs
-        )
-        self.entry.place(
-            x=10,
-            y=height//2,
-            width=width-20,
-            anchor="w"
-        )
 
-    # Add these delegate methods
-    def get(self):
-        """Delegate get() to the internal entry widget"""
-        return self.entry.get()
+
+# def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
+#     frame = Frame(master, width=300, height=70, bg=DARK)
+#     frame.place(x=position[0], y=position[1])
+#     canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
+#     canvas.pack()
     
-    def delete(self, first, last=None):
-        """Delegate delete() to the internal entry widget"""
-        return self.entry.delete(first, last)
-    
-    def insert(self, index, string):
-        """Delegate insert() to the internal entry widget"""
-        return self.entry.insert(index, string)
-class RoundedCheckbox(tk.Canvas):
-    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
-        super().__init__(
-            parent,
-            width=24,
-            height=24,
-            highlightthickness=0,
-            bg=DARK,
-            **kwargs
-        )
-        self.variable = variable
-        self.command = command
+#     current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
+#     last_update_time = 0
+#     update_interval = 100  # Update interval in milliseconds
+
+#     def draw_slider(update_label=False):
+#         canvas.delete("all")
+#         filled_x = value_to_position(current_value.get())
+#         canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
+#         canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
         
-        # Create the rounded rectangle for the checkbox
-        self.box = self.create_rounded_rectangle(
-            2, 2, 22, 22,
-            5,  # corner radius
-            outline="#cccccc",
-            fill="white",
-            width=2
-        )
+#         knob_x = value_to_position(current_value.get())
+#         canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
         
-        # Create the checkmark (hidden initially)
-        self.checkmark = self.create_line(
-            6, 12, 10, 16, 18, 8,
-            fill=DARK,
-            width=3,
-            state="hidden"
-        )
-        
-        # Bind click event
-        self.bind("<Button-1>", self.toggle)
-        
-        # Create label
-        self.label = Label(
-            parent,
-            text=text,
-            bg=DARK,
-            fg=LIGHT,
-            font=(FONT, 12)
-        )
-        
-    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
-        points = [
-            x1+radius, y1,
-            x2-radius, y1,
-            x2, y1,
-            x2, y1+radius,
-            x2, y2-radius,
-            x2, y2,
-            x2-radius, y2,
-            x1+radius, y2,
-            x1, y2,
-            x1, y2-radius,
-            x1, y1+radius,
-            x1, y1
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-    
-    def toggle(self, event=None):
-        if self.variable:
-            self.variable.set(not self.variable.get())
-            self.update_state()
-            if self.command:
-                self.command()
-    
-    def update_state(self):
-        if self.variable and self.variable.get():
-            self.itemconfigure(self.checkmark, state="normal")
-        else:
-            self.itemconfigure(self.checkmark, state="hidden")
-def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
-    # Calculate radius
-    rad = 2 * cornerradius
+#         if update_label:
+#             canvas.delete("value_text")
+#             label_x = max(10, min(knob_x, 270))
+#             canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
+#                                font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
 
-    # Ensure each button has a unique tag if not provided
-    if button_tag is None:
-        button_tag = f"button_{x}_{y}"  # Unique tag based on position
+#     def value_to_position(value):
+#         return (value - min_val) / (max_val - min_val) * 280 + 10
 
-    # Draw the rounded rectangle shape at (x, y) position and give it a tag
-    canvas.create_polygon(
-        (x + padding, y + height - cornerradius - padding,
-         x + padding, y + cornerradius + padding,
-         x + padding + cornerradius, y + padding,
-         x + width - padding - cornerradius, y + padding,
-         x + width - padding, y + cornerradius + padding,
-         x + width - padding, y + height - cornerradius - padding,
-         x + width - padding - cornerradius, y + height - padding,
-         x + padding + cornerradius, y + height - padding),
-        fill=fill, outline=fill, tags=button_tag
-    )
+#     def position_to_value(x):
+#         return (x - 10) / 280 * (max_val - min_val) + min_val
 
-    # Draw rounded corners using arcs and add the same tag
-    canvas.create_arc(
-        (x + padding, y + padding + rad, x + padding + rad, y + padding),
-        start=90, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
-        start=0, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
-        start=270, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-    canvas.create_arc(
-        (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
-        start=180, extent=90, fill=fill, outline=fill, tags=button_tag
-    )
-
-    # Add text in the middle of the button and tag it
-    canvas.create_text(x + width / 2, y + height / 2, text=text, fill=accent, font=(FONT, 12, "bold"), tags=button_tag)
-
-    # Bind the click event to the entire button with the unique tag
-    canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
-
-def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
-    frame = Frame(master, width=300, height=70, bg=DARK)
-    frame.place(x=position[0], y=position[1])
-    canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
-    canvas.pack()
-    
-    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
-    last_update_time = 0
-    update_interval = 100  # Update interval in milliseconds
-
-    def draw_slider(update_label=False):
-        canvas.delete("all")
-        filled_x = value_to_position(current_value.get())
-        canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
-        canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
-        
-        knob_x = value_to_position(current_value.get())
-        canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
-        
-        if update_label:
-            canvas.delete("value_text")
-            label_x = max(10, min(knob_x, 270))
-            canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
-                               font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
-
-    def value_to_position(value):
-        return (value - min_val) / (max_val - min_val) * 280 + 10
-
-    def position_to_value(x):
-        return (x - 10) / 280 * (max_val - min_val) + min_val
-
-    def on_drag(event):
-        nonlocal last_update_time
-        current_time = event.time
-        if 35 <= event.y <= 55:
-            new_value = position_to_value(event.x)
-            current_value.set(max(min_val, min(max_val, new_value)))
+#     def on_drag(event):
+#         nonlocal last_update_time
+#         current_time = event.time
+#         if 35 <= event.y <= 55:
+#             new_value = position_to_value(event.x)
+#             current_value.set(max(min_val, min(max_val, new_value)))
             
-            if current_time - last_update_time >= update_interval:
-                draw_slider(update_label=True)
-                last_update_time = current_time
-            else:
-                draw_slider(update_label=False)
+#             if current_time - last_update_time >= update_interval:
+#                 draw_slider(update_label=True)
+#                 last_update_time = current_time
+#             else:
+#                 draw_slider(update_label=False)
             
-            if command:
-                command(int(current_value.get()))
+#             if command:
+#                 command(int(current_value.get()))
 
-    def on_release(event):
-        draw_slider(update_label=True)
-        if command:
-            command(int(current_value.get()))
+#     def on_release(event):
+#         draw_slider(update_label=True)
+#         if command:
+#             command(int(current_value.get()))
 
-    canvas.bind("<B1-Motion>", on_drag)
-    canvas.bind("<ButtonRelease-1>", on_release)
+#     canvas.bind("<B1-Motion>", on_drag)
+#     canvas.bind("<ButtonRelease-1>", on_release)
 
-    def set_value(value):
-        current_value.set(max(min_val, min(max_val, value)))
-        draw_slider(update_label=True)
+#     def set_value(value):
+#         current_value.set(max(min_val, min(max_val, value)))
+#         draw_slider(update_label=True)
 
-    draw_slider(update_label=True)
-    frame.set = set_value
-    frame.get = lambda: int(current_value.get())
-    return frame
+#     draw_slider(update_label=True)
+#     frame.set = set_value
+#     frame.get = lambda: int(current_value.get())
+#     return frame
         
 
 def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
@@ -2316,10 +230,11 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
 
     return canvas.create_polygon(points, **kwargs, smooth=True)
 
+
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
         create_plate_designer(window, mode=new_mode)
-    
+   #bookmark 
     # Label for mode selection
     mode_label = Label(
         control_frame,
@@ -3135,6 +1050,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
     preview_image = create_plate_preview_image(window, plate)
     
     return {
+        'mode': window.current_mode,
         'filename': plate['name'],
         'additive': plate.get('additive', None),
         'dilutions': [],
@@ -3558,65 +1474,6 @@ def get_available_data_files():
     files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
     return sorted(files, reverse=True)
 
-def upload_metadata_handler(window):
-    """
-    Handler for the Upload MetaData button.
-    Opens file dialog, loads data, and displays it.
-    """
-    try:
-        # Open file dialog for selecting the JSON file
-        filename = filedialog.askopenfilename(
-            title="Select Metadata File",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if not filename:  # User cancelled
-            return
-            
-        # Load the data
-        with open(filename, 'r') as file:
-            loaded_data = json.load(file)
-            
-        # Update the global data structure
-        window.all_plate_info = loaded_data
-        
-        # Print the loaded data in a formatted way
-        print("\nUploaded Metadata Contents:")
-        print("-" * 50)
-        
-        for idx, plate in enumerate(loaded_data, 1):
-            print(f"\nPlate {idx}:")
-            print("  Strains:", ", ".join(plate.get('strains', [])))
-            print("  Columns:", plate.get('column_indexes', []))
-            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
-            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
-            
-        print("-" * 50)
-        print(f"Successfully loaded data from: {filename}")
-
-        mode_b_criteria = (
-            window.strains.get() == 1 and
-            window.x_dilution.get() == 1 and
-            window.y_dilution.get() == 1
-        )
-        if mode_b_criteria:
-            window.current_mode = 'B'
-        else:
-            window.current_mode = 'A'
-            
-        print("CURRENT MODE")
-        print(window.current_mode)
-        return loaded_data
-        
-    except json.JSONDecodeError:
-        print("Error: Invalid JSON file format")
-        return None
-    except Exception as e:
-        print(f"Error loading metadata: {str(e)}")
-        return None
-
-
-
 
 def create_plate_controls(window):
     # Main controls container at the top
@@ -3848,6 +1705,2249 @@ def setup_frames(window):
     create_navigation_controls(window)
     create_plate_canvas(window)
 
+class RoundedEntry(tk.Frame):
+    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
+        super().__init__(parent, bg=DARK)
+        
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        # Create rounded canvas background
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=height,
+            bg=DARK,
+            highlightthickness=0
+        )
+        self.canvas.grid(row=0, column=0)
+        
+        # Draw rounded rectangle
+        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
+            x1+r, y1,
+            x1+r, y1,
+            x2-r, y1,
+            x2-r, y1,
+            x2, y1,
+            x2, y1+r,
+            x2, y2-r,
+            x2, y2,
+            x2-r, y2,
+            x1+r, y2,
+            x1, y2,
+            x1, y2-r,
+            x1, y1+r,
+            x1, y1,
+            smooth=True,
+            **kwargs
+        )
+        
+        bg_box = self.canvas.create_rounded_rectangle(
+            2, 2, width-2, height-2,
+            corner_radius,
+            fill="white",
+            outline="#cccccc"
+        )
+        
+        self.entry = tk.Entry(
+            self,
+            bg="white",
+            bd=0,
+            highlightthickness=0,
+            **kwargs
+        )
+        self.entry.place(
+            x=10,
+            y=height//2,
+            width=width-20,
+            anchor="w"
+        )
+
+    # Add these delegate methods
+    def get(self):
+        """Delegate get() to the internal entry widget"""
+        return self.entry.get()
+    
+    def delete(self, first, last=None):
+        """Delegate delete() to the internal entry widget"""
+        return self.entry.delete(first, last)
+    
+    def insert(self, index, string):
+        """Delegate insert() to the internal entry widget"""
+        return self.entry.insert(index, string)
+
+class RoundedCheckbox(tk.Canvas):
+    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
+        super().__init__(
+            parent,
+            width=24,
+            height=24,
+            highlightthickness=0,
+            bg=DARK,
+            **kwargs
+        )
+        self.variable = variable
+        self.command = command
+        
+        # Create the rounded rectangle for the checkbox
+        self.box = self.create_rounded_rectangle(
+            2, 2, 22, 22,
+            5,  # corner radius
+            outline="#cccccc",
+            fill="white",
+            width=2
+        )
+        
+        # Create the checkmark (hidden initially)
+        self.checkmark = self.create_line(
+            6, 12, 10, 16, 18, 8,
+            fill=DARK,
+            width=3,
+            state="hidden"
+        )
+        
+        # Bind click event
+        self.bind("<Button-1>", self.toggle)
+        
+        # Create label
+        self.label = Label(
+            parent,
+            text=text,
+            bg=DARK,
+            fg=LIGHT,
+            font=(FONT, 12)
+        )
+        
+    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
+        points = [
+            x1+radius, y1,
+            x2-radius, y1,
+            x2, y1,
+            x2, y1+radius,
+            x2, y2-radius,
+            x2, y2,
+            x2-radius, y2,
+            x1+radius, y2,
+            x1, y2,
+            x1, y2-radius,
+            x1, y1+radius,
+            x1, y1
+        ]
+        return self.create_polygon(points, smooth=True, **kwargs)
+    
+    def toggle(self, event=None):
+        if self.variable:
+            self.variable.set(not self.variable.get())
+            self.update_state()
+            if self.command:
+                self.command()
+    
+    def update_state(self):
+        if self.variable and self.variable.get():
+            self.itemconfigure(self.checkmark, state="normal")
+        else:
+            self.itemconfigure(self.checkmark, state="hidden")
+
+def create_plate_designer(window, mode="A"):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
+    
+    # Initialize plate layout attributes with defaults
+    window.plate_layout = {
+        'rows': tk.IntVar(value=8),
+        'columns': tk.IntVar(value=12),
+        'strains': tk.IntVar(value=1 if mode == "B" else 3),
+        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
+        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
+        'gap_between_strains': tk.BooleanVar(value=False),
+        'removed_positions': set(),
+        'strain_positions': {}
+    }
+    
+    # Store the current mode
+    window.current_mode = mode
+    
+    # Create canvas for layout
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    
+    # Add background images and frames
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
+    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
+    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+    
+    # Create frames for plate and controls
+    plate_frame = Frame(window, bg=DARK)
+    plate_frame.place(x=27, y=178, width=1070, height=638)
+    
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+    
+    # Create mode switcher and controls
+    create_mode_switcher(control_frame, window)
+    create_controls(control_frame, window, mode)
+    create_plate_display(plate_frame, window)
+    
+    # Add navigation buttons
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+    
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_titleFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )
+
+
+
+
+
+
+######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
+##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
+##       ##     ## ##        ##   ##     ##    ##          ##       ##       ##     ## ##       ##       ####  ## ##       
+##       ########  ######   ##     ##    ##    ######       ######  ##       ########  ######   ######   ## ## ##  ######  
+##       ##   ##   ##       #########    ##    ##                ## ##       ##   ##   ##       ##       ##  ####       ## 
+##    ## ##    ##  ##       ##     ##    ##    ##          ##    ## ##    ## ##    ##  ##       ##       ##   ### ##    ## 
+ ######  ##     ## ######## ##     ##    ##    ########     ######   ######  ##     ## ######## ######## ##    ##  ######  
+
+
+def create_titleFrame(window):
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+   
+    ###LOGO IMAGE
+    image_path_10 = relative_to_assets("image_10.png")
+    img_logobig = Image.open(image_path_10)
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS) #this resizing method maintains the quality
+
+    #has to be a photoimage for Tkinkter, 
+    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
+    canvas.image_image_10 = image_image_10
+    canvas.create_image(720.0, 420.0, image=image_image_10)
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Upload Assays",
+        command=lambda: upload_images(window),
+        x=855.0,
+        y=670.0, )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: validate_and_proceed(window),
+        x=buttonPosX,
+        y=buttonPosY )
+
+        
+
+    create_rounded_button(
+    canvas=canvas,
+    text="Create Metadata",
+    command=lambda: create_plate_designer(window),
+    x=385.0,
+    y=670.0)    
+
+    create_rounded_button(
+    canvas=canvas,
+    text="Upload MetaData",
+    command=lambda: upload_metadata_handler(window),
+    x=620.0,
+    y=670.0)
+
+    if hasattr(window, 'window.plates'):
+        print("works")
+
+    return canvas
+
+
+def display_results(window):
+
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    #logo
+    image_path_10 = relative_to_assets("image_10.png")
+    img_logobig = Image.open(image_path_10)
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
+
+    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
+    canvas.image_image_10 = image_image_10 
+    canvas.create_image(720.0, 420.0, image=image_image_10)
+
+
+    canvas.create_text(
+        720,  
+        750.0,
+        text="Results Downloading......",
+        fill=DARK,
+        font=(FONT, 12, "bold"),
+        anchor="center" 
+    )
+
+    #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
+    window.update()
+
+    #generates the PDF, the excel and the images 
+    processResults(window)
+    #this will only display once the results are generated
+    create_rounded_button(
+        canvas=canvas,
+        text="Finish",
+        command=lambda: window.quit(),#will exit the program
+        x=720 - (200 // 2),  
+        y=buttonPosY-100,
+        button_tag="Finish"
+    )
+
+def create_plate_designer(window, mode="A"):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
+    
+    # Initialize plate layout attributes with defaults
+    window.plate_layout = {
+        'rows': tk.IntVar(value=8),
+        'columns': tk.IntVar(value=12),
+        'strains': tk.IntVar(value=1 if mode == "B" else 3),
+        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
+        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
+        'gap_between_strains': tk.BooleanVar(value=False),
+        'removed_positions': set(),
+        'strain_positions': {}
+    }
+    
+    # Store the current mode
+    window.current_mode = mode
+    
+    # Create canvas for layout
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    
+    # Add background images and frames
+    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
+    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
+    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+    
+    # Create frames for plate and controls
+    plate_frame = Frame(window, bg=DARK)
+    plate_frame.place(x=27, y=178, width=1070, height=638)
+    
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+    
+    # Create mode switcher and controls
+    create_mode_switcher(control_frame, window)
+    create_controls(control_frame, window, mode)
+    create_plate_display(plate_frame, window)
+    
+    # Add navigation buttons
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+    
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_titleFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )    
+
+def display_final_image(window, override =False):
+    add_to_history(window) #incase the user goes back
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Redo Edit",
+        command=lambda: create_editFrame(window),
+        x=720-225,
+        y=buttonPosY,
+        button_tag = "back_button_edit" )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Override Grid",
+        command=lambda: open_grid_override(window),
+        x=720+25,
+        y=buttonPosY,
+        button_tag = "override_button" )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: next_image(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "DisplayNext" )
+
+
+
+
+    #frame where result will be displayed
+    frame = Frame(window, bg=LIGHT)
+    frame.place(relx=0.5, rely=0.5, anchor="center")
+    if (override):#ie if the user has over ridden the grid
+        marked_image = window.marked_image
+        result_grid = window.result_grid
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
+    else:   
+        gray_image = window.gray_image  
+        columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+        rows = window.all_plate_info[window.current_image_index]['layout']['rows']
+        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+
+    #make sure its the correct type
+    if isinstance(marked_image, Image.Image):
+        marked_image = np.array(marked_image)
+        # print("yes is instance")
+
+    #this is also taking into account that the one uses RGB and the other uses BGR    
+    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)   
+
+
+    #resizing the image to fit
+    max_width, max_height = 1200, 700
+    h, w = marked_image.shape[:2]
+    scale = min(max_width / w, max_height / h)
+    new_size = (int(w * scale), int(h * scale))
+
+
+    #saving what values and images to be used in the PDF reort
+    window.all_plate_info [window.current_image_index]["threshold"] = window.contrast_value
+    window.all_plate_info [window.current_image_index]["smallArea"] = window.excludeSmallDots
+    window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
+    window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
+    window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
+    
+    
+    #Has to be PIL image for tkinkter, resizing and displaying
+    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
+    img = Image.fromarray(resized_image)
+    photo = ImageTk.PhotoImage(img)
+    x_position = (1440 - new_size[0]) // 2
+    y_position = (974 - new_size[1]) // 2
+    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
+    canvas.image = photo
+
+
+
+
+
+    #progress bar was created with help from Chat GBT
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
+
+def create_slidersFrame(window):
+    # Create main canvas
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    image_image_1 = PhotoImage(
+        file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: create_editFrame(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "slidersNext" )
+
+    # Main dark rectangle for image area
+    round_rectangle(canvas,
+        17.0,
+        168.0,
+        1100.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+    # Control panel rectangle
+    round_rectangle(canvas,
+        1120.0,
+        168.0,
+        1422.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+    # Create frame for image canvas
+    main_frame = Frame(window, bg=DARK)
+    main_frame.place(x=27, y=178, width=1070, height=638)
+
+    # Create single canvas for image display
+    window.image_canvas = Canvas(
+        main_frame,
+        width=1050,
+        height=580,
+        bg=DARK,
+        highlightthickness=0
+    )
+    window.image_canvas.pack(expand=True, fill='both')
+
+    # Control panel
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+
+    # Sliders setup
+    y_offset = 20
+    spacing = 150
+
+    # Threshold Slider
+    threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    threshold_label.place(x=16, y=y_offset)
+    create_circular_slider(
+        control_frame, 
+        min_val=0, 
+        max_val=40,
+        position=(16, y_offset + 30),
+        command=lambda v: on_contrast_change(window, v, False),
+        initial_value=window.contrast_value
+    )
+
+    # Size Slider
+    size_label = Label(control_frame, text="Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    size_label.place(x=16, y=y_offset + spacing)
+    create_circular_slider(
+        control_frame, 
+        min_val=1, 
+        max_val=100,
+        position=(16, y_offset + spacing + 30),
+        command=lambda v: on_excludeSmallDots(window, v, False),
+        initial_value=window.excludeSmallDots
+    )
+
+    # Block Size Slider
+    block_label = Label(control_frame, text="Block Size", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
+    block_label.place(x=16, y=y_offset + spacing * 2)
+    create_circular_slider(
+        control_frame, 
+        min_val=51, 
+        max_val=1001,
+        position=(16, y_offset + spacing * 2 + 30),
+        command=lambda v: on_block_size_change(window, v, False),
+        initial_value=window.block_size if hasattr(window, 'block_size') else 301
+    )
+
+    # Toggle Original/Processed Image
+    create_rounded_button(
+        canvas=canvas,
+        text="Toggle View",
+        command=lambda: toggle_image(window),
+        x=1130,
+        y=y_offset + spacing * 3 + 30,
+        button_tag="Toggle",
+        width=140,
+        height=40,
+        fill=LIGHT,
+        accent=DARK
+    )
+
+
+    # # Next button
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="Next",
+    #     command=lambda: switch_to_edit_screen(window),
+    #     x=1130,
+    #     y=750,
+    #     button_tag="adjustmentNext"
+    # )
+
+    # Progress bar
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(
+        window.progress_frame, 
+        style="styled.Horizontal.TProgressbar", 
+        orient="horizontal",
+        length=150, 
+        mode="determinate", 
+        maximum=100, 
+        value=0
+    )
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    update_progress_bar(window)
+
+    display_image(window)
+    return canvas
+
+def on_contrast_change(window, value, backToEdit = False):
+    global backToEdit2
+    if (backToEdit2 == False):
+        window.contrast_value = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+
+        #save new iamges
+        window.binarized_image = final_binary
+        window.contour_img = contour_img
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
+        # print("SAVED")
+        #cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False   
+
+
+def on_excludeSmallDots(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        window.excludeSmallDots = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+
+def on_block_size_change(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        if int(value)%2 ==0:
+            window.block_size = int(value)+1
+        else:   
+            window.block_size = int(value) 
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        display_image(window)
+    else:
+        backToEdit2 = False
+def export_data(window):
+    """
+    Export plate data and allow the user to choose the file location and name.
+    Returns: List of plate info and saves to a user-specified JSON file.
+    """
+    all_plate_info = []
+   
+    for plate in window.plates:
+        rows = window.layout_data['rows']
+        cols = window.layout_data['columns']
+        unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
+       
+        ordered_assignments = []
+        plate_assignments = plate.get('assignments', {})
+       
+        # Process assignments in order of positions
+        for pos_idx in range(window.layout_data['strains']):
+            start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
+           
+            strain = None
+            for col in range(start_col, end_col + 1):
+                test_key = f"0-{col}"
+                if test_key in plate_assignments:
+                    strain = plate_assignments[test_key]
+                    break
+           
+            if strain:
+                ordered_assignments.append({
+                    'strain': strain,
+                    'columns': list(range(start_col, end_col + 1))
+                })
+       
+        strains = [assignment['strain'] for assignment in ordered_assignments]
+        column_indexes = [assignment['columns'] for assignment in ordered_assignments]
+       
+        plate_info = create_plate_info(window, plate, rows, cols, unordered_quantifications,
+                                     strains, column_indexes)
+        all_plate_info.append(plate_info)
+   
+    # Ask the user for the file name and location
+    filename = filedialog.asksaveasfilename(
+        title="Save Plate Data",
+        defaultextension=".json",
+        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+    )
+   
+    # Check if the user canceled the file dialog
+    if not filename:
+        print("Export canceled by the user.")
+        return None
+        
+    save_to_file(all_plate_info, filename)
+    print(f"Data exported successfully to {filename}")
+    
+    window.all_plate_info = all_plate_info
+    create_titleFrame(window)
+    return all_plate_info
+
+def display_image(window):
+    try:
+        # Get original image dimensions
+        original_width = window.debug_image.shape[1]
+        original_height = window.debug_image.shape[0]
+        
+        # Calculate available space
+        canvas_width = 1050  # Fixed canvas width
+        canvas_height = 580  # Fixed canvas height
+        
+        # Calculate scaling factors
+        width_scale = canvas_width / original_width
+        height_scale = canvas_height / original_height
+        scale = min(width_scale, height_scale)
+        
+        # Calculate new dimensions
+        new_width = int(original_width * scale)
+        new_height = int(original_height * scale)
+        
+        # Calculate centering offsets
+        x_offset = (canvas_width - new_width) // 2
+        y_offset = (canvas_height - new_height) // 2
+
+
+        img_np = window.debug_image
+        img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+        contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
+        cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
+        
+        window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img
+        window.current_info["IMGcontours"] = contour_img
+        display_img = contour_img
+
+        # Convert to PIL Image and resize
+        img_pil = Image.fromarray(display_img)
+        img_pil = img_pil.resize((new_width, new_height), Image.LANCZOS)
+        window.photo_image = ImageTk.PhotoImage(img_pil)
+        
+        # Clear canvas and display new image
+        window.image_canvas.delete("all")
+        window.image_canvas.create_image(
+            x_offset,
+            y_offset,
+            anchor="nw",
+            image=window.photo_image
+        )
+
+    except Exception as e:
+        print(f"Error in display_image: {e}")
+
+def on_excludeSmallDots(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        window.excludeSmallDots = float(value)
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+        #reset history, cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+
+def on_block_size_change(window, value, backToEdit = False):
+    #print("on_excludeSmallDots")
+    global backToEdit2
+
+    if (backToEdit2 == False):
+        if int(value)%2 ==0:
+            window.block_size = int(value)+1
+        else:   
+            window.block_size = int(value) 
+        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
+
+        #save new images
+        window.binarized_image = final_binary
+        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+        # print("am i resetting here?")
+        #reset history, cannot use undo redo buttons to undo this
+        display_image(window)
+    else:
+        backToEdit2 = False
+
+def create_editFrame(window, backToEdit = False):
+
+    global backToEdit2 #have to put this here if i want to edit it within this function
+    if backToEdit == False:
+        # Only set if not already set, or force overwrite is needed
+        if window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] is None:
+            window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
+            print("IMGbinaryAutomatic updated")
+
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    image_image_1 = PhotoImage(
+        file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    window.show_original = False 
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: display_final_image(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "editNext" )
+
+    round_rectangle(canvas,
+       1362.0,
+        168.0,
+        1422.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+    round_rectangle(canvas,
+        17.0,
+        168.0,
+        1350.0,
+        826.0,
+        fill=DARK,
+        outline="")
+
+
+
+
+
+
+
+
+    # Vertical positioning base
+    
+
+    # Toggle section
+    canvas.create_text(
+        1391.0,
+        base_y - 15,
+        text="Toggle",
+        fill=LIGHT,
+        font=(FONT, 14 * -1, 'bold')
+    )
+    toggle = relative_to_assets("toggle.png")
+    img_toggle = Image.open(toggle)
+    img_toggle_resized = img_toggle.resize((img_toggle.width // 11, img_toggle.height // 11), Image.LANCZOS)
+    image_toggle = ImageTk.PhotoImage(img_toggle_resized)
+    window.edit_images.append(image_toggle)
+    toggle_button = Button(
+        window,
+        image=image_toggle,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: toggle_image(window),
+        relief="flat",
+        bg=DARK
+    )
+    toggle_button.place(x=1376.0, y=base_y)
+
+    # Zoom section
+    canvas.create_text(
+        1391.0,
+        base_y + 39+heading_y,
+        text="Zoom",
+        fill=LIGHT,
+        font=(FONT, 14 * -1, 'bold')
+    )
+
+    # Zoom in button
+    zoomin = relative_to_assets("zoomin.png")
+    img_zoomin = Image.open(zoomin)
+    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
+    image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
+    window.edit_images.append(image_zoomin_2)
+    button_zoomin = Button(
+        window,
+        image=image_zoomin_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 1.2),
+        bg=DARK
+    )
+    button_zoomin.place(x=1377.0, y=base_y + 78)
+
+    # Zoom out button
+    zoomout = relative_to_assets("zoomout.png")
+    img_zoomout = Image.open(zoomout)
+    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
+    image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
+    window.edit_images.append(image_zoomout_2)
+    button_zoomout = Button(
+        window,
+        image=image_zoomout_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 0.8),
+        bg=DARK
+    )
+    button_zoomout.place(x=1377.0, y=base_y + 117)
+
+    # History section (Undo and Redo)
+    canvas.create_text(
+        1391.0,
+        base_y + 156+heading_y,
+        text="History",
+        fill=LIGHT,
+        font=(FONT, 14 * -1, 'bold')
+    )
+
+    # Undo button (image_8)
+    image_path_8 = relative_to_assets("image_8.png")
+    img_undo = Image.open(image_path_8) 
+    img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+    image_image_8 = ImageTk.PhotoImage(img_undo_resized)
+    window.edit_images.append(image_image_8)
+    undo_button = Button(
+        window,
+        image=image_image_8,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: undo(window),
+        relief="flat",
+        bg=DARK
+    )
+    undo_button.place(x=1376.0, y=base_y + 195)
+
+    # Redo button (image_7)
+    image_path_7 = relative_to_assets("image_7.png")
+    img_redo = Image.open(image_path_7)
+    img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
+    image_image_7 = ImageTk.PhotoImage(img_redo_resized)
+    window.edit_images.append(image_image_7)
+    redo_button = Button(
+        window,
+        image=image_image_7,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: redo(window),
+        relief="flat",
+        bg=DARK
+    )
+    redo_button.place(x=1376.0, y=base_y + 234)
+
+    # "Add" text 
+    canvas.create_text(
+        1391.0,
+        base_y + 273+ heading_y,
+        text="Add",
+        fill=LIGHT,
+        font=(FONT, 14 * -1, 'bold')
+    )
+
+    # Thin pen (image_2)
+    image_path_2 = relative_to_assets("image_2.png")
+    img_thinPen = Image.open(image_path_2) 
+    img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
+    image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
+    window.edit_images.append(image_image_2)
+    button_thin_pen = Button(
+        window,
+        image=image_image_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: set_mode(window, "thin_brush"),
+        bg=DARK
+    )
+    button_thin_pen.place(x=1377.0, y=base_y + 312)
+
+    # Big pen (image_5)
+    image_path_5 = relative_to_assets("image_5.png")
+    img_thickPen = Image.open(image_path_5) 
+    img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
+    image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
+    window.edit_images.append(image_image_5)
+    big_pen_button = Button(
+        window,
+        image=image_image_5,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: set_mode(window, "large_brush"),
+        relief="flat",
+        bg=DARK
+    )
+    big_pen_button.place(x=1377.0, y=base_y + 351)
+
+    # "Delete" text
+    canvas.create_text(
+        1391.0,
+        base_y + 390 + heading_y ,
+        text="Delete",
+        fill=LIGHT,
+        font=(FONT, 14 * -1, 'bold')
+    )
+
+    # Flood eraser (image_6)
+    image_path_6 = relative_to_assets("image_6.png")
+    img_flood = Image.open(image_path_6) 
+    img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
+    image_image_6 = ImageTk.PhotoImage(img_flood_resized)
+    window.edit_images.append(image_image_6)
+    flood_eraser_button = Button(
+        window,
+        image=image_image_6,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: set_mode(window, "flood"),
+        relief="flat",
+        bg=DARK
+    )
+    flood_eraser_button.place(x=1376.0, y=base_y + 429)
+
+    # Thin eraser (image_9)
+    image_path_9 = relative_to_assets("image_9.png")
+    img_thinEraser = Image.open(image_path_9)
+    img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
+    image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
+    window.edit_images.append(image_image_9)
+    thin_eraser_button = Button(
+        window,
+        image=image_image_9,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: set_mode(window, "small_brush"),
+        relief="flat",
+        bg=DARK
+    )
+    thin_eraser_button.place(x=1376.0, y=base_y + 468)
+
+
+
+ #big eraser
+    image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
+    image_image_4 = image_image_4.subsample(11, 11) 
+    window.edit_images.append(image_image_4)
+    big_eraser_button = Button(
+        window,
+        image=image_image_4,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: set_mode(window, "large_brush"),
+        relief="flat",
+        bg = DARK
+    )
+    big_eraser_button.place(x=1377.0, y=base_y + 468+39)
+
+
+
+
+
+
+
+
+    # canvas.create_text(
+    #     1391.0,
+    #     (400.0 +39),
+    #     text="Add",
+    #     fill=LIGHT,
+    #     font=(FONT, 14 * -1,'bold')
+    # )
+
+    # canvas.create_text(
+    #     1391.0,
+    #     580.0,
+    #     text="Delete",
+    #     fill=LIGHT,
+    #     font=(FONT, 14* -1,'bold')
+    # )
+
+
+
+    # image_path_2 = relative_to_assets("image_2.png")
+    # img_thinPen = Image.open(image_path_2) 
+    # #resizing image, using the othermethod made it super pixelated
+    # img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
+
+
+    # image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
+    # window.edit_images.append(image_image_2)
+    # button_thin_pen = Button(
+    #     window,
+    #     image=image_image_2,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: set_mode(window, "thin_brush"),
+    #     bg= DARK
+   
+    # )
+    
+    # button_thin_pen.place(x=1377.0, y=(420.0+39))
+
+
+
+    # #big eraser
+    # image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
+    # image_image_4 = image_image_4.subsample(11, 11) 
+    # window.edit_images.append(image_image_4)
+    # big_eraser_button = Button(
+    #     window,
+    #     image=image_image_4,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: set_mode(window, "large_brush"),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # big_eraser_button.place(x=1377.0, y=655.0)
+
+    # image_path_5 = relative_to_assets("image_5.png")
+    # img_thickPen = Image.open(image_path_5) 
+    # img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
+
+
+    # image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
+    # window.edit_images.append(image_image_5)
+    # big_pen_button = Button(
+    #     window,
+    #     image=image_image_5,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: set_mode(window, "large_brush"),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # big_pen_button.place(x=1377, y=(460+39))
+
+
+    # image_path_6 = relative_to_assets("image_6.png")
+    # img_flood = Image.open(image_path_6) 
+    # img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
+
+
+    # image_image_6 = ImageTk.PhotoImage(img_flood_resized)
+    # window.edit_images.append(image_image_6)
+    # flood_eraser_button = Button(
+    #     window,
+    #     image=image_image_6,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: set_mode(window, "flood"),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # flood_eraser_button.place(x=1376.0, y=616.0)
+
+    # image_path_7 = relative_to_assets("image_7.png")
+    # img_redo = Image.open(image_path_7)
+    # img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
+
+    # image_image_7 = ImageTk.PhotoImage(img_redo_resized)
+    # window.edit_images.append(image_image_7)
+    # redo_button = Button(
+    #     window,
+    #     image=image_image_7,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: redo(window),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # redo_button.place(x=1376.0, y=(251.0+39))
+
+
+    # #undo
+    # image_path_8 = relative_to_assets("image_8.png")
+    # img_undo = Image.open(image_path_8) 
+    # img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+    # image_image_8 = ImageTk.PhotoImage(img_undo_resized)
+    # window.edit_images.append(image_image_8)
+    # undo_button = Button(
+    #     window,
+    #     image=image_image_8,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: undo(window),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # undo_button.place(x=1376.0, y=(212.0 +39))
+
+
+    # canvas.create_text(
+    #     1391.0,
+    #     (212-15),
+    #     text="Toggle",
+    #     fill=LIGHT,
+    #     font=(FONT, 14 * -1,'bold')
+    # )
+
+    # toggle = relative_to_assets("toggle.png")
+    # img_toggle = Image.open(toggle)
+    # img_toggle_resized = img_toggle.resize((img_toggle.width // 11, img_toggle.height // 11), Image.LANCZOS)
+    # image_toggle = ImageTk.PhotoImage(img_toggle_resized)
+    # window.edit_images.append(image_toggle )
+    # toggle_button = Button(
+    #     window,
+    #     image=image_toggle,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: toggle_image(window),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # toggle_button.place(x=1376.0, y=212.0)
+
+
+
+
+    # canvas.create_text(
+    #     1391.0,
+    #     (212+39),
+    #     text="Zoom",
+    #     fill=LIGHT,
+    #     font=(FONT, 14 * -1,'bold')
+    # )
+
+
+
+    # # thin eraser
+    # image_path_9 = relative_to_assets("image_9.png")
+    # img_thinEraser = Image.open(image_path_9)
+    # img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
+    # image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
+    # window.edit_images.append(image_image_9)
+    # thin_eraser_button = Button(
+    #     window,
+    #     image=image_image_9,
+    #     borderwidth=0,
+    #     highlightthickness=0,
+    #     command=lambda: set_mode(window, "small_brush"),
+    #     relief="flat",
+    #     bg = DARK
+    # )
+    # thin_eraser_button.place(x=1376.0, y=693.0)
+
+    window.undo_button = undo_button
+    window.redo_button = redo_button
+
+    total_width = 1295 - 34
+    total_height = 783 - 203
+    img_width = total_width // 2
+    img_height = total_height
+
+    # Create frames to hold canvas and scrollbars
+    left_frame = Frame(window, bg=DARK)
+    right_frame = Frame(window, bg=DARK)
+    
+    # Create canvases with scrollbars
+    window.left_canvas = Canvas(
+        left_frame,
+        width=img_width,
+        height=img_height,
+        bg=DARK,
+        highlightthickness=0
+    )
+    left_scroll_y = Scrollbar(left_frame, orient="vertical", command=window.left_canvas.yview)
+    left_scroll_x = Scrollbar(left_frame, orient="horizontal", command=window.left_canvas.xview)
+
+
+    window.right_canvas = Canvas(
+        right_frame,
+        width=img_width,
+        height=img_height,
+        bg=DARK,
+        highlightthickness=0
+    )
+    right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
+    right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
+
+    # Synchronization functions
+    def sync_scroll_y_left(*args):
+        window.right_canvas.yview_moveto(args[0])
+
+    def sync_scroll_y_right(*args):
+        window.left_canvas.yview_moveto(args[0])
+
+    def sync_scroll_x_left(*args):
+        window.right_canvas.xview_moveto(args[0])
+
+    def sync_scroll_x_right(*args):
+        window.left_canvas.xview_moveto(args[0])
+
+    # Configure scrollbar synchronization
+    window.left_canvas.configure(
+        xscrollcommand=lambda *args: (left_scroll_x.set(*args), sync_scroll_x_left(*args)),
+        yscrollcommand=lambda *args: (left_scroll_y.set(*args), sync_scroll_y_left(*args))
+    )
+
+    window.right_canvas.configure(
+        xscrollcommand=lambda *args: (right_scroll_x.set(*args), sync_scroll_x_right(*args)),
+        yscrollcommand=lambda *args: (right_scroll_y.set(*args), sync_scroll_y_right(*args))
+    )
+
+    # Configure scrollbar commands to update both canvases
+    left_scroll_y.configure(command=lambda *args: (window.left_canvas.yview(*args), window.right_canvas.yview(*args)))
+    left_scroll_x.configure(command=lambda *args: (window.left_canvas.xview(*args), window.right_canvas.xview(*args)))
+    right_scroll_y.configure(command=lambda *args: (window.right_canvas.yview(*args), window.left_canvas.yview(*args)))
+    right_scroll_x.configure(command=lambda *args: (window.right_canvas.xview(*args), window.left_canvas.xview(*args)))
+
+    # Grid layout for scrollbars
+    window.left_canvas.grid(row=0, column=0, sticky="nsew")
+    left_scroll_y.grid(row=0, column=1, sticky="ns")
+    left_scroll_x.grid(row=1, column=0, sticky="ew")
+        
+    window.right_canvas.grid(row=0, column=0, sticky="nsew")
+    right_scroll_y.grid(row=0, column=1, sticky="ns")
+    right_scroll_x.grid(row=1, column=0, sticky="ew")
+
+    # Configure grid weights
+    left_frame.grid_rowconfigure(0, weight=1)
+    left_frame.grid_columnconfigure(0, weight=1)
+    right_frame.grid_rowconfigure(0, weight=1)
+    right_frame.grid_columnconfigure(0, weight=1)
+
+    yposFrames= 207
+    # Position the frames
+    left_frame.place(x=30, y=yposFrames, width=img_width + 20, height=img_height + 20)
+    right_frame.place(x=690, y=yposFrames, width=img_width + 20, height=img_height + 20)
+
+    # Initialize zoom level
+    window.zoom_level = 1.0
+    
+    # Set up zoom controls and bindings
+    setup_zoom_controls(window)
+
+
+    # Display images
+    display_images(window)
+    
+
+
+    #bind mouse clicks to start the drawing mode, binding it like this allows the user to draw continiously until they let go of the click
+    for canvas in [window.left_canvas, window.right_canvas]:
+        canvas.bind("<ButtonPress-1>", lambda event: start_draw(window, event))
+        canvas.bind("<B1-Motion>", lambda event: draw(window, event))
+        canvas.bind("<ButtonRelease-1>", lambda event: stop_draw(window, event))
+    #configuring buttonts to theit associated fucntions/modes
+    button_thin_pen.config(command=lambda: set_mode(window, "small_brush"))
+    big_pen_button.config(command=lambda: set_mode(window, "large_brush"))
+    thin_eraser_button.config(command=lambda: set_mode(window, "small_eraser"))
+    big_eraser_button.config(command=lambda: set_mode(window, "large_eraser"))
+    flood_eraser_button.config(command=lambda: set_mode(window, "flood"))
+    undo_button.config(command=lambda: undo(window))
+    redo_button.config(command=lambda: redo(window))
+
+
+
+
+    #progress bar (same code for all screens), created with help from chatGBT
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    #making the position a global variable so if i move it i dont have to change it for all screens
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    update_progress_bar(window)
+
+    return canvas
+
+
+    
+def update_zoomed_images(window):
+    """Update both canvases with zoomed images, maintaining scrollable content"""
+    window.left_canvas.delete("all")
+    window.right_canvas.delete("all")
+    
+    left_img = window.current_image
+    right_img = window.processed_image
+    
+    if left_img and right_img:
+        # Calculate zoomed dimensions
+        new_width = int(left_img.width * window.zoom_level)
+        new_height = int(left_img.height * window.zoom_level)
+        
+        # Resize images
+        left_img_zoomed = left_img.resize((new_width, new_height), Image.LANCZOS)
+        right_img_zoomed = right_img.resize((new_width, new_height), Image.LANCZOS)
+        
+        # Convert to PhotoImage
+        window.left_photo = ImageTk.PhotoImage(left_img_zoomed)
+        window.right_photo = ImageTk.PhotoImage(right_img_zoomed)
+        
+        # Set scroll region to the full size of the zoomed image
+        window.left_canvas.config(scrollregion=(0, 0, new_width, new_height))
+        window.right_canvas.config(scrollregion=(0, 0, new_width, new_height))
+        
+        # Display images at (0,0) - scrolling will handle visibility
+        window.left_canvas.create_image(0, 0, anchor=NW, image=window.left_photo)
+        window.right_canvas.create_image(0, 0, anchor=NW, image=window.right_photo)
+
+
+def open_grid_override(window):
+    for widget in window.winfo_children():
+        widget.destroy()
+   
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    binary_image = window.binarized_image.copy()
+    window.binary_image = binary_image
+
+    rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
+   
+    #resizing as the dataset images are HUGE
+    max_width, max_height = 1200, 700
+    h, w = rgb_image.shape[:2]
+    scale = min(max_width / w, max_height / h)
+    new_size = (int(w * scale), int(h * scale))
+    resized_image = cv2.resize(rgb_image, new_size, interpolation=cv2.INTER_AREA)
+   
+    img = Image.fromarray(resized_image)
+    photo = ImageTk.PhotoImage(img)
+    x_position = (1440 - new_size[0]) // 2
+    y_position = (974 - new_size[1]) // 2
+    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
+    canvas.image = photo
+   
+    #use scale factor for pen tools so it maps correcly on the image
+    window.grid_override_scale = scale
+    window.grid_override_offset = (x_position, y_position)
+   
+    #find the blobs so the centerpoints are displayed if the user tries to override the grid. Finding blobs is based on the size of the image incase the image is much bigger/smaller it cant be a set pixel size
+    height, width = window.binary_image.shape
+    coloums = window.all_plate_info[window.current_image_index]['layout']['columns']
+
+    max_radius = int(width/(coloums*2))
+    min_radius = int(max_radius/3)
+    max_area = max_radius**2*(math.pi)
+    min_area = min_radius**2*(math.pi)
+    # cv2.imshow("marked image1244443", resize_for_display(marked_image))
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    x_coords, y_coords, _ = findBlobs(binary_image, min_area, max_area)
+    window.center_points = list(zip(x_coords, y_coords))
+
+    window.blob_points = list(zip(x_coords, y_coords))
+    print("window.blob_points")
+    print(window.blob_points)
+    window.clicked_points = []
+
+    #allows the user to add points
+    def draw_points():
+        canvas.delete("point")
+        for x, y in window.blob_points:
+            scaled_x = x * scale + x_position
+            scaled_y = y * scale + y_position
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
+        for x, y in window.clicked_points:
+            scaled_x = x * scale + x_position
+            scaled_y = y * scale + y_position
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
+    draw_points()
+
+    #allows the user to remove points that they made OR points detected from find blobs
+    def remove_point(event):
+        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
+        remove_radius = 50  #this allows the user to not be so exact with where they click
+        blob_points = []
+
+        #checking to see if point must be removed
+        for point in window.blob_points:
+            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
+            if distance > remove_radius:
+                blob_points.append(point)
+
+        window.blob_points = blob_points
+        #same thing for the clicked points
+        clicked_points = []
+        for point in window.clicked_points:
+            distance = ((point[0] - x)**2 + (point[1] - y)**2)**0.5
+            if distance > remove_radius:
+                clicked_points.append(point)
+
+        window.clicked_points = clicked_points
+        #redraw everyhting
+        draw_points()
+
+    #if the user clicks
+    def add_point(event):
+        x, y = (event.x - x_position) / scale, (event.y - y_position) / scale
+        #check if the point is within the image boundaries (otherwise it draws when you click on the add button)
+        if (0 <= x < window.binary_image.shape[1] and 
+            0 <= y < window.binary_image.shape[0]):
+            window.clicked_points.append((int(x), int(y)))
+            draw_points()
+
+    #moves the crosshairs
+    def on_mouse_move(event):
+        canvas.delete("hover_line")
+        x, y = event.x, event.y
+        
+        #checking how far they must expand so they are not outside the image boundaries
+        left_boundary = x_position
+        right_boundary = x_position + new_size[0]
+        top_boundary = y_position
+        bottom_boundary = y_position + new_size[1]
+
+        #drawing them
+        if top_boundary <= y <= bottom_boundary:
+            canvas.create_line(left_boundary, y, right_boundary, y, fill=ACCENT, tags="hover_line")
+        
+        if left_boundary <= x <= right_boundary:
+            canvas.create_line(x, top_boundary, x, bottom_boundary, fill=ACCENT, tags="hover_line")
+
+    #this was the other option instead of the buttons, it binds to left and right mouse clicks
+    canvas.bind("<Button-1>", add_point)
+    canvas.bind("<Button-3>", remove_point)
+    canvas.bind("<Motion>", on_mouse_move)
+
+    #buttons
+    create_rounded_button(
+        canvas=canvas,
+        text="Remove Points",
+        command=lambda: canvas.bind("<Button-1>", remove_point),
+        x=720+25,
+        y=buttonPosY,
+        button_tag = "Remove_Points" )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Add Points",
+        command=lambda: canvas.bind("<Button-1>", add_point),
+        x=720-225,
+        y=buttonPosY,
+        button_tag = "Add_points" )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Recalculate Grid",
+        command=lambda: recalculate_grid(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "Recalculate" )
+
+
+    window.mainloop()
+
+
+def recalculate_grid(window):
+    #user clicked and previously detected
+    all_points = window.blob_points + window.clicked_points
+    if len(all_points) < 12:
+        messagebox.showwarning("Not enough points", "Please ensure there are at least 12 points before recalculating the grid.")
+        return
+
+    #convert to numpy array so its the same type as the senterpoints
+    window.clicked_pointsx = [point[0] for point in all_points]
+    window.clicked_pointsy = [point[1] for point in all_points]
+    height, width = window.gray_image.shape
+    #new grid using user clicked AND previously detected
+    columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+    rows = window.all_plate_info[window.current_image_index]['layout']['rows']
+    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows)
+
+    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size,columns, rows)
+
+    window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
+    # #SAVING INFO
+    # if hasattr(window, 'current_info'):
+    #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
+    #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
+    #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
+    #     # Update the window.image_info with the modified current_info
+    #     window.image_info[window.current_image_index] = window.current_info.copy()
+        
+    #     # print("RECALCULATED:      TESTER INFORMATION:") 
+    #     # print("_______________________________________________________________________")
+    #     # print(ordered_counts["Strain 1"])    
+    #     # print(ordered_counts["Strain 2"])   
+    #     # print(ordered_counts["Strain 3"])   
+
+    #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+    #     # print(f"Debug: Current image info: {window.current_info}")
+    #     # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
+
+    # else:
+    #     print("Error: current_info not initialized")
+
+    #update so the new override one is used
+    window.result_grid= counts
+    window.marked_image = marked_image
+    display_final_image(window, True)
+
+
+#progress bar update - help from chatGBT
+def update_progress_bar(window):
+    if hasattr(window, 'progress_bar') and window.progress_bar:
+        progress = (window.current_image_index + 1) / len(window.image_paths) * 100
+        window.progress_bar['value'] = progress
+        window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
+
+def validate_and_proceed(window):
+    """
+    Validates if the image paths and image info are properly initialized and match entries in window.all_plate_info.
+    Proceeds to create the crop frame if valid, otherwise shows a warning.
+    """
+    # Ensure `window.image_paths`, `window.all_plate_info`, and `window.image_info` are initialized
+    if (
+        hasattr(window, 'image_paths') and window.image_paths
+        and hasattr(window, 'all_plate_info') and window.all_plate_info
+    ):
+        # Check if all filenames in `window.image_info` exist in `window.all_plate_info`
+        all_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        
+        # Debugging: Print out expected filenames from the metadata
+        # print("Expected filenames from metadata:")
+        # for filename in all_filenames:
+        #     print(f"- {filename}")
+        
+        # if unmatched:
+        #     messagebox.showwarning(
+        #         "Warning",
+        #         f"The following filenames do not match metadata entries:\n{', '.join(unmatched)}"
+        #     )
+       # else:
+        create_cropFrame(window)
+    else:
+        messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
+
+
+def process_image(window):
+    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
+    window.contrast_value = idealContrast
+
+    window.gray_image = gray_image
+    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
+
+    window.contour_img = contour_img
+    window.binarized_image = final_binary
+    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+    
+    # only initialize history if it's empty, othewise its adding doubles
+    if not window.history:
+        window.history = [window.binarized_image.copy()]
+        window.redo_stack = []
+    
+    update_undo_redo_buttons(window)
+    #create_editFrame(window)
+    create_slidersFrame(window)
+
+
+#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
+# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
+# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
+# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
+# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
+#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
+
+
+#makes sure that the crop takes into account the scale of the image, since its downsized
+def resize_for_display_crop(image, max_width=1000, max_height=650):
+    h, w = image.shape[:2]
+    scale = min(max_width/w, max_height/h)
+    new_size = (int(w*scale), int(h*scale))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
+
+
+#get the co-ordnates of the click , where the crop starts
+def start_crop(event, window):
+    window.cropping = True
+    window.x_start, window.y_start = event.x, event.y
+
+
+
+def crop(event, window, canvas):
+
+    #removes old rectangle and creates a new one
+    if window.cropping:
+        window.x_end, window.y_end = event.x, event.y
+        canvas.delete("crop_rectangle")
+
+        # Create the rectangle
+        canvas.create_rectangle(
+            window.x_start, window.y_start, window.x_end, window.y_end,
+            outline=LIGHT,
+            width=2,
+            fill=LIGHT,
+            stipple="gray50", #only had this option for low opacity
+            tags="crop_rectangle"
+        )
+
+def end_crop(event, window, canvas):
+    window.cropping = False
+
+def apply_crop(window):
+    if window.x_start != window.x_end and window.y_start != window.y_end:
+        #dimensions of the original image
+        original_height, original_width = window.original_image.shape[:2]
+        
+        #scaling factors
+        scale_x = original_width / window.display_width
+        scale_y = original_height / window.display_height
+        
+        #offset of the image on the canvas
+        canvas_width = 1440  # From your create_cropFrame function
+        canvas_height = 1024  # From your create_cropFrame function
+        offset_x = (canvas_width - window.display_width) // 2 
+        offset_y = (canvas_height - window.display_height) // 2
+        
+        #scaling to crop coordinates, accounting for the offset
+        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
+        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
+        
+        #check within image bounds, or map to beinging end of bounds
+        x_start = max(0, x_start)
+        y_start = max(0, y_start)
+        x_end = min(x_end, original_width)
+        y_end = min(y_end, original_height)
+        
+        #actual crop
+        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
+        h, w = window.current_image.shape[:2]
+        # print("width")
+        # print(w)
+        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
+        process_image(window)
+    else:
+        messagebox.showwarning("Warning", "Please select an area to crop.")
+
+
+def create_cropFrame(window):
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    window.edit_images = []
+
+    image_image_1 = PhotoImage(
+    file=relative_to_assets("image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    canvas.create_text(
+        720,
+        TITLEHEIGHT,
+        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
+        fill=DARK,
+        font=(FONT, 12, 
+        "bold")
+    )
+
+    #resize image
+    display_image, scale_factor = resize_for_display_crop(window.original_image)
+    window.scale_factor = scale_factor
+
+    #convert OpenCV to PhotoImage for Tkinkter to use
+    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
+    photo = ImageTk.PhotoImage(image=image)
+
+    #place image on canvas
+    canvas.create_image(720, 512, image=photo, anchor="center")
+    canvas.image = photo
+
+    #keep dimensions
+    window.display_width = photo.width()
+    window.display_height = photo.height()
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Crop",
+        command=lambda: apply_crop(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "cropNext" )
+
+
+    #default cropping variables
+    window.cropping = False
+    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
+
+    #bind mouse events
+    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
+    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
+    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
+
+    #progress bar things - same as other screens
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    update_progress_bar(window)
+
+def upload_images(window):
+    """
+    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
+    """
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
+   
+    # Ensure file_paths are selected and window.all_plate_info is initialized
+    if file_paths and hasattr(window, 'all_plate_info'):
+        window.image_paths = []
+        unmatched_filenames = []  # Collect unmatched filenames
+        print("Does have attribute")
+        # Get the list of filenames from window.all_plate_info
+        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        
+        # Debugging: Print out expected filenames from the metadata
+        print("Expected filenames from metadata:")
+        for filename in valid_filenames:
+            print(f"- {filename}")
+
+        # Check the selected files for matches
+        for path in file_paths:
+            filename = os.path.basename(path).lower()
+            if filename in valid_filenames:
+                window.image_paths.append(path)
+            else:
+                unmatched_filenames.append(filename)
+
+        # Handle matching and unmatched files
+        if window.image_paths:
+            window.current_image_index = 0
+            load_current_image(window)  # Load the first matching image
+            # if unmatched_filenames:
+            #     messagebox.showwarning(
+            #         "Warning",
+            #         f"No matching entries found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}"
+            #     )
+        else:
+            messagebox.showwarning(
+                "Warning",
+                "No matching images found for any entries in the metadata."
+            )
+    else:
+        messagebox.showwarning(
+            "Warning",
+            "No files selected or metadata not initialized."
+        )
+
+def load_current_image(window):
+    #within correct bounds
+    if 0 <= window.current_image_index < len(window.image_paths):
+        window.image_path = window.image_paths[window.current_image_index]
+        window.original_image = cv2.imread(window.image_path)
+        if window.original_image is None:
+            messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
+            return
+        window.current_image = window.original_image.copy()
+       
+        # # Update the current image info
+        # print("IS IT HERE??????")
+
+        # print("AFTER")
+
+        #TODO NEED TO FIX HERE TO LOAD THE INFO
+        window.current_info = window.all_plate_info[window.current_image_index].copy()
+        # print(f"Debug: Loading image {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+    else:
+        messagebox.showerror("Error", "No image to load")
+
+def next_image(window):
+    if window.current_image_index < len(window.image_paths) - 1:
+        window.current_image_index += 1
+        load_current_image(window)
+        create_cropFrame(window)
+        update_progress_bar(window)
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: ALL INFO : {window.image_info}" )
+    else:
+        # save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
+        # print("saved")
+        # # 
+        display_results(window)
+        
+
+
+def process_tool_usage(window):
+    """
+    Process binary images to create a color-coded visualization of tool usage.
+    
+    Args:
+        window: Window object containing all_plate_info with binary images
+    """
+    # print(window.all_plate_info)
+    for plate_info in window.all_plate_info:
+        # Skip if either image is None
+        if plate_info['IMGbinary'] is None or plate_info['IMGbinaryAutomatic'] is None:
+            print("IS NONE")
+            continue
+            
+        # Get the binary images
+        manual_binary = plate_info['IMGbinary']
+        auto_binary = plate_info['IMGbinaryAutomatic']
+        
+        # Ensure both images are binary (0 or 255)
+        _, manual_binary = cv2.threshold(manual_binary, 127, 255, cv2.THRESH_BINARY)
+        _, auto_binary = cv2.threshold(auto_binary, 127, 255, cv2.THRESH_BINARY)
+        
+        # Create blank RGB image
+        height, width = manual_binary.shape
+        tool_usage = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        # Where both are white (255)
+        both_white = cv2.bitwise_and(manual_binary, auto_binary)
+        tool_usage[both_white == 255] = [255, 255, 255]  # White
+        
+        # Where only manual is white
+        only_manual = cv2.bitwise_and(manual_binary, cv2.bitwise_not(auto_binary))
+        tool_usage[only_manual == 255] = [0, 0, 255]  # Red
+        
+        # Where only automatic is white
+        only_auto = cv2.bitwise_and(auto_binary, cv2.bitwise_not(manual_binary))
+        tool_usage[only_auto == 255] = [255, 0, 0]  # Blue
+        # Save the result back to the plate info
+        plate_info['IMGToolUsage'] = tool_usage
+
+def processResults(window):
+    # Open a directory selection dialog
+    output_directory = filedialog.askdirectory(title="Choose Output Directory")
+    
+    if not output_directory:
+        print("Export canceled by the user.")
+        return
+    
+    # Ask user for project/folder name
+    project_name = simpledialog.askstring("Project Name", "Enter a name for your project:")
+    
+    if not project_name:
+        print("Project name is required.")
+        return
+    
+    # Create project folder
+    project_folder = os.path.join(output_directory, project_name)
+    os.makedirs(project_folder, exist_ok=True)
+    
+    # Define full file paths
+    pdf_path = os.path.join(project_folder, f"{project_name}_report.pdf")
+    excel_path = os.path.join(project_folder, f"{project_name}_data.xlsx")
+    process_tool_usage(window)
+    print(window.all_plate_info[0]["mode"])
+    if window.all_plate_info[0]["mode"] == 'A':
+        
+        process_split_order_quantifications(window)
+        strain_data, dilution_series = generate_data_series(window)
+        sorted_positions = get_sorted_positions(dilution_series)
+        dilution_series = extract_values_at_positions(dilution_series, sorted_positions)
+        
+        # Export Excel with project name
+        exported_df = export_strain_data_to_excel(strain_data, dilution_series, excel_path)
+        
+        all_strain_data = []
+        for strain, series in strain_data.items():
+            figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
+            all_strain_data.append((strain, figures_and_stats))
+        
+        # Generate PDF with project name
+        generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, pdf_path)
+        
+        # Clean up matplotlib figures
+        for _, figures_and_stats in all_strain_data:
+            for fig, _, _ in figures_and_stats:
+                plt.close(fig)
+    else:
+        df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
+        
+        # Generate PDF and Excel with project name
+        generate_pdf_report_MODEB(
+            window.all_plate_info,
+            pdf_path,
+            mean_fig,
+            knockdown_fig,
+            individual_fig,
+            version="1.0.0"
+        )
+        df = export_plate_data_to_excel(window.all_plate_info, excel_path)
+    
+    print(f"Files saved in: {project_folder}")
+
+def save_window_state(window, filename):
+    # Extract the all_plate_info from the window object
+    all_plate_info = window.all_plate_info
+    
+    # Serialize and save it to a file using pickle
+    with open(filename, 'wb') as file:
+        pickle.dump(all_plate_info, file)
+
+def restore_window_state(window, filename):
+    # Deserialize the state from the pickle file
+    with open(filename, 'rb') as file:
+        all_plate_info = pickle.load(file)
+    
+    # Restore the all_plate_info attribute in the window object
+    window.all_plate_info = all_plate_info
+
+def process_split_order_quantifications(window):
+    """
+    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
+    into split_quantifications based on strain_positions, and saving ordered quantifications.
+
+    Parameters:
+    window (object): The window object containing all_plate_info
+    """
+    for plate in window.all_plate_info:
+        # Extract plate layout and dilution factors
+        rows = plate['layout']['rows']
+        cols = len(plate['column_indexes'])
+        x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
+        y_dilution_factor = plate['layout']['y_dilution']
+        
+        # Calculate the dilution series
+        dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
+        plate['dilutions'] = dilution_array 
+        # Get sorted positions based on dilution series
+        sorted_positions = get_sorted_positions(dilution_array)
+        
+        # Split unorderedquantifications into split_quantifications
+        unordered_quantifications = np.array(plate['unorderedquantifications'])
+        strain_positions = plate['strain_positions']
+        
+        split_quantifications = []
+        for strain, pos_range in strain_positions.items():
+            start, end = pos_range
+            split_quantifications.append(unordered_quantifications[:, start:end + 1])
+        
+        # Save split_quantifications to the plate
+        plate['split_quantifications'] = split_quantifications
+        
+        # Create ordered_quantifications based on sorted positions
+        ordered_quantifications = []
+        for strain_data in split_quantifications:
+            ordered_strain_values = extract_values_at_positions(strain_data, sorted_positions)
+            ordered_quantifications.append(ordered_strain_values)
+        
+        # Save ordered_quantifications to the plate
+        plate['ordered_quantifications'] = ordered_quantifications
+
+
+
+
+
+
+
+
+##     ##  #######  ########  ########  ######  
+###   ### ##     ## ##     ## ##       ##    ## 
+#### #### ##     ## ##     ## ##       ##       
+## ### ## ##     ## ##     ## ######    ######  
+##     ## ##     ## ##     ## ##             ## s
+##     ## ##     ## ##     ## ##       ##    ## 
+##     ##  #######  ########  ########  ###### 
+
+
+
+def set_mode(window, mode):
+    window.mode = mode
+    if mode == "small_brush" or mode == "small_eraser":
+        window.brush_size = 40
+    elif mode == "large_brush" or mode == "large_eraser":
+        window.brush_size = 120
+
+def toggle_image(window):
+    window.show_original = not window.show_original
+    display_images(window)
+
+
+def setup_zoom_controls(window):
+    """Set up zoom controls and initialize zoom-related variables"""
+    window.zoom_level = 1.0
+    window.zoom_min = 0.5
+    window.zoom_max = 5.0
+    
+    # Create zoom frame
+    zoom_frame = Frame(window, bg=DARK)
+    zoom_frame.place(x=1376, y=300)
+    
+
+    
+ # Zoom in button
+    zoomin = relative_to_assets("zoomin.png")
+    img_zoomin = Image.open(zoomin)
+    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
+    image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
+    window.edit_images.append(image_zoomin_2)
+    button_zoomin = Button(
+        window,
+        image=image_zoomin_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 1.2),
+        bg=DARK
+    )
+    button_zoomin.place(x=1377.0, y=base_y + 78)
+
+    # Zoom out button
+    zoomout = relative_to_assets("zoomout.png")
+    img_zoomout = Image.open(zoomout)
+    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
+    image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
+    window.edit_images.append(image_zoomout_2)
+    button_zoomout = Button(
+        window,
+        image=image_zoomout_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 0.8),
+        bg=DARK
+    )
+    button_zoomout.place(x=1377.0, y=base_y + 117)
 
 
 
@@ -3859,57 +3959,210 @@ def setup_frames(window):
 
 
 
+    
+
+def adjust_zoom(window, factor):
+    """Adjust zoom level and trigger display update"""
+    new_zoom = window.zoom_level * factor
+    if window.zoom_min <= new_zoom <= window.zoom_max:
+        window.zoom_level = new_zoom
+        display_images(window)
+
+def display_images(window):
+    """Display images while maintaining original aspect ratio with zoom support"""
+    try:
+        # Get original image dimensions
+        original_width = window.debug_image.shape[1]
+        original_height = window.debug_image.shape[0]
+        
+        # Calculate available space
+        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
+        max_height = int((window.winfo_height() - 200) * window.zoom_level)
+        
+        # Calculate scaling factors for both dimensions
+        width_scale = max_width / original_width
+        height_scale = max_height / original_height
+        
+        # Use the smaller scaling factor to maintain aspect ratio
+        scale = min(width_scale, height_scale)
+        
+        # Calculate new dimensions
+        zoomed_width = int(original_width * scale)
+        zoomed_height = int(original_height * scale)
+        
+        # Right image (editing image)
+        img_editing = Image.fromarray(window.debug_image)
+        img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        window.photo_editing = ImageTk.PhotoImage(img_editing)
+        
+        # Configure right canvas
+        window.right_canvas.config(
+            width=window.photo_editing.width(),
+            height=window.photo_editing.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
+        window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
+        
+        # Store display dimensions
+        window.display_width = window.photo_editing.width()
+        window.display_height = window.photo_editing.height()
+        
+        # Left image (toggleable)
+        if window.show_original:
+            img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
+        else:
+            img_np = window.current_image
+            img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
+            img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
+            contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            contour_img = img_np.copy()
+            for cntr in contours:
+                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
+            window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
+            window.current_info["IMGcontours"] = contour_img
+            img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
+            
+        # Resize left image with zoom while maintaining aspect ratio
+        img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        window.photo_left = ImageTk.PhotoImage(img_left)
+        
+        # Configure left canvas
+        window.left_canvas.config(
+            width=window.photo_left.width(),
+            height=window.photo_left.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
+        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
+    except Exception as e:
+        print(f"Error in display_images: {e}")
+
+# Update the draw functions to work with zoom
+def start_draw(window, event):
+    window.is_drawing = True
+    window.last_x = event.widget.canvasx(event.x)
+    window.last_y = event.widget.canvasy(event.y)
+    window.active_canvas = event.widget
+    draw(window, event)
+
+def draw(window, event):
+    if window.is_drawing:
+        # Get current canvas coordinates considering scroll
+        x = window.active_canvas.canvasx(event.x)
+        y = window.active_canvas.canvasy(event.y)
+        
+        # Get actual image dimensions
+        img_height, img_width = window.binarized_image.shape[:2]
+        
+        # Calculate scaling factors considering zoom
+        scale_x = img_width / (window.display_width / window.zoom_level)
+        scale_y = img_height / (window.display_height / window.zoom_level)
+        
+        # Convert coordinates
+        x_img = int(x / window.zoom_level * scale_x)
+        y_img = int(y / window.zoom_level * scale_y)
+        last_x_img = int(window.last_x / window.zoom_level * scale_x)
+        last_y_img = int(window.last_y / window.zoom_level * scale_y)
+        
+        # Apply drawing operation
+        if window.mode == "flood":
+            flood_erase(window, x_img, y_img)
+        else:
+            # Scale brush size with zoom
+            original_brush_size = window.brush_size
+            window.brush_size = max(1, int(window.brush_size / window.zoom_level))
+            brush_draw(window, last_x_img, last_y_img, x_img, y_img)
+            window.brush_size = original_brush_size
+        
+        window.last_x = x
+        window.last_y = y
+        display_images(window)
 
 
 
 
 
+def stop_draw(window, event):
+    window.is_drawing = False
+    current_state = window.binarized_image.copy()
+    if len(window.history) == 0 or not np.array_equal(current_state, window.history[-1]):
+        add_to_history(window)
+    update_undo_redo_buttons(window)
+
+def flood_erase(window, x, y):
+    if window.binarized_image[y, x] == 255:  # If the clicked pixel is white
+        cv2.floodFill(window.binarized_image, None, (x, y), 0)  # Fill with black
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+
+def brush_draw(window, x1, y1, x2, y2):
+    if window.mode in ["small_brush", "large_brush"]:
+        color = 255  #white drawing
+    else:
+        color = 0  #black erasing
+    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+def brush_erase(window, x1, y1, x2, y2):
+    cv2.line(window.binarized_image, (x1, y1), (x2, y2), 0, window.brush_size * 2)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+def add_to_history(window):
+    current_state = window.binarized_image.copy()
+    if not window.history or not np.array_equal(current_state, window.history[-1]):
+        window.history.append(current_state)
+        window.redo_stack.clear()
+        update_undo_redo_buttons(window)
+
+def clear_history(window): 
+    window.history.clear()
+    window.redo_stack.clear()
+
+    current_state = window.binarized_image.copy()
+    window.history.append(current_state)
+
+    update_undo_redo_buttons(window)
+
+def undo(window):
+    if len(window.history) > 1:
+        current_state = window.binarized_image.copy()
+        window.redo_stack.append(current_state)
+        window.binarized_image = window.history.pop().copy()
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+        display_images(window)
+    elif len(window.history) == 1:
+        # If there's only one item in history, it's the original image
+        current_state = window.binarized_image.copy()
+        if not np.array_equal(current_state, window.history[0]):
+            window.redo_stack.append(current_state)
+            window.binarized_image = window.history[0].copy()
+            window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+            display_images(window)
+    update_undo_redo_buttons(window)
+
+def redo(window):
+    if window.redo_stack:
+        window.history.append(window.binarized_image.copy())
+        window.binarized_image = window.redo_stack.pop().copy()
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+        display_images(window)
+        update_undo_redo_buttons(window)
+
+def update_undo_redo_buttons(window):
+    if hasattr(window, 'undo_btn') and window.undo_btn is not None:
+        window.undo_btn['state'] = "normal" if len(window.history) > 1 else "disabled"
+    if hasattr(window, 'redo_btn') and window.redo_btn is not None:
+        window.redo_btn['state'] = "normal" if window.redo_stack else "disabled"
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#used for both eraser and pen, 
+def brush_draw(window, x1, y1, x2, y2):
+    if window.mode in ["small_brush", "large_brush"]:
+        color = 255  #white if drawing
+    else:
+        color = 0  #black if erasing
+    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
 
 def initialize_window_attributes(window):
@@ -3957,8 +4210,13 @@ window = Tk()
 window.geometry("1440x1000")
 window.configure(bg=LIGHT)
 window.title("SpotPlotter")
-window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
+BASE_PATH = Path(__file__).parent
 
+# Construct the path to the icon file
+icon_path = BASE_PATH / "Icons" / "ICON.ico"
+
+# Set the window icon
+window.iconbitmap(icon_path)
 initialize_window_attributes(window)
 title_frame_widgets = create_titleFrame(window)
 
@@ -3990,6 +4248,7 @@ window.mainloop()
 
 #window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
 #window_state_Test_Positions.pkl testing the postitions are correct
+
 
 
 

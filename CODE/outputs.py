@@ -31,12 +31,14 @@ from io import BytesIO
 import base64
 import pandas as pd
 import numpy as np
-
+import string
 from PIL import Image, ImageTk
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
 from matplotlib.colors import rgb2hex
 import matplotlib.colors as mcolors
+
+
 def relative_to_assets(path: str) -> Path:
     return ASSETS_PATH / Path(path)
 
@@ -296,6 +298,64 @@ def export_strain_data_to_excel(strain_data, dilution_series, output_filename='s
     df.to_excel(output_filename, index=False)
     
     print(f"Data exported to {output_filename}")
+    
+    return df
+
+def generate_plate_labels(rows, cols):
+    col_labels = list(string.ascii_uppercase[:cols])
+    return [f"{col}{row+1}" for row in range(rows) for col in col_labels]
+    
+def export_plate_data_to_excel(all_plate_info, output_path='plate_analysis.xlsx'):
+    """
+    Export plate data to Excel in tidy format with one position per row.
+    
+    Parameters:
+    all_plate_info (list): List of dictionaries containing plate information
+    output_path (str): Path where the Excel file should be saved
+    
+    Returns:
+    pd.DataFrame: The tidy format dataframe that was exported
+    """
+    # Generate position labels
+    rows, cols = all_plate_info[0]['unorderedquantifications'].shape
+    positions = generate_plate_labels(rows, cols)
+    
+    # Initialize the dataframe with positions
+    df = pd.DataFrame({'Position': positions})
+    
+    # Separate control and treatment plates
+    control_plates = [plate for plate in all_plate_info if plate['additive'] is None]
+    treatment_plates = [plate for plate in all_plate_info if plate['additive'] is not None]
+    
+    # Add individual plate data
+    for plate in all_plate_info:
+        filename = plate['filename']
+        quants = plate['unorderedquantifications'].flatten()
+        additive = plate['additive'] if plate['additive'] is not None else 'Control'
+        
+        df[f'{filename}_quantification'] = quants
+        df[f'{filename}_additive'] = additive
+        df[f'{filename}_filename'] = filename
+    
+    # Calculate and add average quantifications
+    control_quants = np.array([plate['unorderedquantifications'].flatten() 
+                              for plate in control_plates])
+    treatment_quants = np.array([plate['unorderedquantifications'].flatten() 
+                                for plate in treatment_plates])
+    
+    df['Average_Control_Quantification'] = np.mean(control_quants, axis=0)
+    df['Average_Additive_Quantification'] = np.mean(treatment_quants, axis=0)
+    
+    # Calculate knockdown
+    df['Knockdown'] = np.where(
+        (df['Average_Control_Quantification'] == 0) | 
+        (df['Average_Additive_Quantification'] == 0),
+        np.nan,
+        df['Average_Additive_Quantification'] / df['Average_Control_Quantification']
+    )
+    
+    # Export to Excel
+    df.to_excel(output_path, index=False)
     
     return df
 
@@ -643,8 +703,8 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     
     # Row 2: Binary Images
     row2_data = [
-        # [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
-        [create_image_with_caption('IMGbinary', "Tool Usage: Red(+) Blue(-))"),
+        [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
+        # [create_image_with_caption('IMGbinary', "Tool Usage: Red(+) Blue(-))"),
         create_image_with_caption('IMGbinary', "Binary Image")]
     ]
     row2_table = Table(row2_data, colWidths=[max_width, max_width])

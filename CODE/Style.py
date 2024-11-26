@@ -19,7 +19,6 @@ from datetime import datetime
 
 from Processing import *
 from outputs import *
-from metadataMaker import *
 
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
@@ -36,7 +35,7 @@ ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH /  "Icons"
 buttonPosX = 1200
 buttonPosY = 885
 backToEdit2 = False
@@ -46,71 +45,6 @@ PROGRESSY = 36
 
 
 
-
-def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
-    frame = Frame(master, width=300, height=70, bg=DARK)
-    frame.place(x=position[0], y=position[1])
-    canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
-    canvas.pack()
-    
-    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
-    last_update_time = 0
-    update_interval = 100  # Update interval in milliseconds
-
-    def draw_slider(update_label=False):
-        canvas.delete("all")
-        filled_x = value_to_position(current_value.get())
-        canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
-        canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
-        
-        knob_x = value_to_position(current_value.get())
-        canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
-        
-        if update_label:
-            canvas.delete("value_text")
-            label_x = max(10, min(knob_x, 270))
-            canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
-                               font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
-
-    def value_to_position(value):
-        return (value - min_val) / (max_val - min_val) * 280 + 10
-
-    def position_to_value(x):
-        return (x - 10) / 280 * (max_val - min_val) + min_val
-
-    def on_drag(event):
-        nonlocal last_update_time
-        current_time = event.time
-        if 35 <= event.y <= 55:
-            new_value = position_to_value(event.x)
-            current_value.set(max(min_val, min(max_val, new_value)))
-            
-            if current_time - last_update_time >= update_interval:
-                draw_slider(update_label=True)
-                last_update_time = current_time
-            else:
-                draw_slider(update_label=False)
-            
-            if command:
-                command(int(current_value.get()))
-
-    def on_release(event):
-        draw_slider(update_label=True)
-        if command:
-            command(int(current_value.get()))
-
-    canvas.bind("<B1-Motion>", on_drag)
-    canvas.bind("<ButtonRelease-1>", on_release)
-
-    def set_value(value):
-        current_value.set(max(min_val, min(max_val, value)))
-        draw_slider(update_label=True)
-
-    draw_slider(update_label=True)
-    frame.set = set_value
-    frame.get = lambda: int(current_value.get())
-    return frame
-        
 def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
     # Calculate radius
     rad = 2 * cornerradius
@@ -156,6 +90,131 @@ def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cor
     # Bind the click event to the entire button with the unique tag
     canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
 
+def create_circular_slider(master, min_val, max_val, position, width=270, command=None, initial_value=None):
+    """
+    Create a circular slider with variable length
+    
+    Parameters:
+    - master: parent widget
+    - min_val: minimum value of slider
+    - max_val: maximum value of slider
+    - position: (x, y) position tuple
+    - width: width of the slider (default 300)
+    - command: callback function when value changes
+    - initial_value: starting value of slider
+    """
+    # Calculate dimensions
+    height = 70
+    padding = 20  # Left and right padding
+    slider_width = width - (padding * 2)  # Actual slider width minus padding
+    
+    frame = Frame(master, width=width, height=height, bg=DARK)
+    frame.place(x=position[0], y=position[1])
+    
+    canvas = Canvas(frame, width=width, height=height, bg=DARK, highlightthickness=0)
+    canvas.pack()
+    
+    current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
+    last_update_time = 0
+    update_interval = 100  # Update interval in milliseconds
+    
+    def value_to_position(value):
+        """Convert slider value to x-position"""
+        return (value - min_val) / (max_val - min_val) * slider_width + padding
+    
+    def position_to_value(x):
+        """Convert x-position to slider value"""
+        return (x - padding) / slider_width * (max_val - min_val) + min_val
+    
+    def draw_slider(update_label=False):
+        """Draw the slider components"""
+        canvas.delete("all")
+        
+        # Draw background line
+        canvas.create_line(
+            padding, height/2 + 10,  # y position moved down by 10
+            width - padding, height/2 + 10,
+            fill=GRAY,
+            width=10,
+            capstyle=ROUND
+        )
+        
+        # Draw filled line
+        filled_x = value_to_position(current_value.get())
+        canvas.create_line(
+            padding, height/2 + 10,
+            filled_x, height/2 + 10,
+            fill=LIGHT,
+            width=10,
+            capstyle=ROUND
+        )
+        
+        # Draw knob
+        knob_x = value_to_position(current_value.get())
+        canvas.create_oval(
+            knob_x-10, height/2,
+            knob_x+10, height/2 + 20,
+            fill=LIGHT,
+            outline=DARK,
+            tags="knob"
+        )
+        
+        # Update value label if needed
+        if update_label:
+            canvas.delete("value_text")
+            label_x = max(padding, min(knob_x, width - padding))
+            canvas.create_text(
+                label_x, height/2 - 15,
+                text=str(int(current_value.get())),
+                font=(FONT, 10, "bold"),
+                fill=LIGHT,
+                tags="value_text"
+            )
+    
+    def on_drag(event):
+        nonlocal last_update_time
+        current_time = event.time
+        
+        # Check if click is within the slider's vertical bounds
+        if height/2 <= event.y <= height/2 + 20:
+            # Constrain x position to slider bounds
+            x = max(padding, min(event.x, width - padding))
+            new_value = position_to_value(x)
+            current_value.set(max(min_val, min(max_val, new_value)))
+            
+            # Update display based on interval
+            if current_time - last_update_time >= update_interval:
+                draw_slider(update_label=True)
+                last_update_time = current_time
+            else:
+                draw_slider(update_label=False)
+            
+            if command:
+                command(int(current_value.get()))
+    
+    def on_release(event):
+        draw_slider(update_label=True)
+        if command:
+            command(int(current_value.get()))
+    
+    def set_value(value):
+        """Set slider value programmatically"""
+        current_value.set(max(min_val, min(max_val, value)))
+        draw_slider(update_label=True)
+    
+    # Bind events
+    canvas.bind("<B1-Motion>", on_drag)
+    canvas.bind("<ButtonRelease-1>", on_release)
+    
+    # Add methods to frame
+    frame.set = set_value
+    frame.get = lambda: int(current_value.get())
+    
+    # Initial draw
+    draw_slider(update_label=True)
+    
+    return frame
+        
 
 def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
         
