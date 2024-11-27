@@ -810,19 +810,13 @@ def assign_strain_to_group(window, strain):
             messagebox.showwarning("Warning", "Please create a plate first")
             return
         window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print(window.column_assignments)
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
         # Create menu of available positions
         available_positions = []
         for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
             position_key = f"{start_col}-{end_col}"
-            if position_key not in window.column_assignments:
-                available_positions.append((strain_idx, start_col, end_col))
+            # if position_key not in window.column_assignments:
+            #    
+            available_positions.append((strain_idx, start_col, end_col))
 
         if available_positions:
             strain_location_menu = tk.Menu(window, tearoff=0)
@@ -850,10 +844,10 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
     position_key = f"{start_col}-{end_col}"
     
     # Check if columns are already assigned
-    for existing_key in list(window.column_assignments.keys()):
-        existing_start, existing_end = map(int, existing_key.split('-'))
-        if (start_col <= existing_end and end_col >= existing_start):
-            return
+    # for existing_key in list(window.column_assignments.keys()):
+    #     existing_start, existing_end = map(int, existing_key.split('-'))
+    #     if (start_col <= existing_end and end_col >= existing_start):
+    #         return
             
     window.column_assignments[position_key] = {
         'strain': strain,
