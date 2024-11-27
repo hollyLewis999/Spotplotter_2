@@ -809,7 +809,14 @@ def assign_strain_to_group(window, strain):
         if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
             messagebox.showwarning("Warning", "Please create a plate first")
             return
-
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print(window.column_assignments)
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
         # Create menu of available positions
         available_positions = []
         for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
