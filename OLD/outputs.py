@@ -266,7 +266,7 @@ def generate_pdf_report(window, figA, statsA, figB, statsB, figC, statsC, output
 
     #same color_scheme as before - should make it a global variable
     color_scheme = ['#073B3A', '#0F8660', '#D3784A', '#D24C4A']
-
+    
     def add_plot_and_stats(fig, stats, strain):
         story.append(logo)
         story.append(Spacer(1, 6))

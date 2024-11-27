@@ -34,13 +34,9 @@ import numpy as np
 import string
 from PIL import Image, ImageTk
 OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH / Path(r"C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\assets\frame0")
+ASSETS_PATH = OUTPUT_PATH  / "Icons"
 from matplotlib.colors import rgb2hex
 import matplotlib.colors as mcolors
-
-
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
 
 
 
@@ -578,8 +574,6 @@ def calculate_statistics(x, y, color, label):
 # 88      88  .8D 88      
 # 88      Y8888D' YP      
 
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
 
 def cv2_to_pil(cv2_img, convertColour = True):
     if cv2_img is None:
@@ -793,7 +787,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
     body_style = styles['Normal']
     
     # Add logo
-    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo_path = ("Icons/LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
 
 
@@ -1004,7 +998,7 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     
     
     # Add logo
-    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo_path = ("Icons/LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
 
     def add_final_info_page():
@@ -1038,7 +1032,7 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     
     
         # Add logo
-    logo_path = relative_to_assets("LogoHorizontalDark.png")
+    logo_path = ("Icons/LogoHorizontalDark.png")
     logo = ImageR(logo_path, width=1170/4, height=407/4)
     # Add existing content (plate info pages)
     for plate_info in all_plate_info:

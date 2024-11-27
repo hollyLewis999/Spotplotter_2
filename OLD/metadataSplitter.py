@@ -96,7 +96,7 @@ if __name__ == "__main__":
             'blocksize': 0,
             'strains': ['strain5', 'strain4', 'strain3', 'strain2'],
             'column_indexes': [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]],
-            'ordered_quantifications': [{}],
+            'ordered_quantifications': [],
             'strain_positions': {
                 0: (0, 2),
                 1: (3, 5),
@@ -125,7 +125,7 @@ if __name__ == "__main__":
             'blocksize': 0,
             'strains': ['strain5', 'strain4', 'strain3', 'strain2'],
             'column_indexes': [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]],
-            'ordered_quantifications': [{}],
+            'ordered_quantifications': [],
             'strain_positions': {
                 0: (0, 2),
                 1: (3, 5),
@@ -154,7 +154,7 @@ if __name__ == "__main__":
             'blocksize': 0,
             'strains': ['strain5', 'strain4', 'strain3', 'strain2'],
             'column_indexes': [[0, 1, 2], [3, 4, 5], [6, 7, 8], [9, 10, 11]],
-            'ordered_quantifications': [{}],
+            'ordered_quantifications': [],
             'strain_positions': {
                 0: (0, 2),
                 1: (3, 5),

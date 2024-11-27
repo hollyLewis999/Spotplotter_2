@@ -29,7 +29,36 @@ COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B
 import openpyxl
 from singleDilution import *
 
-
+from pathlib import Path
+import os
+from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
+from tkinter import ttk
+import tkinter as tk
+import cv2
+import numpy as np
+from scipy.spatial import distance
+from PIL import Image, ImageTk, ImageDraw
+import copy
+from functools import partial
+import time
+import math 
+import sys
+import json
+import os
+from datetime import datetime
+from tkinter import Toplevel, Label
+from PIL import Image, ImageTk
+from Style import *
+from PIL import ImageFont
+DARK = "#092934"
+LIGHT = "#FFFFFF"
+COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+CURRENTPLATEINDEX =-1
+GRAY1 = "#F0F0F0"
+GRAY2 = "#E0E0E0"
+GRAY = "#B0B0B0"
+FONT = "Microsoft New Tai Lue"
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 # DARK = "#FFFFFF"
@@ -38,21 +67,17 @@ GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 TITLEHEIGHT = 130
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH  / "Icons"
+
+
+
 
 buttonPosX = 1200
-buttonPosY = 885
+buttonPosY = 800
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
 base_y = 212.0
 heading_y = 20
-
-def relative_to_assets(path: str) -> Path:
-    return ASSETS_PATH / Path(path)
-
-
 
 
 def upload_metadata_handler(window):
@@ -99,136 +124,6 @@ def upload_metadata_handler(window):
     except Exception as e:
         print(f"Error loading metadata: {str(e)}")
         return None
-
-from pathlib import Path
-import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
-from tkinter import ttk
-import tkinter as tk
-import cv2
-import numpy as np
-from scipy.spatial import distance
-from PIL import Image, ImageTk, ImageDraw
-import copy
-from functools import partial
-import time
-import math 
-import sys
-import json
-import os
-from datetime import datetime
-from tkinter import Toplevel, Label
-from PIL import Image, ImageTk
-from Style import *
-from PIL import ImageFont
-DARK = "#092934"
-LIGHT = "#FFFFFF"
-COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
-COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
-CURRENTPLATEINDEX =-1
-GRAY1 = "#F0F0F0"
-GRAY2 = "#E0E0E0"
-GRAY = "#B0B0B0"
-FONT = "Microsoft New Tai Lue"
-
-# d8888b. db       .d8b.  d888888b d88888b .d8888. 
-# 88  `8D 88      d8' `8b `~~88~~' 88'     88'  YP 
-# 88oodD' 88      88ooo88    88    88ooooo `8bo.   
-# 88~~~   88      88~~~88    88    88~~~~~   `Y8b. 
-# 88      88booo. 88   88    88    88.     db   8D 
-# 88      Y88888P YP   YP    YP    Y88888P `8888Y' 
-
-
-
-# def create_circular_slider(master, min_val, max_val, position, command=None, initial_value=None):
-#     frame = Frame(master, width=300, height=70, bg=DARK)
-#     frame.place(x=position[0], y=position[1])
-#     canvas = Canvas(frame, width=300, height=70, bg=DARK, highlightthickness=0)
-#     canvas.pack()
-    
-#     current_value = DoubleVar(value=min_val if initial_value is None else initial_value)
-#     last_update_time = 0
-#     update_interval = 100  # Update interval in milliseconds
-
-#     def draw_slider(update_label=False):
-#         canvas.delete("all")
-#         filled_x = value_to_position(current_value.get())
-#         canvas.create_line(10, 45, 290, 45, fill=GRAY, width=10, capstyle=ROUND)
-#         canvas.create_line(10, 45, filled_x, 45, fill=LIGHT, width=10, capstyle=ROUND)
-        
-#         knob_x = value_to_position(current_value.get())
-#         canvas.create_oval(knob_x-10, 35, knob_x+10, 55, fill=LIGHT, outline=DARK, tags="knob")
-        
-#         if update_label:
-#             canvas.delete("value_text")
-#             label_x = max(10, min(knob_x, 270))
-#             canvas.create_text(label_x, 20, text=str(int(current_value.get())), 
-#                                font=(FONT, 10, "bold"), fill=LIGHT, tags="value_text")
-
-#     def value_to_position(value):
-#         return (value - min_val) / (max_val - min_val) * 280 + 10
-
-#     def position_to_value(x):
-#         return (x - 10) / 280 * (max_val - min_val) + min_val
-
-#     def on_drag(event):
-#         nonlocal last_update_time
-#         current_time = event.time
-#         if 35 <= event.y <= 55:
-#             new_value = position_to_value(event.x)
-#             current_value.set(max(min_val, min(max_val, new_value)))
-            
-#             if current_time - last_update_time >= update_interval:
-#                 draw_slider(update_label=True)
-#                 last_update_time = current_time
-#             else:
-#                 draw_slider(update_label=False)
-            
-#             if command:
-#                 command(int(current_value.get()))
-
-#     def on_release(event):
-#         draw_slider(update_label=True)
-#         if command:
-#             command(int(current_value.get()))
-
-#     canvas.bind("<B1-Motion>", on_drag)
-#     canvas.bind("<ButtonRelease-1>", on_release)
-
-#     def set_value(value):
-#         current_value.set(max(min_val, min(max_val, value)))
-#         draw_slider(update_label=True)
-
-#     draw_slider(update_label=True)
-#     frame.set = set_value
-#     frame.get = lambda: int(current_value.get())
-#     return frame
-        
-
-def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
-        
-    points = [x1+radius, y1,
-              x1+radius, y1,
-              x2-radius, y1,
-              x2-radius, y1,
-              x2, y1,
-              x2, y1+radius,
-              x2, y1+radius,
-              x2, y2-radius,
-              x2, y2-radius,
-              x2, y2,
-              x2-radius, y2,
-              x2-radius, y2,
-              x1+radius, y2,
-              x1+radius, y2,
-              x1, y2,
-              x1, y2-radius,
-              x1, y2-radius,
-              x1, y1+radius,
-              x1, y1+radius,
-              x1, y1]
-
-    return canvas.create_polygon(points, **kwargs, smooth=True)
 
 
 def create_mode_switcher(control_frame, window):
@@ -312,8 +207,6 @@ def create_controls(control_frame, window, mode):
         )
 
 
-
-
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
         plate_frame,
@@ -321,7 +214,6 @@ def create_plate_display(plate_frame, window):
         highlightthickness=0
     )
     window.plate_canvas.pack(expand=True, fill='both')
-    window.plate_canvas.bind("<Button-1>", lambda event: handle_click(event, window))
     update_plate_display_layout_designer(window)
 
 def update_plate_display_layout_designer(window):
@@ -403,17 +295,6 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows):
                         tags=(pos_key, "spot", f"strain_{strain}")
                     )
 
-def handle_click(event, window):
-    closest = window.plate_canvas.find_closest(event.x, event.y)
-    tags = window.plate_canvas.gettags(closest)
-    
-    if tags and len(tags) > 1:
-        pos_key = tags[0]
-        if pos_key in window.plate_layout['removed_positions']:
-            window.plate_layout['removed_positions'].remove(pos_key)
-        else:
-            window.plate_layout['removed_positions'].add(pos_key)
-        update_plate_display_layout_designer(window)
 
 def go_to_assignment_screen(window):
     valid_positions = {}
@@ -480,7 +361,7 @@ def create_strain_designer(window):
     window.canvas.place(x=0, y=0)
 
     # Load the image using PhotoImage (or Pillow for more formats)
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    image_image_1 = PhotoImage(file="Icons/image_1.png")
     window.canvas.image_image_1 = image_image_1  # Keep a reference to prevent garbage collection
 
     # Place the image on the canvas
@@ -871,7 +752,7 @@ def add_plate(window):
         window.plates.append(new_plate)
         window.plate_entry.delete(0, tk.END)
         window.current_plate = len(window.plates) - 1
-        window.column_assignments = {}
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         CURRENTPLATEINDEX = (len(window.plates) - 1)
         update_plate_display(window)
         print(f"Plate added. Total plates: {len(window.plates)}")
@@ -1011,7 +892,9 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     cell_height = grid_height / window.layout_data['rows']
     
     draw_positions_and_spots(window, margin_left, margin_top, 
-                           cell_width, cell_height, num_strains)    
+                           cell_width, cell_height, num_strains) 
+
+
 def draw_positions_and_spots(window, margin_left, margin_top, 
                            cell_width, cell_height, num_strains):
     plate = window.plates[CURRENTPLATEINDEX]                  
@@ -1043,6 +926,7 @@ def draw_positions_and_spots(window, margin_left, margin_top,
         current_x += position_width
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
+
 
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
@@ -1191,7 +1075,14 @@ def preview_all_plates(window):
     preview_window = tk.Toplevel(window)
     preview_window.title("SpotPlotter: All Plates Preview")
     preview_window.geometry("1200x800")
-    preview_window.iconbitmap(r'C:\Users\ThinkPad\Documents\AA ACADEMIC 2024\Thesis\GUI\ICONS\ICON.ico')
+    
+    BASE_PATH = Path(__file__).parent
+
+    # Construct the path to the icon file
+    icon_path = BASE_PATH / "Icons" / "ICON.ico"
+
+    # Set the window icon
+    preview_window.iconbitmap(icon_path)
 
     main_frame = tk.Frame(preview_window, bg=DARK)
     main_frame.pack(fill='both', expand=True)
@@ -1345,7 +1236,7 @@ def prev_plate(window):
         # Update current plate index
         window.current_plate -= 1
         new_plate = window.plates[window.current_plate]
-        
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         # Update entry fields
         window.plate_entry.delete(0, tk.END)
         window.plate_entry.insert(0, new_plate['name'])
@@ -1373,6 +1264,9 @@ def next_plate(window):
         window.plate_entry.insert(0, new_plate['name'])
         window.atc_var.set(new_plate.get('atc', ''))
         
+
+
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         # Update display with new plate index
         update_plate_display(window)
         window.plate_canvas.focus_set()
@@ -1752,6 +1646,7 @@ class RoundedEntry(tk.Frame):
         self.entry = tk.Entry(
             self,
             bg="white",
+            fg=DARK,  # Ensure the text color is dark
             bd=0,
             highlightthickness=0,
             **kwargs
@@ -1775,6 +1670,7 @@ class RoundedEntry(tk.Frame):
     def insert(self, index, string):
         """Delegate insert() to the internal entry widget"""
         return self.entry.insert(index, string)
+
 
 class RoundedCheckbox(tk.Canvas):
     def __init__(self, parent, text="", command=None, variable=None, **kwargs):
@@ -1881,7 +1777,8 @@ def create_plate_designer(window, mode="A"):
     canvas.place(x=0, y=0)
     
     # Add background images and frames
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+
+    image_image_1 = PhotoImage("Icons/image_1.png")
     canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
     image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
     round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
@@ -1943,7 +1840,8 @@ def create_titleFrame(window):
     canvas.place(x=0, y=0)
    
     ###LOGO IMAGE
-    image_path_10 = relative_to_assets("image_10.png")
+
+    image_path_10 = ("Icons/image_10.png")
     img_logobig = Image.open(image_path_10)
     img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS) #this resizing method maintains the quality
 
@@ -2006,7 +1904,8 @@ def display_results(window):
     )
     canvas.place(x=0, y=0)
     #logo
-    image_path_10 = relative_to_assets("image_10.png")
+
+    image_path_10 = "Icons/image_10.png"
     img_logobig = Image.open(image_path_10)
     img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
 
@@ -2072,7 +1971,7 @@ def create_plate_designer(window, mode="A"):
     canvas.place(x=0, y=0)
     
     # Add background images and frames
-    image_image_1 = PhotoImage(file=relative_to_assets("image_1.png"))
+    image_image_1 = PhotoImage(file=("Icons/image_1.png"))
     canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
     image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
     round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
@@ -2124,7 +2023,7 @@ def display_final_image(window, override =False):
     canvas.place(x=0, y=0)
 
     image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
+    file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
     image_1 = canvas.create_image(
         719.0,
@@ -2159,8 +2058,15 @@ def display_final_image(window, override =False):
         button_tag = "DisplayNext" )
 
 
-
-
+    canvas.create_text(
+        720,  
+        750.0,
+        text="Loading Image Please wait",
+        fill=DARK,
+        font=(FONT, 12, "bold"),
+        anchor="center" 
+    )
+    window.update()
     #frame where result will be displayed
     frame = Frame(window, bg=LIGHT)
     frame.place(relx=0.5, rely=0.5, anchor="center")
@@ -2239,7 +2145,7 @@ def create_slidersFrame(window):
     )
     canvas.place(x=0, y=0)
     image_image_1 = PhotoImage(
-        file=relative_to_assets("image_1.png"))
+        file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
     image_1 = canvas.create_image(
         719.0,
@@ -2429,6 +2335,8 @@ def on_block_size_change(window, value, backToEdit = False):
         display_image(window)
     else:
         backToEdit2 = False
+
+
 def export_data(window):
     """
     Export plate data and allow the user to choose the file location and name.
@@ -2599,7 +2507,7 @@ def create_editFrame(window, backToEdit = False):
     canvas.place(x=0, y=0)
 
     image_image_1 = PhotoImage(
-        file=relative_to_assets("image_1.png"))
+        file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
     image_1 = canvas.create_image(
         719.0,
@@ -2651,7 +2559,7 @@ def create_editFrame(window, backToEdit = False):
         fill=LIGHT,
         font=(FONT, 14 * -1, 'bold')
     )
-    toggle = relative_to_assets("toggle.png")
+    toggle = ("Icons/toggle.png")
     img_toggle = Image.open(toggle)
     img_toggle_resized = img_toggle.resize((img_toggle.width // 11, img_toggle.height // 11), Image.LANCZOS)
     image_toggle = ImageTk.PhotoImage(img_toggle_resized)
@@ -2677,7 +2585,7 @@ def create_editFrame(window, backToEdit = False):
     )
 
     # Zoom in button
-    zoomin = relative_to_assets("zoomin.png")
+    zoomin = ("Icons/zoomin.png")
     img_zoomin = Image.open(zoomin)
     img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
     image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
@@ -2693,7 +2601,7 @@ def create_editFrame(window, backToEdit = False):
     button_zoomin.place(x=1377.0, y=base_y + 78)
 
     # Zoom out button
-    zoomout = relative_to_assets("zoomout.png")
+    zoomout = ("Icons/zoomout.png")
     img_zoomout = Image.open(zoomout)
     img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
     image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
@@ -2718,7 +2626,7 @@ def create_editFrame(window, backToEdit = False):
     )
 
     # Undo button (image_8)
-    image_path_8 = relative_to_assets("image_8.png")
+    image_path_8 = ("Icons/image_8.png")
     img_undo = Image.open(image_path_8) 
     img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
     image_image_8 = ImageTk.PhotoImage(img_undo_resized)
@@ -2735,7 +2643,7 @@ def create_editFrame(window, backToEdit = False):
     undo_button.place(x=1376.0, y=base_y + 195)
 
     # Redo button (image_7)
-    image_path_7 = relative_to_assets("image_7.png")
+    image_path_7 = ("Icons/image_7.png")
     img_redo = Image.open(image_path_7)
     img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
     image_image_7 = ImageTk.PhotoImage(img_redo_resized)
@@ -2761,7 +2669,7 @@ def create_editFrame(window, backToEdit = False):
     )
 
     # Thin pen (image_2)
-    image_path_2 = relative_to_assets("image_2.png")
+    image_path_2 = ("Icons/image_2.png")
     img_thinPen = Image.open(image_path_2) 
     img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
     image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
@@ -2777,7 +2685,7 @@ def create_editFrame(window, backToEdit = False):
     button_thin_pen.place(x=1377.0, y=base_y + 312)
 
     # Big pen (image_5)
-    image_path_5 = relative_to_assets("image_5.png")
+    image_path_5 = ("Icons/image_5.png")
     img_thickPen = Image.open(image_path_5) 
     img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
     image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
@@ -2803,7 +2711,7 @@ def create_editFrame(window, backToEdit = False):
     )
 
     # Flood eraser (image_6)
-    image_path_6 = relative_to_assets("image_6.png")
+    image_path_6 = ("Icons/image_6.png")
     img_flood = Image.open(image_path_6) 
     img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
     image_image_6 = ImageTk.PhotoImage(img_flood_resized)
@@ -2820,7 +2728,7 @@ def create_editFrame(window, backToEdit = False):
     flood_eraser_button.place(x=1376.0, y=base_y + 429)
 
     # Thin eraser (image_9)
-    image_path_9 = relative_to_assets("image_9.png")
+    image_path_9 =("Icons/image_9.png")
     img_thinEraser = Image.open(image_path_9)
     img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
     image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
@@ -2839,7 +2747,7 @@ def create_editFrame(window, backToEdit = False):
 
 
  #big eraser
-    image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
+    image_image_4 = PhotoImage(file=("Icons/image_4.png"))
     image_image_4 = image_image_4.subsample(11, 11) 
     window.edit_images.append(image_image_4)
     big_eraser_button = Button(
@@ -2855,192 +2763,6 @@ def create_editFrame(window, backToEdit = False):
 
 
 
-
-
-
-
-
-    # canvas.create_text(
-    #     1391.0,
-    #     (400.0 +39),
-    #     text="Add",
-    #     fill=LIGHT,
-    #     font=(FONT, 14 * -1,'bold')
-    # )
-
-    # canvas.create_text(
-    #     1391.0,
-    #     580.0,
-    #     text="Delete",
-    #     fill=LIGHT,
-    #     font=(FONT, 14* -1,'bold')
-    # )
-
-
-
-    # image_path_2 = relative_to_assets("image_2.png")
-    # img_thinPen = Image.open(image_path_2) 
-    # #resizing image, using the othermethod made it super pixelated
-    # img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
-
-
-    # image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
-    # window.edit_images.append(image_image_2)
-    # button_thin_pen = Button(
-    #     window,
-    #     image=image_image_2,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: set_mode(window, "thin_brush"),
-    #     bg= DARK
-   
-    # )
-    
-    # button_thin_pen.place(x=1377.0, y=(420.0+39))
-
-
-
-    # #big eraser
-    # image_image_4 = PhotoImage(file=relative_to_assets("image_4.png"))
-    # image_image_4 = image_image_4.subsample(11, 11) 
-    # window.edit_images.append(image_image_4)
-    # big_eraser_button = Button(
-    #     window,
-    #     image=image_image_4,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: set_mode(window, "large_brush"),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # big_eraser_button.place(x=1377.0, y=655.0)
-
-    # image_path_5 = relative_to_assets("image_5.png")
-    # img_thickPen = Image.open(image_path_5) 
-    # img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
-
-
-    # image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
-    # window.edit_images.append(image_image_5)
-    # big_pen_button = Button(
-    #     window,
-    #     image=image_image_5,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: set_mode(window, "large_brush"),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # big_pen_button.place(x=1377, y=(460+39))
-
-
-    # image_path_6 = relative_to_assets("image_6.png")
-    # img_flood = Image.open(image_path_6) 
-    # img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
-
-
-    # image_image_6 = ImageTk.PhotoImage(img_flood_resized)
-    # window.edit_images.append(image_image_6)
-    # flood_eraser_button = Button(
-    #     window,
-    #     image=image_image_6,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: set_mode(window, "flood"),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # flood_eraser_button.place(x=1376.0, y=616.0)
-
-    # image_path_7 = relative_to_assets("image_7.png")
-    # img_redo = Image.open(image_path_7)
-    # img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
-
-    # image_image_7 = ImageTk.PhotoImage(img_redo_resized)
-    # window.edit_images.append(image_image_7)
-    # redo_button = Button(
-    #     window,
-    #     image=image_image_7,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: redo(window),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # redo_button.place(x=1376.0, y=(251.0+39))
-
-
-    # #undo
-    # image_path_8 = relative_to_assets("image_8.png")
-    # img_undo = Image.open(image_path_8) 
-    # img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
-    # image_image_8 = ImageTk.PhotoImage(img_undo_resized)
-    # window.edit_images.append(image_image_8)
-    # undo_button = Button(
-    #     window,
-    #     image=image_image_8,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: undo(window),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # undo_button.place(x=1376.0, y=(212.0 +39))
-
-
-    # canvas.create_text(
-    #     1391.0,
-    #     (212-15),
-    #     text="Toggle",
-    #     fill=LIGHT,
-    #     font=(FONT, 14 * -1,'bold')
-    # )
-
-    # toggle = relative_to_assets("toggle.png")
-    # img_toggle = Image.open(toggle)
-    # img_toggle_resized = img_toggle.resize((img_toggle.width // 11, img_toggle.height // 11), Image.LANCZOS)
-    # image_toggle = ImageTk.PhotoImage(img_toggle_resized)
-    # window.edit_images.append(image_toggle )
-    # toggle_button = Button(
-    #     window,
-    #     image=image_toggle,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: toggle_image(window),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # toggle_button.place(x=1376.0, y=212.0)
-
-
-
-
-    # canvas.create_text(
-    #     1391.0,
-    #     (212+39),
-    #     text="Zoom",
-    #     fill=LIGHT,
-    #     font=(FONT, 14 * -1,'bold')
-    # )
-
-
-
-    # # thin eraser
-    # image_path_9 = relative_to_assets("image_9.png")
-    # img_thinEraser = Image.open(image_path_9)
-    # img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
-    # image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
-    # window.edit_images.append(image_image_9)
-    # thin_eraser_button = Button(
-    #     window,
-    #     image=image_image_9,
-    #     borderwidth=0,
-    #     highlightthickness=0,
-    #     command=lambda: set_mode(window, "small_brush"),
-    #     relief="flat",
-    #     bg = DARK
-    # )
-    # thin_eraser_button.place(x=1376.0, y=693.0)
 
     window.undo_button = undo_button
     window.redo_button = redo_button
@@ -3216,7 +2938,7 @@ def open_grid_override(window):
     canvas.place(x=0, y=0)
 
     image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
+    file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
     image_1 = canvas.create_image(
         719.0,
@@ -3568,7 +3290,7 @@ def create_cropFrame(window):
     window.edit_images = []
 
     image_image_1 = PhotoImage(
-    file=relative_to_assets("image_1.png"))
+    file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
     image_1 = canvas.create_image(
         719.0,
@@ -3918,7 +3640,7 @@ def setup_zoom_controls(window):
 
     
  # Zoom in button
-    zoomin = relative_to_assets("zoomin.png")
+    zoomin = ("Icons/zoomin.png")
     img_zoomin = Image.open(zoomin)
     img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
     image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
@@ -3934,7 +3656,7 @@ def setup_zoom_controls(window):
     button_zoomin.place(x=1377.0, y=base_y + 78)
 
     # Zoom out button
-    zoomout = relative_to_assets("zoomout.png")
+    zoomout = ("Icons/zoomout.png")
     img_zoomout = Image.open(zoomout)
     img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
     image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
@@ -4011,13 +3733,20 @@ def display_images(window):
         if window.show_original:
             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
         else:
-            img_np = window.current_image
-            img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
-            img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
+            # img_np = window.debug_image
+            # # img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
+            # img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
+            # contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contour_img = img_np.copy()
+            # for cntr in contours:
+            #     cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
+            img_np = window.debug_image
+            img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            contour_img = img_np.copy()
-            for cntr in contours:
-                cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
+            
+            contour_img = window.current_image.copy()
+            cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
+
             window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img
             img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
@@ -4220,7 +3949,7 @@ window.iconbitmap(icon_path)
 initialize_window_attributes(window)
 title_frame_widgets = create_titleFrame(window)
 
-window.resizable(False, False)
+window.resizable(True, True)
 window.mainloop()
 
 # restore_window_state(window, 'window_state_singleDilutionRepeatsEcoli.pkl')

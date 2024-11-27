@@ -182,16 +182,16 @@ def plot_logarithmic_graph(data, log_base=10):
     ax.set_facecolor('#F5F5F5')
     
     lines = []
-    # for y, color, marker, label, atc in zip(y_data, colors, markers, labels, atc_labels):
-    #     stats = calculate_statistics(DILUTIONSERIES, y, color, label, log_base)
-    #     if stats is not None:
-    #         statistics.append(stats)
-    #         label = f"{atc} ({label})"
-    #         line = sns.scatterplot(x=DILUTIONSERIES, y=y, color=color, marker=marker, label=label, s=80)
-    #         lines.append(line)
-    #         x_fit = np.logspace(np.log10(min(DILUTIONSERIES)), np.log10(max(DILUTIONSERIES)), num=100, base=log_base)
-    #         y_fit = stats['slope'] * np.log(x_fit) / np.log(log_base) + stats['intercept']
-    #         plt.plot(x_fit, y_fit, color=color, linestyle='--', label=f"R² = {round(stats['r_squared'], 3)}\n{stats['formula']}")
+    for y, color, marker, label, atc in zip(y_data, colors, markers, labels, atc_labels):
+        stats = calculate_statistics(DILUTIONSERIES, y, color, label, log_base)
+        if stats is not None:
+            statistics.append(stats)
+            label = f"{atc} ({label})"
+            line = sns.scatterplot(x=DILUTIONSERIES, y=y, color=color, marker=marker, label=label, s=80)
+            lines.append(line)
+            x_fit = np.logspace(np.log10(min(DILUTIONSERIES)), np.log10(max(DILUTIONSERIES)), num=100, base=log_base)
+            y_fit = stats['slope'] * np.log(x_fit) / np.log(log_base) + stats['intercept']
+            plt.plot(x_fit, y_fit, color=color, linestyle='--', label=f"R² = {round(stats['r_squared'], 3)}\n{stats['formula']}")
     
     plt.title("Growth Curve", fontsize=20, fontweight='bold', pad=20)
     plt.ylim(0, 120)
