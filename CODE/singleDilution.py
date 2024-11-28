@@ -70,7 +70,7 @@ def create_mean_plot(df, control_quants_list, treatment_quants_list,
     
     style_axis(ax, df)
     ax.set_title('Average Quantification Between Control and Additive Plates',
-                color=TEXT_COLOR, pad=20, fontsize=12, fontweight='bold')
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
     ax.set_ylabel('Quantification Value', color=TEXT_COLOR, 
                  fontsize=10, fontweight='bold')
     
@@ -109,7 +109,7 @@ def create_knockdown_plot(df):
     style_axis(ax, df_filtered)
     excluded_count = len(df) - len(df_filtered)
     ax.set_title(f'Average Knockdown by Position\n{len(df_filtered)} positions shown ({excluded_count} positions with zero values excluded)',
-                color=TEXT_COLOR, pad=20, fontsize=12, fontweight='bold')
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
     ax.set_ylabel('Knockdown (Treatment/Control)', color=TEXT_COLOR,
                  fontsize=10, fontweight='bold')
     
@@ -168,7 +168,7 @@ def create_individual_plot(df, control_quants_list, treatment_quants_list,
     
     style_axis(ax, df)
     ax.set_title('Individual Quantications Over Average Quantifications',
-                color=TEXT_COLOR, pad=20, fontsize=12, fontweight='bold')
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
     ax.set_ylabel('Quantification Value', color=TEXT_COLOR,
                  fontsize=10, fontweight='bold')
     

@@ -50,6 +50,9 @@ from tkinter import Toplevel, Label
 from PIL import Image, ImageTk
 from Style import *
 from PIL import ImageFont
+import io
+import base64
+from PIL import Image, ImageDraw, ImageFont
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -1068,66 +1071,116 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
     
 #     return img_str
 
-
 def create_plate_preview_image(window, plate, width=1600, height=1200):
-    """
-    Creates a preview image for a single plate and returns it as a base64 string.
-    If window.current_mode == 'B', all spots are drawn in #073b3a, and no position labels are shown.
-    A popup window displays the generated preview.
-    """
-    import io
-    import base64
-    from PIL import Image, ImageDraw, ImageFont
-    import tkinter as tk
-    from PIL import ImageTk
-
-    # Create new image with white background
     margin = 20
     img_width = width - 40
     img_height = height - 60
     image = Image.new('RGB', (img_width, img_height), 'white')
     draw = ImageDraw.Draw(image)
-
+    
     # Calculate dimensions
     grid_width = img_width - 2 * margin
     grid_height = img_height - 2 * margin
-
+    
     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
     total_width = window.layout_data['columns'] + total_gaps
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
 
-    # Skip labels if in mode 'B'
-    skip_labels = window.current_mode == 'B'
+    if window.current_mode =='A':
 
-    # Draw spots
-    for col in range(window.layout_data['columns']):
-        for row in range(window.layout_data['rows']):
-            pos_key = f"{row}-{col}"
-            if pos_key not in window.plate_layout['removed_positions']:
-                x_pos = int(margin + col * cell_width + cell_width / 2)
-                y_pos = int(margin + row * cell_height + cell_height / 2)
-
-                # Use a single color if in mode 'B', otherwise determine color based on strain
-                if window.current_mode == 'B':
-                    spot_color = "#073b3a"
-                else:
-                    spot_color = GRAY1  # Default color
-                    if pos_key in plate['assignments']:
-                        strain = plate['assignments'][pos_key]
-                        strain_index = window.strains.index(strain)
-                        spot_color = window.strain_colors[strain_index]
-
-                # Draw spot (circle)
-                size = 16
-                draw.ellipse(
-                    [x_pos - size, y_pos - size, x_pos + size, y_pos + size],
-                    fill=spot_color,
-                    outline=spot_color
+        
+        # Try to load fonts (fallback to default if not available)
+        try:
+            # Try to load Helvetica Bold
+            label_font = ImageFont.truetype("arial.ttf", 45)
+            strain_font = ImageFont.truetype("arial.ttf", 45)
+        except IOError:
+            try:
+                # Fallback to default font if Helvetica-Bold is not found
+                label_font = ImageFont.load_default()
+                strain_font = ImageFont.load_default()
+                print("Helvetica Bold not found, using default font")
+            except:
+                print("Failed to load default font")
+        
+        # Draw strain sections and labels
+        current_x = margin
+        for position_idx in range(window.layout_data['strains']):
+            start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+            position_width = (end_col - start_col + 1) * cell_width
+            
+            # Find strain assignment for this section
+            assigned_strain = None
+            for pos_key, assignment in plate.get('assignments', {}).items():
+                row, col = map(int, pos_key.split('-'))
+                if start_col <= col <= end_col:
+                    assigned_strain = assignment 
+                    break
+            
+            # Draw strain label if assigned
+            if assigned_strain:
+                text_width = draw.textlength(assigned_strain, font=strain_font)
+                draw.text(
+                    (current_x + position_width/2 - text_width/2, margin),
+                    assigned_strain,
+                    font=strain_font,
+                    fill='black'
                 )
+            
+            # Draw spots
+            for col_offset in range(end_col - start_col + 1):
+                col = start_col + col_offset
+                x_pos = int(current_x + col_offset * cell_width + cell_width/2)
+                
+                for row in range(window.layout_data['rows']):
+                    pos_key = f"{row}-{col}"
+                    if pos_key not in window.plate_layout['removed_positions']:
+                        y_pos = int(margin + row * cell_height + cell_height/2)
+                        
+                        # Determine spot color
+                        spot_color = GRAY1  # Your default gray color
+                        if pos_key in plate['assignments']:
+                            strain = plate['assignments'][pos_key]
+                            strain_index = window.strains.index(strain)
+                            spot_color = window.strain_colors[strain_index]
+                        
+                        # Draw spot (circle)
+                        size = 16
+                        draw.ellipse(
+                            [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
+                            fill=spot_color,
+                            outline=spot_color
+                        )
+            
+            # Update x position for next group
+            current_x += position_width
+            
+            # Add gap after each position except the last one
+            if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+                current_x += cell_width
 
-    # Convert image to base64 for further use
+    else:
+
+        # Draw spots
+        for col in range(window.layout_data['columns']):
+            for row in range(window.layout_data['rows']):
+                pos_key = f"{row}-{col}"
+                if pos_key not in window.plate_layout['removed_positions']:
+                    x_pos = int(margin + col * cell_width + cell_width / 2)
+                    y_pos = int(margin + row * cell_height + cell_height / 2)
+                    spot_color = "#073b3a"
+                    size = 16
+                    draw.ellipse(
+                        [x_pos - size, y_pos - size, x_pos + size, y_pos + size],
+                        fill=spot_color,
+                        outline=spot_color
+                    )
+
+
+    
+    # Convert to base64
     buffer = io.BytesIO()
     image.save(buffer, format='PNG')
     img_str = base64.b64encode(buffer.getvalue()).decode()
@@ -2199,6 +2252,16 @@ def display_final_image(window, override =False):
     
     update_progress_bar(window)
 
+def go_to_edit_frame(window):
+    if not window.history:
+        window.history = [window.binarized_image.copy()]
+        window.redo_stack = []
+    
+    update_undo_redo_buttons(window)
+    create_editFrame(window)
+
+
+
 def create_slidersFrame(window):
     # Create main canvas
     canvas = Canvas(
@@ -2223,7 +2286,7 @@ def create_slidersFrame(window):
     create_rounded_button(
         canvas=canvas,
         text="Next",
-        command=lambda: create_editFrame(window),
+        command=lambda: go_to_edit_frame(window),
         x=buttonPosX,
         y=buttonPosY,
         button_tag = "slidersNext" )
@@ -3250,11 +3313,7 @@ def process_image(window):
     window.debug_image = np.stack((final_binary,) * 3, axis=-1)
     
     # only initialize history if it's empty, othewise its adding doubles
-    if not window.history:
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
-    
-    update_undo_redo_buttons(window)
+
     #create_editFrame(window)
     create_slidersFrame(window)
 
@@ -3419,42 +3478,47 @@ def create_cropFrame(window):
     window.progress_label.pack(side="left")
     update_progress_bar(window)
 
+
 def upload_images(window):
     """
     Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
+    Warn the user if there are filenames in the metadata that were not uploaded.
     """
-    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif")])
-   
+    import os
+    from tkinter import filedialog, messagebox
+
+    # Allow user to select image files
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tif")])
+
     # Ensure file_paths are selected and window.all_plate_info is initialized
     if file_paths and hasattr(window, 'all_plate_info'):
         window.image_paths = []
-        unmatched_filenames = []  # Collect unmatched filenames
-        print("Does have attribute")
-        # Get the list of filenames from window.all_plate_info
-        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        unmatched_filenames = []  # Collect filenames that don't match the metadata
+        uploaded_filenames = {os.path.basename(path).lower() for path in file_paths}  # Extract uploaded filenames
         
-        # Debugging: Print out expected filenames from the metadata
-        print("Expected filenames from metadata:")
-        for filename in valid_filenames:
-            print(f"- {filename}")
+        # Get the list of expected filenames from metadata
+        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
+
+        # Find filenames in metadata that were not uploaded
+        missing_filenames = valid_filenames - uploaded_filenames
 
         # Check the selected files for matches
         for path in file_paths:
             filename = os.path.basename(path).lower()
             if filename in valid_filenames:
                 window.image_paths.append(path)
-            else:
-                unmatched_filenames.append(filename)
 
-        # Handle matching and unmatched files
+        if missing_filenames:
+            messagebox.showwarning(
+                "Missing Files",
+                f"The following expected files were not uploaded:\n"
+                f"{', '.join(missing_filenames)}"
+            )
+
+        # Load the first matching image if there are matches
         if window.image_paths:
             window.current_image_index = 0
             load_current_image(window)  # Load the first matching image
-            # if unmatched_filenames:
-            #     messagebox.showwarning(
-            #         "Warning",
-            #         f"No matching entries found for {len(unmatched_filenames)} file(s):\n{', '.join(unmatched_filenames)}"
-            #     )
         else:
             messagebox.showwarning(
                 "Warning",
@@ -3465,6 +3529,7 @@ def upload_images(window):
             "Warning",
             "No files selected or metadata not initialized."
         )
+
 
 def load_current_image(window):
     #within correct bounds
@@ -3489,18 +3554,16 @@ def load_current_image(window):
         messagebox.showerror("Error", "No image to load")
 
 def next_image(window):
+    window.history = []
     if window.current_image_index < len(window.image_paths) - 1:
         window.current_image_index += 1
         load_current_image(window)
         create_cropFrame(window)
         update_progress_bar(window)
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: ALL INFO : {window.image_info}" )
+
     else:
-        save_window_state(window, 'FORREPORT.pkl')
-        # print("saved")
-        # # 
+        # save_window_state(window, 'FORREPORT.pkl')
+
         display_results(window)
         
 
@@ -3633,13 +3696,14 @@ def process_split_order_quantifications(window):
     for plate in window.all_plate_info:
         # Extract plate layout and dilution factors
         rows = plate['layout']['rows']
-        cols = len(plate['column_indexes'])
+        cols = len(plate['column_indexes'][0])
         x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
         y_dilution_factor = plate['layout']['y_dilution']
-        
+
         # Calculate the dilution series
         dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
         plate['dilutions'] = dilution_array 
+
         # Get sorted positions based on dilution series
         sorted_positions = get_sorted_positions(dilution_array)
         
@@ -3684,9 +3748,9 @@ def process_split_order_quantifications(window):
 def set_mode(window, mode):
     window.mode = mode
     if mode == "small_brush" or mode == "small_eraser":
-        window.brush_size = 40
+        window.brush_size = 10
     elif mode == "large_brush" or mode == "large_eraser":
-        window.brush_size = 120
+        window.brush_size = 50
 
 def toggle_image(window):
     window.show_original = not window.show_original
@@ -3696,8 +3760,8 @@ def toggle_image(window):
 def setup_zoom_controls(window):
     """Set up zoom controls and initialize zoom-related variables"""
     window.zoom_level = 1.0
-    window.zoom_min = 0.5
-    window.zoom_max = 5.0
+    window.zoom_min = 0.8
+    window.zoom_max = 4.0
     
     # Create zoom frame
     zoom_frame = Frame(window, bg=DARK)
@@ -3750,7 +3814,8 @@ def setup_zoom_controls(window):
     
 
 def adjust_zoom(window, factor):
-    """Adjust zoom level and trigger display update"""
+    
+
     new_zoom = window.zoom_level * factor
     if window.zoom_min <= new_zoom <= window.zoom_max:
         window.zoom_level = new_zoom
@@ -3895,12 +3960,12 @@ def brush_draw(window, x1, y1, x2, y2):
         color = 0  #black erasing
     cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
     window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
 
 def brush_erase(window, x1, y1, x2, y2):
     cv2.line(window.binarized_image, (x1, y1), (x2, y2), 0, window.brush_size * 2)
     window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
 def add_to_history(window):
     current_state = window.binarized_image.copy()
     if not window.history or not np.array_equal(current_state, window.history[-1]):
@@ -3949,15 +4014,7 @@ def update_undo_redo_buttons(window):
         window.redo_btn['state'] = "normal" if window.redo_stack else "disabled"
 
 
-#used for both eraser and pen, 
-def brush_draw(window, x1, y1, x2, y2):
-    if window.mode in ["small_brush", "large_brush"]:
-        color = 255  #white if drawing
-    else:
-        color = 0  #black if erasing
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
 
 
 def initialize_window_attributes(window):
@@ -4010,23 +4067,18 @@ BASE_PATH = Path(__file__).parent
 # Construct the path to the icon file
 icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
-# Set the window icon
-# window.iconbitmap(icon_path)
-# initialize_window_attributes(window)
-# title_frame_widgets = create_titleFrame(window)
 
-# window.resizable(True, True)
-# window.mainloop()
+window.iconbitmap(icon_path)
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
 
-restore_window_state(window, 'FORREPORT.pkl')
+window.resizable(True, True)
+window.mainloop()
+
+# restore_window_state(window, 'FORREPORT.pkl')
 
 
-# # process_split_order_quantifications(window)
-# # strain_data, dilution_series = generate_data_series(window)
-# # # df, fig = analyze_plate_data(strain_data)
-# # print(df)
-# # plt.show()
-processResults(window)
+# processResults(window)
 
 
 

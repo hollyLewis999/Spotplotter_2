@@ -250,8 +250,6 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         
         # Adjust figure size to make room for the legend
         fig.subplots_adjust(bottom=0.2)  # Leaves room at the bottom for the legend
-        
-        ax.set_ylim(0, 110)
         ax.tick_params(axis='both', which='major', labelsize=15)
         ax.set_title(f"{plot_title} for {title}",
                     fontsize=40, fontweight='bold', pad=20)
@@ -585,18 +583,87 @@ def save_graph_image(fig, filename):
 
 
 
+# def calculate_statistics(x, y, color, label):
+#     valid_x = []
+#     valid_y = []
+#     #only using ones that are above 10% becuse at that point there are a lot of very light ones that arent quantified and otherwise there are a lot of zeros
+#     for xi, yi in zip(x, y):
+#         if xi > 0 and yi > 10:
+#             #convert it to log 10 becuse of the dilution sequence
+#             valid_x.append(np.log10(xi))
+#             valid_y.append(yi)
+#         else:
+#             print ("POINT ")    
+   
+#     if len(valid_x) > 1:
+#         #getting all the statistics
+#         slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
+#         r_squared = r_value ** 2
+#         m, b = np.polyfit(valid_x, valid_y, 1)
+#         y_cut = b
+#         x_cut = 10 ** (-b / m)
+#         x_at_y50 = 10 ** ((50 - b) / m)
+#         formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
+       
+#         #return as a dictionary since it very nice to call values from
+#         return {
+#             'slope': m,
+#             'intercept': b,
+#             'r_squared': r_squared,
+#             'formula': formula,
+#             'y_cut': y_cut,
+#             'x_cut': x_cut,
+#             'x_at_y50': x_at_y50,
+#             'label': label,
+#             'color': color  # Add the color to the statistics dictionary
+#         }
+   
+#     return None
+
+
+
 def calculate_statistics(x, y, color, label):
     valid_x = []
     valid_y = []
-    #only using ones that are above 10% becuse at that point there are a lot of very light ones that arent quantified and otherwise there are a lot of zeros
+    excluded_points = []
+    
+    # Perform calculations without exclusion first
+    m_full, b_full = np.polyfit(np.log10(x), y, 1)
+    formula_full = f"y = {m_full:.2f} * log10(x) + {b_full:.2f}"
+    
+    # Track points excluded from calculations
     for xi, yi in zip(x, y):
         if xi > 0 and yi > 10:
-            #convert it to log 10 becuse of the dilution sequence
+            # Convert to log 10 because of the dilution sequence
             valid_x.append(np.log10(xi))
             valid_y.append(yi)
-   
+        else:
+            # Collect excluded points with their reasons
+            exclusion_reason = []
+            if xi <= 0:
+                exclusion_reason.append("x ≤ 0")
+            if yi <= 10:
+                exclusion_reason.append("y ≤ 10")
+            
+            excluded_points.append({
+                'x': xi, 
+                'y': yi, 
+                'reason': " & ".join(exclusion_reason)
+            })
+    
+    # Print detailed exclusion information
+    if excluded_points:
+        print(f"\nDebugging for {label}:")
+        print("Excluded points:")
+        for point in excluded_points:
+            print(f"  Point (x, y) = ({point['x']:.2f}, {point['y']:.2f}): Excluded [{point['reason']}]")
+    
+    # Print comparison of lines with and without exclusion
+    print("\nLine of Best Fit:")
+    print(f"  Without exclusion: {formula_full}")
+    
     if len(valid_x) > 1:
-        #getting all the statistics
+        # Getting statistics for filtered data
         slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
         r_squared = r_value ** 2
         m, b = np.polyfit(valid_x, valid_y, 1)
@@ -604,8 +671,10 @@ def calculate_statistics(x, y, color, label):
         x_cut = 10 ** (-b / m)
         x_at_y50 = 10 ** ((50 - b) / m)
         formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
-       
-        #return as a dictionary since it very nice to call values from
+        
+        print(f"  With exclusion:    {formula}")
+    
+        # Return as a dictionary since it's nice to call values from
         return {
             'slope': m,
             'intercept': b,
@@ -615,10 +684,13 @@ def calculate_statistics(x, y, color, label):
             'x_cut': x_cut,
             'x_at_y50': x_at_y50,
             'label': label,
-            'color': color  # Add the color to the statistics dictionary
+            'color': color,  # Add the color to the statistics dictionary
+            'excluded_points': excluded_points,  # Include excluded points for reference
+            'full_line_formula': formula_full  # Include full line formula
         }
-   
+    
     return None
+
 
 
 # d8888b. d8888b. d88888b 
@@ -755,7 +827,7 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     
     # Row 2: Binary Images
     row2_data = [
-        [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
+        [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-)"),
         # [create_image_with_caption('IMGbinary', "Tool Usage: Red(+) Blue(-))"),
         create_image_with_caption('IMGbinary', "Final Binary Image")]
     ]
@@ -963,13 +1035,14 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
     def create_stats_table(stats_subset):
         """Create a statistics table for a subset of stats (max 4 entries)"""
         # Dynamically adjust column widths based on number of entries
-        if len(stats_subset) < 4:
-            # If less than 4 entries, increase column width
-            col_widths = [1.2*inch]  # First column (row labels)
-            col_widths.extend([2.5*inch] * len(stats_subset))  # Wider data columns
+        if len(stats_subset) <= 3:
+            # If 3 or fewer entries, use wider columns
+            col_widths = [1.2 * inch]  # First column (row labels)
+            col_widths.extend([2.5 * inch] * len(stats_subset))  # Wider data columns
         else:
-            col_widths = [1.2*inch]  # First column (row labels)
-            col_widths.extend([1.5*inch] * len(stats_subset))  # Standard data columns
+            col_widths = [1.2 * inch]  # First column (row labels)
+            col_widths.extend([1.5 * inch] * len(stats_subset))  # Standard data columns
+
 
         header_row = ['']
         for stat in stats_subset:
@@ -1205,7 +1278,6 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
 
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
-
     # Initialize the result array
     result = np.zeros((rows, cols))
     
@@ -1218,6 +1290,7 @@ def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
         for j in range(cols):
             result[i,j] = result[0,j] * (y_dilution_factor ** i)
     
+    print (result)
     return result
 
 def print_dilution_series(dilution_array):
