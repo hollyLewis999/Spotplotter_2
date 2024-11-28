@@ -965,107 +965,173 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         }
     }
     
+# def create_plate_preview_image(window, plate, width=1600, height=1200):
+#     """
+#     Creates a preview image for a single plate and returns it as a base64 string.
+#     Uses PIL for direct drawing instead of taking screenshots.
+#     """
+#     import io
+#     import base64
+#     from PIL import Image, ImageDraw, ImageFont
+    
+#     # Create new image with white background
+#     margin = 20
+#     img_width = width - 40
+#     img_height = height - 60
+#     image = Image.new('RGB', (img_width, img_height), 'white')
+#     draw = ImageDraw.Draw(image)
+    
+#     # Calculate dimensions
+#     grid_width = img_width - 2 * margin
+#     grid_height = img_height - 2 * margin
+    
+#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+#     total_width = window.layout_data['columns'] + total_gaps
+#     cell_width = grid_width / total_width
+#     cell_height = grid_height / window.layout_data['rows']
+    
+#     # Try to load fonts (fallback to default if not available)
+#     try:
+#         # Try to load Helvetica Bold
+#         label_font = ImageFont.truetype("arial.ttf", 45)
+#         strain_font = ImageFont.truetype("arial.ttf", 45)
+#     except IOError:
+#         try:
+#             # Fallback to default font if Helvetica-Bold is not found
+#             label_font = ImageFont.load_default()
+#             strain_font = ImageFont.load_default()
+#             print("Helvetica Bold not found, using default font")
+#         except:
+#             print("Failed to load default font")
+    
+#     # Draw strain sections and labels
+#     current_x = margin
+#     for position_idx in range(window.layout_data['strains']):
+#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+#         position_width = (end_col - start_col + 1) * cell_width
+        
+#         # Find strain assignment for this section
+#         assigned_strain = None
+#         for pos_key, assignment in plate.get('assignments', {}).items():
+#             row, col = map(int, pos_key.split('-'))
+#             if start_col <= col <= end_col:
+#                 assigned_strain = assignment 
+#                 break
+        
+#         # Draw strain label if assigned
+#         if assigned_strain:
+#             text_width = draw.textlength(assigned_strain, font=strain_font)
+#             draw.text(
+#                 (current_x + position_width/2 - text_width/2, margin),
+#                 assigned_strain,
+#                 font=strain_font,
+#                 fill='black'
+#             )
+        
+#         # Draw spots
+#         for col_offset in range(end_col - start_col + 1):
+#             col = start_col + col_offset
+#             x_pos = int(current_x + col_offset * cell_width + cell_width/2)
+            
+#             for row in range(window.layout_data['rows']):
+#                 pos_key = f"{row}-{col}"
+#                 if pos_key not in window.plate_layout['removed_positions']:
+#                     y_pos = int(margin + row * cell_height + cell_height/2)
+                    
+#                     # Determine spot color
+#                     spot_color = GRAY1  # Your default gray color
+#                     if pos_key in plate['assignments']:
+#                         strain = plate['assignments'][pos_key]
+#                         strain_index = window.strains.index(strain)
+#                         spot_color = window.strain_colors[strain_index]
+                    
+#                     # Draw spot (circle)
+#                     size = 16
+#                     draw.ellipse(
+#                         [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
+#                         fill=spot_color,
+#                         outline=spot_color
+#                     )
+        
+#         # Update x position for next group
+#         current_x += position_width
+        
+#         # Add gap after each position except the last one
+#         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+#             current_x += cell_width
+    
+#     # Convert to base64
+#     buffer = io.BytesIO()
+#     image.save(buffer, format='PNG')
+#     img_str = base64.b64encode(buffer.getvalue()).decode()
+    
+#     return img_str
+
+
 def create_plate_preview_image(window, plate, width=1600, height=1200):
     """
     Creates a preview image for a single plate and returns it as a base64 string.
-    Uses PIL for direct drawing instead of taking screenshots.
+    If window.current_mode == 'B', all spots are drawn in #073b3a, and no position labels are shown.
+    A popup window displays the generated preview.
     """
     import io
     import base64
     from PIL import Image, ImageDraw, ImageFont
-    
+    import tkinter as tk
+    from PIL import ImageTk
+
     # Create new image with white background
     margin = 20
     img_width = width - 40
     img_height = height - 60
     image = Image.new('RGB', (img_width, img_height), 'white')
     draw = ImageDraw.Draw(image)
-    
+
     # Calculate dimensions
     grid_width = img_width - 2 * margin
     grid_height = img_height - 2 * margin
-    
+
     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
     total_width = window.layout_data['columns'] + total_gaps
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
-    
-    # Try to load fonts (fallback to default if not available)
-    try:
-        # Try to load Helvetica Bold
-        label_font = ImageFont.truetype("arial.ttf", 45)
-        strain_font = ImageFont.truetype("arial.ttf", 45)
-    except IOError:
-        try:
-            # Fallback to default font if Helvetica-Bold is not found
-            label_font = ImageFont.load_default()
-            strain_font = ImageFont.load_default()
-            print("Helvetica Bold not found, using default font")
-        except:
-            print("Failed to load default font")
-    
-    # Draw strain sections and labels
-    current_x = margin
-    for position_idx in range(window.layout_data['strains']):
-        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-        position_width = (end_col - start_col + 1) * cell_width
-        
-        # Find strain assignment for this section
-        assigned_strain = None
-        for pos_key, assignment in plate.get('assignments', {}).items():
-            row, col = map(int, pos_key.split('-'))
-            if start_col <= col <= end_col:
-                assigned_strain = assignment 
-                break
-        
-        # Draw strain label if assigned
-        if assigned_strain:
-            text_width = draw.textlength(assigned_strain, font=strain_font)
-            draw.text(
-                (current_x + position_width/2 - text_width/2, margin),
-                assigned_strain,
-                font=strain_font,
-                fill='black'
-            )
-        
-        # Draw spots
-        for col_offset in range(end_col - start_col + 1):
-            col = start_col + col_offset
-            x_pos = int(current_x + col_offset * cell_width + cell_width/2)
-            
-            for row in range(window.layout_data['rows']):
-                pos_key = f"{row}-{col}"
-                if pos_key not in window.plate_layout['removed_positions']:
-                    y_pos = int(margin + row * cell_height + cell_height/2)
-                    
-                    # Determine spot color
-                    spot_color = GRAY1  # Your default gray color
+
+    # Skip labels if in mode 'B'
+    skip_labels = window.current_mode == 'B'
+
+    # Draw spots
+    for col in range(window.layout_data['columns']):
+        for row in range(window.layout_data['rows']):
+            pos_key = f"{row}-{col}"
+            if pos_key not in window.plate_layout['removed_positions']:
+                x_pos = int(margin + col * cell_width + cell_width / 2)
+                y_pos = int(margin + row * cell_height + cell_height / 2)
+
+                # Use a single color if in mode 'B', otherwise determine color based on strain
+                if window.current_mode == 'B':
+                    spot_color = "#073b3a"
+                else:
+                    spot_color = GRAY1  # Default color
                     if pos_key in plate['assignments']:
                         strain = plate['assignments'][pos_key]
                         strain_index = window.strains.index(strain)
                         spot_color = window.strain_colors[strain_index]
-                    
-                    # Draw spot (circle)
-                    size = 16
-                    draw.ellipse(
-                        [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
-                        fill=spot_color,
-                        outline=spot_color
-                    )
-        
-        # Update x position for next group
-        current_x += position_width
-        
-        # Add gap after each position except the last one
-        if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
-            current_x += cell_width
-    
-    # Convert to base64
+
+                # Draw spot (circle)
+                size = 16
+                draw.ellipse(
+                    [x_pos - size, y_pos - size, x_pos + size, y_pos + size],
+                    fill=spot_color,
+                    outline=spot_color
+                )
+
+    # Convert image to base64 for further use
     buffer = io.BytesIO()
     image.save(buffer, format='PNG')
     img_str = base64.b64encode(buffer.getvalue()).decode()
-    
+
     return img_str
 
 def preview_all_plates(window):
@@ -3432,7 +3498,7 @@ def next_image(window):
         # print(f"Debug: Current image info: {window.current_info}")
         # print(f"Debug: ALL INFO : {window.image_info}" )
     else:
-        # save_window_state(window, 'window_state_singleDilutionRepeatsEcoliNotOverwrite.pkl')
+        save_window_state(window, 'FORREPORT.pkl')
         # print("saved")
         # # 
         display_results(window)
@@ -3504,7 +3570,6 @@ def processResults(window):
     process_tool_usage(window)
     print(window.all_plate_info[0]["mode"])
     if window.all_plate_info[0]["mode"] == 'A':
-        
         process_split_order_quantifications(window)
         strain_data, dilution_series = generate_data_series(window)
         sorted_positions = get_sorted_positions(dilution_series)
@@ -3527,7 +3592,7 @@ def processResults(window):
                 plt.close(fig)
     else:
         df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
-        
+        # print(window.all_plate_info)
         # Generate PDF and Excel with project name
         generate_pdf_report_MODEB(
             window.all_plate_info,
@@ -3946,22 +4011,22 @@ BASE_PATH = Path(__file__).parent
 icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
 # Set the window icon
-window.iconbitmap(icon_path)
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+# window.iconbitmap(icon_path)
+# initialize_window_attributes(window)
+# title_frame_widgets = create_titleFrame(window)
 
-window.resizable(True, True)
-window.mainloop()
+# window.resizable(True, True)
+# window.mainloop()
 
-# restore_window_state(window, 'window_state_singleDilutionRepeatsEcoli.pkl')
+restore_window_state(window, 'FORREPORT.pkl')
 
 
-# process_split_order_quantifications(window)
-# strain_data, dilution_series = generate_data_series(window)
-# # df, fig = analyze_plate_data(strain_data)
-# print(df)
-# plt.show()
-# processResults(window)
+# # process_split_order_quantifications(window)
+# # strain_data, dilution_series = generate_data_series(window)
+# # # df, fig = analyze_plate_data(strain_data)
+# # print(df)
+# # plt.show()
+processResults(window)
 
 
 

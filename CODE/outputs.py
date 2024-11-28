@@ -11,6 +11,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
+from reportlab.lib.enums import TA_CENTER  # Add this line
 from io import BytesIO
 import cv2
 import sys
@@ -37,6 +38,9 @@ OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH  / "Icons"
 from matplotlib.colors import rgb2hex
 import matplotlib.colors as mcolors
+from PIL import Image, ImageDraw, ImageFont
+import tkinter as tk
+from PIL import ImageTk
 
 
 
@@ -62,17 +66,20 @@ def normalize_array(arr, norm_value):
     """Normalize an array by a given value"""
     return [100 * x / norm_value for x in arr]
 
+
+
+
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     
     figures_and_stats = []
     # Create two separate figures
-    fig_individual = plt.figure(figsize=(24, 10))  # Increased width to accommodate legend
+    fig_individual = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
     ax1 = fig_individual.add_subplot(111)
     
-    fig_average = plt.figure(figsize=(24, 10))  # Increased width to accommodate legend
+    fig_average = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
     ax2 = fig_average.add_subplot(111)
     
-    sns.set_context("notebook", font_scale=1.2)
+    sns.set_context("notebook", font_scale=3)
     
     # Set log scale and style
     for ax in [ax1, ax2]:
@@ -107,6 +114,10 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     additive_counts = {additive: 0 for additive in additives}
     default_markers = ['o', 's', '^', 'D']
     
+    # Create custom legend handles
+    custom_handles = []
+    custom_labels = []
+
     # Plot individual series
     for idx, series in enumerate(data_series):
         y_norm = series['normalized_y_values']
@@ -122,7 +133,8 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         if stats is not None:
             individual_statistics.append(stats)
             
-            ax1.scatter(dilution_series, y_norm, color=color, 
+            # Scatter plot
+            scatter = ax1.scatter(dilution_series, y_norm, color=color, 
                        marker=marker, label=series['label'], s=80)
             
             # Plot trend line using new statistics
@@ -132,15 +144,31 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             mask = y_fit >= 0
             x_fit = x_fit[mask]
             y_fit = y_fit[mask]
-            ax1.plot(x_fit, y_fit, color=color, linestyle='--',
+            trend_line, = ax1.plot(x_fit, y_fit, color=color, linestyle='--',
                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
+            
+            # Create a custom label that combines both scatter and trend line information
+            custom_label = f"{series['label']}\n(R² = {stats['r_squared']:.3f}\n{stats['formula']})"
+            
+            # Create a custom handle that will display both scatter and trend line
+            custom_handle = plt.Line2D([0], [0], marker=marker, color=color, 
+                                        linestyle='--', markersize=10, 
+                                        label=custom_label)
+            
+            custom_handles.append(custom_handle)
+            custom_labels.append(custom_label)
         
         # Collect data for averaging
         for x, y in zip(dilution_series, y_norm):
             if x > 0 and y > 10:  # Updated threshold as per new statistics function
                 averaged_data[additive][x].append(y)
     
+    # Create custom legend handles for average plots
+    custom_handles_avg = []
+    custom_labels_avg = []
+    
     # Plot averaged data
+    avg_additive_count = 0
     for additive in additives:
         valid_x = []
         valid_means = []
@@ -160,8 +188,13 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             if stats is not None:
                 average_statistics.append(stats)
                 
+                # Choose a marker for the averaged plot
+                marker = default_markers[avg_additive_count % len(default_markers)]
+                avg_additive_count += 1
+                
+                # Errorbar plot
                 ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
-                            color=color_map[additive][1], marker='o',
+                            color=color_map[additive][1], marker=marker,
                             label=f'{additive}\nError bars = ±1 SD\nR² = {stats["r_squared"]:.3f}\n{stats["formula"]}',
                             capsize=5, capthick=1, markersize=8, linewidth=2,
                             ls='none')
@@ -173,39 +206,60 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 x_fit = x_fit[mask]
                 y_fit = y_fit[mask]
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
+                
+                # Create custom handle and label for average plot legend
+                custom_label_avg = f"{additive}\n(R² = {stats['r_squared']:.3f}\n{stats['formula']})"
+                custom_handle_avg = plt.Line2D([0], [0], marker=marker, color=color_map[additive][1], 
+                                               linestyle='--', markersize=10, 
+                                               label=custom_label_avg)
+                
+                custom_handles_avg.append(custom_handle_avg)
+                custom_labels_avg.append(custom_label_avg)
     
     # Style plots
-# Style plots
-    for ax, fig, plot_title in [(ax1, fig_individual, "Individual Growth Curves"), 
-                               (ax2, fig_average, "Average Growth Curves")]:
-        ax.set_xlabel('Dilution Series', fontsize=16, fontweight='bold')
-        ax.set_ylabel('Relative Growth (%)', fontsize=16, fontweight='bold')
+    fontS = 20
+    for ax, fig, plot_title, custom_handles_input, custom_labels_input in [
+        (ax1, fig_individual, "Individual Growth Curves", custom_handles, custom_labels),
+        (ax2, fig_average, "Average Growth Curves", custom_handles_avg, custom_labels_avg)
+    ]:
+        ax.set_xlabel('Dilution Series', fontsize=20, fontweight='bold')
+        ax.set_ylabel('Relative Growth (%)', fontsize=20, fontweight='bold')
         
-        # Adjust legend to be a single column on the right
+        # Create legend with custom handles
         legend = ax.legend(
-            fontsize=10,  # Increased font size
-            loc='center left',  # Positioned on the left side of the plot 
-            bbox_to_anchor=(1, 0.5),  # Centered vertically on the right side
-            ncol=1,  # Single column
+            custom_handles_input,  # Use custom handles
+            custom_labels_input,   # Use custom labels
+            fontsize=20,
+            loc='upper center',
+            bbox_to_anchor=(0.5, -0.15),
+            ncol=3,  # 3 sets per row
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
             framealpha=0.5,
-            title_fontsize=12  # Optional: if you want a title for the legend
+            title='Experimental Conditions'
         )
         
+        # Make legend labels bold
+        for text in legend.get_texts():
+            text.set_fontweight('bold')
+        
+        # Customize legend title separately
+        legend.get_title().set_fontsize(20)
+        legend.get_title().set_fontweight('bold')
+        
         # Adjust figure size to make room for the legend
-        fig.subplots_adjust(right=0.75)  # Leaves 25% of the width for the legend
+        fig.subplots_adjust(bottom=0.2)  # Leaves room at the bottom for the legend
         
         ax.set_ylim(0, 110)
-        ax.tick_params(axis='both', which='major', labelsize=14)
+        ax.tick_params(axis='both', which='major', labelsize=15)
         ax.set_title(f"{plot_title} for {title}",
-                    fontsize=20, fontweight='bold', pad=20)
-        fig.tight_layout()
-    
+                    fontsize=40, fontweight='bold', pad=20)
+        fig.tight_layout(rect=[0, 0.1, 1, 0.9]) 
     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
     return figures_and_stats
+
 
 
 def normalize_array(values, norm_value):
@@ -617,11 +671,12 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     story.append(Spacer(1, 10))
     
     max_width = 280
-    max_height = 160
+    max_height = 170
     def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
         """
         Creates an image and caption for the PDF report using ReportLab components.
         Handles both OpenCV images and base64-encoded preview images.
+        Caption is centered and placed above the image.
         """
         try:
             if img_key == "IMGPreview":
@@ -641,7 +696,7 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
                         pil_img = cv2_to_pil(plate_info[img_key])
                 else:
                     raise KeyError(f"{img_key} not found in plate_info")
-        
+    
             if pil_img:
                 # Convert to RGB if needed
                 if pil_img.mode != 'RGB':
@@ -657,21 +712,24 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
             
                 # Create ReportLab image without border
                 img = ImageR(img_data, width=img_width, height=img_height)
-                
-                # Create bold and italic caption style
+            
+                # Create centered, bold, and italic caption style
                 caption_style = ParagraphStyle(
                     'CaptionStyle',
                     parent=body_style,
                     fontWeight='bold',
-                    fontStyle='italic'
+                    fontStyle='italic',
+                    alignment=TA_CENTER  # Center align the text
                 )
-                
-                return [img, Paragraph(caption, caption_style)]
-
+            
+                # Return caption first, then the image
+                return [
+                    Paragraph(caption, caption_style),  # Centered caption
+                    img  # Image below the caption
+                ]
         except Exception as e:
             print(f"Error creating image with caption: {e}")
             return []
-
 
     def create_info_text(plate_info):
         info_text = f"""
@@ -690,7 +748,7 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
 
     # Row 1: Preview and Info
     row1_data = [
-        [create_image_with_caption('IMGPreview', "Preview Image"),
+        [create_image_with_caption('IMGPreview', "Assay Layout"),
             create_info_text(plate_info)]
     ]
     row1_table = Table(row1_data, colWidths=[max_width, max_width])
@@ -699,13 +757,13 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     row2_data = [
         [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-))"),
         # [create_image_with_caption('IMGbinary', "Tool Usage: Red(+) Blue(-))"),
-        create_image_with_caption('IMGbinary', "Binary Image")]
+        create_image_with_caption('IMGbinary', "Final Binary Image")]
     ]
     row2_table = Table(row2_data, colWidths=[max_width, max_width])
     # Row 3: Grid and Contours
     row3_data = [
-        [create_image_with_caption('IMGgrid', "Grid Image"),
-            create_image_with_caption('IMGcontours', "Contours Image")]
+        [create_image_with_caption('IMGgrid', "Detected Grid and Quantifications"),
+            create_image_with_caption('IMGcontours', "Contours overaly")]
     ]
     row3_table = Table(row3_data, colWidths=[max_width, max_width])
     
@@ -722,13 +780,79 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     for table in [row1_table, row2_table, row3_table]:
         table.setStyle(table_style)
         story.append(table)
-        story.append(Spacer(1, 20))
+        story.append(Spacer(1, 10))
     story.append(PageBreak())    
     
 
+def add_title_page(doc, logo_path="Icons/LogoVerticalDark.png", version="1.0"):
+    """
+    Create a title page for the document with logo, date, and version.
+    
+    Args:
+        doc (SimpleDocTemplate): The document to add the title page to.
+        logo_path (str): Path to the logo image.
+        version (str): Version of the software.
+    
+    Returns:
+        list: A list of flowable elements for the title page.
+    """
+    # Title page story elements
+    title_story = []
+    # Styles
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='MainTitle',
+        parent=styles['Title'],
+        fontSize=24,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    subtitle_style = ParagraphStyle(
+        name='Subtitle',
+        parent=styles['Normal'],
+        fontSize=14,
+        alignment=TA_CENTER,
+        spaceAfter=12
+    )
+    credit_style = ParagraphStyle(
+        name='Credit',
+        parent=styles['Normal'],
+        fontSize=10,
+        alignment=TA_CENTER,
+        textColor=colors.gray
+    )
+    
+    # Add more vertical space before logo
+    title_story.append(Spacer(1, 2*inch))  # Increased from 2 to 3 inches
+    
+    # Load and resize logo while maintaining proportions
+    try:
+        logo_img = Image.open(logo_path)
+        original_width, original_height = logo_img.size
+        # Set a maximum width for the logo (e.g., 5 inches)
+        max_logo_width = 7 * inch
+        width_ratio = max_logo_width / original_width
+        scaled_width = max_logo_width
+        scaled_height = original_height * width_ratio
+        
+        # Use HAlign to ensure logo is centered
+        logo = ImageR(logo_path, width=scaled_width, height=scaled_height, hAlign='CENTER')
+        title_story.append(logo)
+    except Exception as e:
+        print(f"Error loading logo: {e}")
+    
+    # Add current date and version
+    current_date = datetime.now().strftime("%Y-%m-%d")
+    version_text = f"Version {version} | Generated on {current_date}"
+    title_story.append(Paragraph(version_text, subtitle_style))
+    
 
-
-
+    
+    # Optional: Add additional text or credits
+    credit_text = "Created by Holly Lewis<br/>Supervised by R. Verrinder and Dr. M. Mason"
+    title_story.append(Paragraph(credit_text, credit_style))
+    title_story.append(PageBreak())
+    return title_story
 
 
 def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, version="1.0.0"):
@@ -831,84 +955,99 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
 
 
 
-    
+    story = add_title_page(doc)
     # Add plate info pages
     for plate_info in all_plate_info:
         add_info_page(plate_info, story, logo, title_style, body_style)
     
     def create_stats_table(stats_subset):
-            """Create a statistics table for a subset of stats (max 4 entries)"""
-            # Define fixed column widths (in points)
+        """Create a statistics table for a subset of stats (max 4 entries)"""
+        # Dynamically adjust column widths based on number of entries
+        if len(stats_subset) < 4:
+            # If less than 4 entries, increase column width
             col_widths = [1.2*inch]  # First column (row labels)
-            col_widths.extend([1.5*inch] * len(stats_subset))  # Data columns
-            
-            table_data = [[''] + [stat['label'] for stat in stats_subset]]
-            for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'y-cut', 'x-cut', 'x_at_y50']:
-                row = [row_label]
-                for stat in stats_subset:
-                    if row_label == 'Formula':
-                        value = stat['formula']
-                    elif row_label == 'R-squared':
-                        value = f"{stat['r_squared']:.3f}"
-                    elif row_label == 'x_at_y50':
-                        if abs(stat['x_at_y50']) >= 1e5:  # 5 digits before the decimal
-                            value = f"{stat['x_at_y50']:.2e}"  # Scientific notation
-                        else:
-                            value = f"{stat['x_at_y50']:.2f}"
+            col_widths.extend([2.5*inch] * len(stats_subset))  # Wider data columns
+        else:
+            col_widths = [1.2*inch]  # First column (row labels)
+            col_widths.extend([1.5*inch] * len(stats_subset))  # Standard data columns
+
+        header_row = ['']
+        for stat in stats_subset:
+            label = stat['label']
+            # If label is longer than column width, split it
+            if len(label) > col_widths[1] / 6:  # Rough character estimate 
+                mid = len(label) // 2
+                label = label[:mid] + '\n' + label[mid:]
+            header_row.append(label)
+        
+        table_data = [header_row]
+        for row_label in ['Formula', 'Slope', 'Intercept', 'R-squared', 'y-cut', 'x-cut', 'x_at_y50']:
+            row = [row_label]
+            for stat in stats_subset:
+                if row_label == 'Formula':
+                    value = stat['formula']
+                    # Split long formulas across two lines if needed
+                elif row_label == 'R-squared':
+                    value = f"{stat['r_squared']:.3f}"
+                elif row_label == 'x_at_y50':
+                    if abs(stat['x_at_y50']) >= 1e5:  # 5 digits before the decimal
+                        value = f"{stat['x_at_y50']:.2e}"  # Scientific notation
                     else:
-                        key = row_label.lower().replace('-', '_')
-                        # Handle scientific notation for values with more than 5 digits before the decimal
-                        raw_value = stat[key]
-                        if abs(raw_value) >= 1e5:  # 5 digits before the decimal
-                            value = f"{raw_value:.2e}"  # Scientific notation
-                        else:
-                            value = f"{raw_value:.2f}"
-                    row.append(value)
-                table_data.append(row)
-            
-            table = Table(table_data, colWidths=col_widths)
-            table_style = [
-                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 1, colors.black),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTSIZE', (0, 0), (-1, -1), 8),
-                ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-                ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
-                # Add word wrapping
-                ('WORDWRAP', (0, 0), (-1, -1), True),
-            ]
-            
-            # Add matched colors from the stats
-            for i, stat in enumerate(stats_subset, start=1):
-                # Convert matplotlib color to reportlab color
-                if isinstance(stat.get('color'), str):
-                    if stat['color'].startswith('#'):
-                        bg_color = colors.HexColor(stat['color'])
-                    else:
-                        # Handle named colors
-                        bg_color = colors.HexColor(rgb2hex(mcolors.to_rgb(stat['color'])))
+                        value = f"{stat['x_at_y50']:.2f}"
                 else:
-                    # Handle RGB tuples
-                    bg_color = colors.HexColor(rgb2hex(stat['color']))
-                
-                table_style.append((
-                    'BACKGROUND',
-                    (i, 0),
-                    (i, 0),
-                    bg_color
-                ))
-            
-            table.setStyle(TableStyle(table_style))
-            return table
+                    key = row_label.lower().replace('-', '_')
+                    # Handle scientific notation for values with more than 5 digits before the decimal
+                    raw_value = stat[key]
+                    if abs(raw_value) >= 1e5:  # 5 digits before the decimal
+                        value = f"{raw_value:.2e}"  # Scientific notation
+                    else:
+                        value = f"{raw_value:.2f}"
+                row.append(value)
+            table_data.append(row)
+
+        table = Table(table_data, colWidths=col_widths)
+        table_style = [
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('FONTSIZE', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
+            # Ensure text wrapping for all cells
+            ('WORDWRAP', (0, 0), (-1, -1), 1),  # Explicitly set word wrapping
+        ]
+
+        # Add matched colors from the stats
+        for i, stat in enumerate(stats_subset, start=1):
+            # Convert matplotlib color to reportlab color
+            if isinstance(stat.get('color'), str):
+                if stat['color'].startswith('#'):
+                    bg_color = colors.HexColor(stat['color'])
+                else:
+                    # Handle named colors
+                    bg_color = colors.HexColor(rgb2hex(mcolors.to_rgb(stat['color'])))
+            else:
+                # Handle RGB tuples
+                bg_color = colors.HexColor(rgb2hex(stat['color']))
+    
+            table_style.append((
+                'BACKGROUND',
+                (i, 0),
+                (i, 0),
+                bg_color
+            ))
+
+        table.setStyle(TableStyle(table_style))
+        return table
         
     # Process each strain's data
     for strain_name, figures_and_stats in all_strain_data:
         # Process each figure and its statistics for this strain
         for fig, stats, plot_title in figures_and_stats:
-            # Add logo before each graph
-            story.append(logo)
             
+            story.append(Paragraph(" ", styles['Normal']))  # Add a space as a first element
+            story.append(Spacer(1, 1*inch))
             # Add figure
             img_data = BytesIO()
             fig.savefig(img_data, format='png', dpi=150, bbox_inches='tight')
@@ -937,15 +1076,14 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 story.append(table)
                 story.append(Spacer(1, 10))
 
-            
             # Add page break after each strain except the last one
-            if strain_name != all_strain_data[-1][0]:
-                story.append(PageBreak())
+            story.append(PageBreak())
         
     
     # Build the PDF with footer
     story.append(add_final_info_page())
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
+
 
 
 def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdown_fig, individual_fig, version="1.0.0"):
@@ -978,6 +1116,7 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     )
     
     story = []
+    story = add_title_page(doc)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         name='Title',
@@ -1020,8 +1159,8 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
         for paragraph in info_text.split('\n\n'):
             story.append(Paragraph(paragraph.strip(), body_style))
             story.append(Spacer(1, 6))
-    add_final_info_page()
-    story.append(PageBreak())
+    
+
     
     def save_figure_for_pdf(fig, width=7.5*inch, height=3*inch):
         """Save matplotlib figure to bytes buffer and return as ReportLab image"""
@@ -1055,9 +1194,9 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     story.append(mean_image)
     story.append(knockdown_image)
     story.append(individual_image)
-    story.append(PageBreak())
 
 
+    add_final_info_page()
     # Add final info page
 
     
