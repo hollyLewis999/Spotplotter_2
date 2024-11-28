@@ -2,57 +2,35 @@
 #Tkinter Designer by Parth Jadhav
 #https://github.com/ParthJadhav/Tkinter-Designer
 
-import pandas as pd
-import numpy as np
-from pathlib import Path
+import base64
+import copy
+import io
+import json
+import math
 import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
+import pickle
+import sys
+import time
+from collections import defaultdict
+from datetime import datetime
+from functools import partial
+from pathlib import Path
+from tkinter import BOTTOM,BooleanVar,Button,Canvas,CENTER,Checkbutton,DoubleVar,Entry,Frame,HORIZONTAL,Label,LEFT,Message,PhotoImage,RIGHT,ROUND,Scale,Scrollbar,Text,Toplevel,Tk,Y,X,filedialog,font,messagebox
 from tkinter import ttk
-import tkinter as tk
+
 import cv2
 import numpy as np
-from scipy.spatial import distance
-from PIL import Image, ImageTk, ImageDraw
-import copy
-from functools import partial
-import time
-import math 
-import sys
-import json
-from datetime import datetime
-from collections import defaultdict
-import pickle
-from Processing import *
-from outputs import *
-from Style import *
-COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
 import openpyxl
+import pandas as pd
+from PIL import Image, ImageDraw, ImageFont, ImageTk
+from scipy.spatial import distance
+
+from Processing import *
+from Style import *
+from outputs import *
 from singleDilution import *
 
-from pathlib import Path
-import os
-from tkinter import Tk, Canvas, Entry, Text, Button, PhotoImage,filedialog,font, Y, X, Frame, Scrollbar, BOTTOM, Label,messagebox, Scale, HORIZONTAL,BooleanVar, Checkbutton, CENTER,  DoubleVar, ROUND, LEFT, RIGHT
-from tkinter import ttk
-import tkinter as tk
-import cv2
-import numpy as np
-from scipy.spatial import distance
-from PIL import Image, ImageTk, ImageDraw
-import copy
-from functools import partial
-import time
-import math 
-import sys
-import json
-import os
-from datetime import datetime
-from tkinter import Toplevel, Label
-from PIL import Image, ImageTk
-from Style import *
-from PIL import ImageFont
-import io
-import base64
-from PIL import Image, ImageDraw, ImageFont
+
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
@@ -61,21 +39,13 @@ CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
-FONT = "Microsoft New Tai Lue"
-DARK = "#092934"
-LIGHT = "#FFFFFF"
-# DARK = "#FFFFFF"
-# LIGHT = "#092934"
-GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
+
+
 TITLEHEIGHT = 130
-
-
-
-
 buttonPosX = 1200
-buttonPosY = 800
+buttonPosY = 850
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
@@ -129,36 +99,10 @@ def upload_metadata_handler(window):
         return None
 
 
-def create_mode_switcher(control_frame, window):
-    def switch_mode(new_mode):
-        create_plate_designer(window, mode=new_mode)
-   #bookmark 
-    # Label for mode selection
-    mode_label = Label(
-        control_frame,
-        text="Select Mode:",
-        font=(FONT, 12, "bold"),
-        fg=LIGHT,
-        bg=DARK
-    )
-    mode_label.place(x=10, y=10)
-    
-    # Dropdown menu for mode selection
-    mode_var = tk.StringVar(value=window.current_mode)  # Keep track of the current mode
-    mode_dropdown = ttk.Combobox(
-        control_frame,
-        textvariable=mode_var,
-        values=["A", "B"],
-        state="readonly",
-        font=(FONT, 11)
-    )
-    mode_dropdown.place(x=110, y=10, width=100)
-    
-    # Bind selection change to switch_mode function
-    mode_dropdown.bind("<<ComboboxSelected>>", lambda event: switch_mode(mode_var.get()))
+
 
 def create_controls(control_frame, window, mode):
-    y_offset = 60
+    y_offset = 100
     spacing = 80
     label_width = 100  # Width for right-aligned labels
     
@@ -208,6 +152,93 @@ def create_controls(control_frame, window, mode):
             "write",
             lambda *args: update_plate_display_layout_designer(window)
         )
+
+
+
+def create_mode_switcher(control_frame, window):
+    def switch_mode(new_mode):
+        # Update the current mode in the window
+        window.current_mode = new_mode
+        # Update the toggle button states
+        update_toggle_button()
+        # Call the relevant function based on the mode
+        create_plate_designer(window, mode=new_mode)
+
+    def update_toggle_button():
+        # Update the appearance of the buttons based on the current mode
+        if window.current_mode == "A":
+            dilutions_button.config(bg=LIGHT, fg=DARK)
+            arrayed_button.config(bg=DARK, fg=LIGHT)
+        else:
+            dilutions_button.config(bg=DARK, fg=LIGHT)
+            arrayed_button.config(bg=LIGHT, fg=DARK)
+
+    # Draw a rounded rectangle as the toggle's background with outline
+    def draw_rounded_rectangle(canvas, x1, y1, x2, y2, radius, fill, outline):
+        canvas.create_arc(x1, y1, x1 + 2 * radius, y1 + 2 * radius, start=90, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x2 - 2 * radius, y1, x2, y1 + 2 * radius, start=0, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x1, y2 - 2 * radius, x1 + 2 * radius, y2, start=180, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x2 - 2 * radius, y2 - 2 * radius, x2, y2, start=270, extent=90, fill=fill, outline=outline)
+        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=outline)
+        canvas.create_rectangle(x1, y1 + radius, x2, y2 - radius, fill=fill, outline=outline)
+
+    # Container for toggle buttons
+    toggle_frame = Frame(control_frame, bg=DARK)
+    toggle_frame.place(x=10, y=10, width=250, height=60)
+
+    # Canvas for background and outline
+    toggle_canvas = Canvas(toggle_frame, width=250, height=60, bg=DARK, highlightthickness=0)
+    toggle_canvas.place(x=0, y=0)
+    draw_rounded_rectangle(
+        toggle_canvas,
+        x1=0,
+        y1=0,
+        x2=250,
+        y2=60,
+        radius=20,
+        fill=LIGHT,
+        outline=LIGHT,
+    )
+
+    # Dilutions button
+    dilutions_button = Button(
+        toggle_frame,
+        text="Dilutions",
+        font=(FONT, 12, "bold"),
+        bg=LIGHT if window.current_mode == "A" else DARK,
+        fg=DARK if window.current_mode == "A" else LIGHT,
+        activebackground=LIGHT,
+        activeforeground=DARK,
+        relief="flat",
+        bd=0,
+        highlightthickness=0,
+        command=lambda: switch_mode("A"),
+        width=12,
+        height=2,
+    )
+    dilutions_button.place(x=10, y=5, width=115, height=50)
+
+    # Arrayed button
+    arrayed_button = Button(
+        toggle_frame,
+        text="Arrayed",
+        font=(FONT, 12, "bold"),
+        bg=LIGHT if window.current_mode == "B" else DARK,
+        fg=DARK if window.current_mode == "B" else LIGHT,
+        activebackground=LIGHT,
+        activeforeground=DARK,
+        relief="flat",
+        bd=0,
+        highlightthickness=0,
+        command=lambda: switch_mode("B"),
+        width=12,
+        height=2,
+    )
+    arrayed_button.place(x=125, y=5, width=115, height=50)
+
+    # Initialize button states
+    update_toggle_button()
+
 
 
 def create_plate_display(plate_frame, window):
@@ -264,10 +295,10 @@ def update_plate_display_layout_designer(window):
             current_col += 1
     
     
-    draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows)
+    draw_spots(window, strains, margin, cell_width, cell_height, x_dil,y_dil, rows)
 
 
-def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows):
+def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, rows):
     for strain in range(strains):
         start_col, end_col = window.plate_layout['strain_positions'][strain]
         for col_offset in range(end_col - start_col + 1):
@@ -297,6 +328,18 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, rows):
                         outline=color,
                         tags=(pos_key, "spot", f"strain_{strain}")
                     )
+                        # Add y-dilution labels (to the left of the rows)
+            for row in range(rows):
+                y_value = y_dil ** row
+                y_pos = margin + row * cell_height + cell_height / 2
+                if window.current_mode == 'A' and strain == 0:  # Only add y-labels once
+                    window.plate_canvas.create_text(
+                        margin - 20,  # Positioning to the left of the spots
+                        y_pos,
+                        text=y_value,
+                        fill=LIGHT,
+                        font=(FONT, 8)
+                    )        
 
 
 def go_to_assignment_screen(window):
@@ -648,86 +691,110 @@ def rename_current_plate(window):
     y = window.winfo_y() + (window_height - dialog_height) // 2
     rename_dialog.geometry(f"+{x}+{y}")
 
-
 def create_strain_controls(window):
-    if window.current_mode =='A':
+    if window.current_mode == 'A':
         # "Add a strain" header
-        strain_header = tk.Label(window.control_frame, text="Add a Strain", font=(FONT, 14, 'bold'), fg=LIGHT, bg=DARK)
+        strain_header = tk.Label(
+            window.control_frame, 
+            text="Add a Strain", 
+            font=(FONT, 14, 'bold'), 
+            fg=LIGHT, 
+            bg=DARK
+        )
         strain_header.pack(pady=(10, 5))
         
-        # Strain name frame
+        # Strain name entry frame (same style as plate controls)
         strain_frame = tk.Frame(window.control_frame, bg=DARK)
-        strain_frame.pack(fill=tk.X, padx=10)
+        strain_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
         
-        # Initialize strains attribute if not exists
-        if not hasattr(window, 'strains'):
-            window.strains = []
-        
-        # Strain entry
-        window.strain_entry = ttk.Entry(strain_frame, width=25)
-        window.strain_entry.pack(side=tk.LEFT, expand=True, fill=tk.X, padx=(0, 5))
-        
-        # Add strain button (now a + button)
-        add_strain_btn = tk.Button(
+        # Strain entry field with RoundedEntry
+        window.strain_entry = RoundedEntry(
             strain_frame,
-            text="+",
-            command=lambda: add_strain(window),
-            font=(FONT, 10),
-            bg=LIGHT,
-            fg=DARK,
-            width=3
+            width=200,
+            height=35
         )
-        add_strain_btn.pack(side=tk.RIGHT)
+        window.strain_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
         
-        # Blank space for added strains
+        # Canvas for the add strain button
+        add_strain_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=35, height=35)
+        add_strain_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Padding to the right
+        
+        create_rounded_button(
+            add_strain_canvas,
+            "+",
+            lambda: add_strain(window),
+            0, 0,
+            width=35,
+            height=35,
+            cornerradius=6,
+            fill=LIGHT,
+            accent=DARK
+        )
+        
+        # Blank space for added strains (same style as plate buttons)
         window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
         window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
+
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
     if strain and strain not in window.strains:
-        if len(window.strains) >= len(window.strain_colors):
+        if len(window.strains) >= 6:
             messagebox.showwarning("Warning", "Maximum number of strains reached")
             return
         
         window.strains.append(strain)
         window.strain_entry.delete(0, tk.END)
         
-        # Create strain frame within strain_list_frame instead of strains_frame
+        # Create strain frame within strain_list_frame (same layout style as plate controls)
         strain_frame = tk.Frame(window.strain_list_frame, bg=DARK)
         strain_frame.pack(fill=tk.X, pady=2)
-        
+
+        # Create circular color indicator
         color_indicator = tk.Label(
             strain_frame,
-            bg=window.strain_colors[len(window.strains)-1],
+            bg=window.strain_colors[len(window.strains) - 1],
             width=2,
-            height=1
+            height=1,
+            relief="solid",  # Adding a border for better circular appearance
+            borderwidth=1
         )
-        color_indicator.pack(side=tk.LEFT, padx=(0, 5))
+        color_indicator.config(width=2, height=1)  # Set equal width and height for a circular appearance
+        color_indicator.grid(row=0, column=0, padx=(0, 5), sticky='w')  # Positioned on the left side
         
+        # Strain label
         strain_label = tk.Label(
             strain_frame,
             text=strain,
-            font=(FONT, 10),
+            font=(FONT, 8),  # Smaller font size
             fg=LIGHT,
             bg=DARK
         )
-        strain_label.pack(side=tk.LEFT, expand=True, anchor='w')
+        strain_label.grid(row=0, column=1, sticky='w')  # Placed to the right of the color indicator
         
-        assign_btn = tk.Button(
-            strain_frame,
-            text="Assign",
-            command=lambda s=strain: assign_strain_to_group(window, s),
-            font=(FONT, 8),
-            bg=LIGHT,
-            fg=DARK
+        # Create a Canvas for the "Assign" button (necessary for rounded button)
+        assign_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=80, height=30)
+        assign_canvas.grid(row=0, column=2, padx=(5, 0), sticky='e')  # Positioned on the far right
+        
+        # Create the smaller rounded "Assign" button
+        create_rounded_button(
+            assign_canvas,
+            "Assign",
+            lambda s=strain: assign_strain_to_group(window, s),
+            0, 0,
+            width=60,  # Smaller width
+            height=25,  # Smaller height
+            cornerradius=6,
+            fill=LIGHT,
+            accent=DARK,
+            font_size=8,  # Smaller font size
+            bold=False  # Unbolded text
         )
-        assign_btn.pack(side=tk.RIGHT)
         
-        window.strain_buttons.append((strain_label, assign_btn))
+        window.strain_buttons.append((strain_label, assign_canvas))
         update_plate_display(window)
 
-        
+
 def create_plate_canvas(window):
     window.plate_canvas = tk.Canvas(
         window.plate_frame,
@@ -968,109 +1035,6 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         }
     }
     
-# def create_plate_preview_image(window, plate, width=1600, height=1200):
-#     """
-#     Creates a preview image for a single plate and returns it as a base64 string.
-#     Uses PIL for direct drawing instead of taking screenshots.
-#     """
-#     import io
-#     import base64
-#     from PIL import Image, ImageDraw, ImageFont
-    
-#     # Create new image with white background
-#     margin = 20
-#     img_width = width - 40
-#     img_height = height - 60
-#     image = Image.new('RGB', (img_width, img_height), 'white')
-#     draw = ImageDraw.Draw(image)
-    
-#     # Calculate dimensions
-#     grid_width = img_width - 2 * margin
-#     grid_height = img_height - 2 * margin
-    
-#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
-#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
-#     total_width = window.layout_data['columns'] + total_gaps
-#     cell_width = grid_width / total_width
-#     cell_height = grid_height / window.layout_data['rows']
-    
-#     # Try to load fonts (fallback to default if not available)
-#     try:
-#         # Try to load Helvetica Bold
-#         label_font = ImageFont.truetype("arial.ttf", 45)
-#         strain_font = ImageFont.truetype("arial.ttf", 45)
-#     except IOError:
-#         try:
-#             # Fallback to default font if Helvetica-Bold is not found
-#             label_font = ImageFont.load_default()
-#             strain_font = ImageFont.load_default()
-#             print("Helvetica Bold not found, using default font")
-#         except:
-#             print("Failed to load default font")
-    
-#     # Draw strain sections and labels
-#     current_x = margin
-#     for position_idx in range(window.layout_data['strains']):
-#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-#         position_width = (end_col - start_col + 1) * cell_width
-        
-#         # Find strain assignment for this section
-#         assigned_strain = None
-#         for pos_key, assignment in plate.get('assignments', {}).items():
-#             row, col = map(int, pos_key.split('-'))
-#             if start_col <= col <= end_col:
-#                 assigned_strain = assignment 
-#                 break
-        
-#         # Draw strain label if assigned
-#         if assigned_strain:
-#             text_width = draw.textlength(assigned_strain, font=strain_font)
-#             draw.text(
-#                 (current_x + position_width/2 - text_width/2, margin),
-#                 assigned_strain,
-#                 font=strain_font,
-#                 fill='black'
-#             )
-        
-#         # Draw spots
-#         for col_offset in range(end_col - start_col + 1):
-#             col = start_col + col_offset
-#             x_pos = int(current_x + col_offset * cell_width + cell_width/2)
-            
-#             for row in range(window.layout_data['rows']):
-#                 pos_key = f"{row}-{col}"
-#                 if pos_key not in window.plate_layout['removed_positions']:
-#                     y_pos = int(margin + row * cell_height + cell_height/2)
-                    
-#                     # Determine spot color
-#                     spot_color = GRAY1  # Your default gray color
-#                     if pos_key in plate['assignments']:
-#                         strain = plate['assignments'][pos_key]
-#                         strain_index = window.strains.index(strain)
-#                         spot_color = window.strain_colors[strain_index]
-                    
-#                     # Draw spot (circle)
-#                     size = 16
-#                     draw.ellipse(
-#                         [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
-#                         fill=spot_color,
-#                         outline=spot_color
-#                     )
-        
-#         # Update x position for next group
-#         current_x += position_width
-        
-#         # Add gap after each position except the last one
-#         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
-#             current_x += cell_width
-    
-#     # Convert to base64
-#     buffer = io.BytesIO()
-#     image.save(buffer, format='PNG')
-#     img_str = base64.b64encode(buffer.getvalue()).decode()
-    
-#     return img_str
-
 def create_plate_preview_image(window, plate, width=1600, height=1200):
     margin = 20
     img_width = width - 40
@@ -1216,7 +1180,7 @@ def preview_all_plates(window):
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    plates_per_row = 2
+    plates_per_row = 3
     plate_width = 400
     plate_height = 300
     margin = 20
@@ -1488,11 +1452,10 @@ def get_available_data_files():
     files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
     return sorted(files, reverse=True)
 
-
 def create_plate_controls(window):
     # Main controls container at the top
     controls_container = tk.Frame(window.control_frame, bg=DARK)
-    controls_container.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+    controls_container.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
     
     # "Add a plate" header
     plate_header = tk.Label(
@@ -1504,12 +1467,11 @@ def create_plate_controls(window):
     )
     plate_header.pack(pady=(0, 10))
 
-    # Plate name entry frame
 
-    # Additive controls
+       # Additive controls
     window.additive_var = tk.BooleanVar(value=False)
     additive_frame = tk.Frame(controls_container, bg=DARK)
-    additive_frame.pack(fill=tk.X, pady=(0, 10))
+    additive_frame.pack(fill=tk.X, pady=(0, 5))
     
     additive_check = RoundedCheckbox(
         additive_frame,
@@ -1528,8 +1490,9 @@ def create_plate_controls(window):
     )
     window.additive_entry.pack(side=tk.RIGHT)
 
+    # Plate name entry frame
     name_frame = tk.Frame(controls_container, bg=DARK)
-    name_frame.pack(fill=tk.X, pady=(0, 10))
+    name_frame.pack(fill=tk.X, pady=(0, 5))
     
     window.plate_entry = RoundedEntry(
         name_frame,
@@ -1538,62 +1501,132 @@ def create_plate_controls(window):
     )
     window.plate_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
     
-    add_plate_btn = tk.Button(
-        name_frame,
-        text="+",
-        command=lambda: add_plate(window),
-        font=(FONT, 12, 'bold'),
-        bg=LIGHT,
-        fg=DARK,
-        width=3,
-        height=1,
-        relief="flat",
-        bd=0
-    )
-    add_plate_btn.pack(side=tk.RIGHT)
+ 
 
-    
+    # Create a canvas for the add plate button on the name frame
+    add_plate_canvas = tk.Canvas(name_frame, bg=DARK, highlightthickness=0, width=35, height=45)  # Increased height for the button
+    add_plate_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Adding some padding to the right
+
+    create_rounded_button(
+        add_plate_canvas, 
+        "+", 
+        lambda: add_plate(window), 
+        0, 2, 
+        width=35, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK
+    )
 
     # Plate management buttons
     buttons_frame = tk.Frame(controls_container, bg=DARK)
-    buttons_frame.pack(fill=tk.X, pady=(10, 0))
+    buttons_frame.pack(fill=tk.X, pady=(5, 0))
     
-    # Create a consistent button style
-    def create_control_button(parent, text, command):
-        return tk.Button(
-            parent,
-            text=text,
-            command=command,
-            font=(FONT, 11),
-            bg=LIGHT,
-            fg=DARK,
-            relief="flat",
-            bd=0,
-            padx=15,
-            pady=5,
-            cursor="hand2"
-        )
+    # Create a canvas for management buttons
+    management_button_canvas = tk.Canvas(buttons_frame, bg=DARK, highlightthickness=0, width=300, height=40)  # Increased height
+    management_button_canvas.pack(fill=tk.X)
     
-    delete_btn = create_control_button(
-        buttons_frame,
-        "Delete",
-        lambda: delete_current_plate(window)
+    # Delete button
+    create_rounded_button(
+        management_button_canvas, 
+        "Delete", 
+        lambda: delete_current_plate(window), 
+        0, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6, 
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
     )
-    delete_btn.pack(side=tk.LEFT, expand=True, padx=2)
     
-    clear_btn = create_control_button(
-        buttons_frame,
-        "Clear",
-        lambda: clear_current_plate(window)
+    # Clear button
+    create_rounded_button(
+        management_button_canvas, 
+        "Clear", 
+        lambda: clear_current_plate(window), 
+        90, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
     )
-    clear_btn.pack(side=tk.LEFT, expand=True, padx=2)
     
-    rename_btn = create_control_button(
-        buttons_frame,
-        "Rename",
-        lambda: rename_current_plate(window)
+    # Rename button
+    create_rounded_button(
+        management_button_canvas, 
+        "Rename", 
+        lambda: rename_current_plate(window), 
+        180, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
     )
-    rename_btn.pack(side=tk.LEFT, expand=True, padx=2)
+
+def create_navigation_controls(window):
+    # Navigation controls at the bottom
+    nav_container = tk.Frame(window.control_frame, bg=DARK)
+    nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+    
+    # Navigation buttons frame
+    nav_frame = tk.Frame(nav_container, bg=DARK)
+    nav_frame.pack(fill=tk.X, pady=(0, 5))
+    
+    # Create a canvas for navigation buttons
+    navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
+    navigation_button_canvas.pack(fill=tk.X)
+    
+    # Previous Plate button
+    create_rounded_button(
+        navigation_button_canvas, 
+        "Previous", 
+        lambda: prev_plate(window), 
+        0, 0, 
+        width=120, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+    
+    # Next Plate button
+    create_rounded_button(
+        navigation_button_canvas, 
+        "Next ", 
+        lambda: next_plate(window), 
+        140, 0, 
+        width=120, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+    
+    # Action buttons frame
+    action_frame = tk.Frame(nav_container, bg=DARK)
+    action_frame.pack(fill=tk.X)
+    
+    # Create a canvas for action buttons
+    action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
+    action_button_canvas.pack(fill=tk.X)
+    
+    # Preview All Plates button
+    create_rounded_button(
+        action_button_canvas, 
+        "Preview All Plates", 
+        lambda: preview_all_plates(window), 
+        0, 0, 
+        width=260, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+
+
+
 
 def toggle_additive_entry(window):
     if window.additive_var.get():
@@ -1602,55 +1635,6 @@ def toggle_additive_entry(window):
         window.additive_entry.entry.config(state=tk.DISABLED)
         window.additive_entry.entry.delete(0, tk.END)
 
-def create_navigation_controls(window):
-    # Navigation controls at the bottom
-    nav_container = tk.Frame(window.control_frame, bg=DARK)
-    nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
-    
-    def create_nav_button(parent, text, command):
-        return tk.Button(
-            parent,
-            text=text,
-            command=command,
-            font=(FONT, 11),
-            bg=LIGHT,
-            fg=DARK,
-            relief="flat",
-            bd=0,
-            padx=15,
-            pady=5,
-            cursor="hand2"
-        )
-    
-    # Navigation buttons
-    nav_frame = tk.Frame(nav_container, bg=DARK)
-    nav_frame.pack(fill=tk.X, pady=(0, 10))
-    
-    prev_plate_btn = create_nav_button(
-        nav_frame,
-        "Previous Plate",
-        lambda: prev_plate(window)
-    )
-    prev_plate_btn.pack(side=tk.LEFT, expand=True, padx=2)
-    
-    next_plate_btn = create_nav_button(
-        nav_frame,
-        "Next Plate",
-        lambda: next_plate(window)
-    )
-    next_plate_btn.pack(side=tk.LEFT, expand=True, padx=2)
-    
-    # Action buttons
-    action_frame = tk.Frame(nav_container, bg=DARK)
-    action_frame.pack(fill=tk.X)
-    
-    preview_btn = create_nav_button(
-        action_frame,
-        "Preview All Plates",
-        lambda: preview_all_plates(window)
-    )
-    preview_btn.pack(side=tk.LEFT, expand=True, padx=2)
-    
 
 
 def setup_frames(window):
@@ -1665,50 +1649,6 @@ def setup_frames(window):
     window.plate_controls_frame = tk.Frame(window.control_frame, bg=DARK)
     window.plate_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
     
-    # window.strains_frame = tk.Frame(window.control_frame, bg=DARK)
-    # window.strains_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
-    
-    # # Create a frame for strain input and list
-    # window.strain_input_frame = tk.Frame(window.strains_frame, bg=DARK)
-    # window.strain_input_frame.pack(fill=tk.X, pady=(0, 10))
-    
-    # # Strain input elements
-    # strain_label = tk.Label(
-    #     window.strain_input_frame, 
-    #     text="Add Strain", 
-    #     font=(FONT, 14, 'bold'), 
-    #     fg=LIGHT, 
-    #     bg=DARK
-    # )
-    # strain_label.pack(pady=(0, 10))
-    
-    # strain_entry_frame = tk.Frame(window.strain_input_frame, bg=DARK)
-    # strain_entry_frame.pack(fill=tk.X)
-    
-    # window.strain_entry = RoundedEntry(
-    #     strain_entry_frame,
-    #     width=200,
-    #     height=35
-    # )
-    # window.strain_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
-    
-    # # add_strain_btn = tk.Button(
-    # #     strain_entry_frame,
-    # #     text="+",
-    # #     command=lambda: add_strain(window),
-    # #     font=(FONT, 12, 'bold'),
-    # #     bg=LIGHT,
-    # #     fg=DARK,
-    # #     width=3,
-    # #     height=1,
-    # #     relief="flat",
-    # #     bd=0
-    # # )
-    # # add_strain_btn.pack(side=tk.RIGHT)
-    
-    # # Frame for strain list (where strains will be added)
-    # window.strain_list_frame = tk.Frame(window.strains_frame, bg=DARK)
-    # window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
     
     window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
     window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
@@ -3562,7 +3502,7 @@ def next_image(window):
         update_progress_bar(window)
 
     else:
-        save_window_state(window, 'FORREPORTA.pkl')
+        save_window_state(window, 'FORREPORTA2.pkl')
 
         display_results(window)
         
@@ -3760,7 +3700,7 @@ def toggle_image(window):
 def setup_zoom_controls(window):
     """Set up zoom controls and initialize zoom-related variables"""
     window.zoom_level = 1.0
-    window.zoom_min = 0.8
+    window.zoom_min = 0.5
     window.zoom_max = 4.0
     
     # Create zoom frame
@@ -4068,17 +4008,17 @@ BASE_PATH = Path(__file__).parent
 icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
 
-# window.iconbitmap(icon_path)
-# initialize_window_attributes(window)
-# title_frame_widgets = create_titleFrame(window)
+window.iconbitmap(icon_path)
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
 
-# window.resizable(True, True)
-# window.mainloop()
+window.resizable(True, True)
+window.mainloop()
 
-restore_window_state(window, 'FORREPORTA.pkl')
+# restore_window_state(window, 'FORREPORTA2.pkl')
 
 
-processResults(window)
+# processResults(window)
 
 
 

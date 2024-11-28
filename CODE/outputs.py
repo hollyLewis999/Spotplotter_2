@@ -43,11 +43,6 @@ import tkinter as tk
 from PIL import ImageTk
 
 
-
-#DILUTIONSERIES = [1, 2, 4, 8, 10, 16, 20, 32, 40, 64, 80, 100, 128, 160, 200, 320, 400, 640, 800, 1000, 1280, 1600, 2000, 3200, 4000, 6400, 8000, 12800, 16000, 32000, 64000, 128000]
-ATCCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"]
-NOATCCOLORS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"]
-
 GREENCOLOURS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"] #https://coolors.co/073b3a-0b614d-0f8660-7db46f
 REDCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"] #https://coolors.co/d24c4a-d3784a-dfa24f-ebcb53
 BLUECOLOURS = ["#0C546B", "#0F7D87", "#46A2A2", "#7CC7BC"] #https://coolors.co/0c546b-0f7d87-46a2a2-7cc7bc
@@ -102,11 +97,11 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     for additive in additives:
         if additive == 'Control':
             color_map[additive] = BLUECOLOURS
-        elif len(color_map) % 3 == 0:
+        elif len(color_map) % 4 == 0:
             color_map[additive] = REDCOLOURS
-        elif len(color_map) % 3 == 1:
+        elif len(color_map) % 4 == 1:
             color_map[additive] = GREENCOLOURS
-        elif len(color_map) % 3 == 2:
+        elif len(color_map) % 4 == 2:
             color_map[additive] = PURPLESCOLOURS
     
     individual_statistics = []
@@ -571,54 +566,6 @@ def save_graph_image(fig, filename):
 
 
 
-
-#  d888b  d8888b.  .d8b.  d8888b. db   db .d8888. 
-# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP 
-# 88      88oobY' 88ooo88 88oodD' 88ooo88 `8bo.   
-# 88  ooo 88`8b   88~~~88 88~~~   88~~~88   `Y8b. 
-# 88. ~8~ 88 `88. 88   88 88      88   88 db   8D 
-#  Y888P  88   YD YP   YP 88      YP   YP `8888Y' 
-
-
-
-
-
-# def calculate_statistics(x, y, color, label):
-#     valid_x = []
-#     valid_y = []
-#     #only using ones that are above 10% becuse at that point there are a lot of very light ones that arent quantified and otherwise there are a lot of zeros
-#     for xi, yi in zip(x, y):
-#         if xi > 0 and yi > 10:
-#             #convert it to log 10 becuse of the dilution sequence
-#             valid_x.append(np.log10(xi))
-#             valid_y.append(yi)
-#         else:
-#             print ("POINT ")    
-   
-#     if len(valid_x) > 1:
-#         #getting all the statistics
-#         slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
-#         r_squared = r_value ** 2
-#         m, b = np.polyfit(valid_x, valid_y, 1)
-#         y_cut = b
-#         x_cut = 10 ** (-b / m)
-#         x_at_y50 = 10 ** ((50 - b) / m)
-#         formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
-       
-#         #return as a dictionary since it very nice to call values from
-#         return {
-#             'slope': m,
-#             'intercept': b,
-#             'r_squared': r_squared,
-#             'formula': formula,
-#             'y_cut': y_cut,
-#             'x_cut': x_cut,
-#             'x_at_y50': x_at_y50,
-#             'label': label,
-#             'color': color  # Add the color to the statistics dictionary
-#         }
-   
-#     return None
 
 
 
@@ -1114,8 +1061,8 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
             story.append(Spacer(1, 20))
             
             # Split stats into groups of 4 and create multiple tables if needed
-            for i in range(0, len(stats), 3):
-                stats_subset = stats[i:i+3]
+            for i in range(0, len(stats), 2):
+                stats_subset = stats[i:i+2]
                 table = create_stats_table(stats_subset)
                 story.append(table)
                 story.append(Spacer(1, 10))
