@@ -3562,7 +3562,7 @@ def next_image(window):
         update_progress_bar(window)
 
     else:
-        # save_window_state(window, 'FORREPORT.pkl')
+        save_window_state(window, 'FORREPORTA.pkl')
 
         display_results(window)
         
@@ -4068,17 +4068,17 @@ BASE_PATH = Path(__file__).parent
 icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
 
-window.iconbitmap(icon_path)
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+# window.iconbitmap(icon_path)
+# initialize_window_attributes(window)
+# title_frame_widgets = create_titleFrame(window)
 
-window.resizable(True, True)
-window.mainloop()
+# window.resizable(True, True)
+# window.mainloop()
 
-# restore_window_state(window, 'FORREPORT.pkl')
+restore_window_state(window, 'FORREPORTA.pkl')
 
 
-# processResults(window)
+processResults(window)
 
 
 

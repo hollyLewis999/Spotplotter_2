@@ -627,9 +627,7 @@ def calculate_statistics(x, y, color, label):
     valid_y = []
     excluded_points = []
     
-    # Perform calculations without exclusion first
-    m_full, b_full = np.polyfit(np.log10(x), y, 1)
-    formula_full = f"y = {m_full:.2f} * log10(x) + {b_full:.2f}"
+
     
     # Track points excluded from calculations
     for xi, yi in zip(x, y):
@@ -637,31 +635,9 @@ def calculate_statistics(x, y, color, label):
             # Convert to log 10 because of the dilution sequence
             valid_x.append(np.log10(xi))
             valid_y.append(yi)
-        else:
-            # Collect excluded points with their reasons
-            exclusion_reason = []
-            if xi <= 0:
-                exclusion_reason.append("x ≤ 0")
-            if yi <= 10:
-                exclusion_reason.append("y ≤ 10")
-            
-            excluded_points.append({
-                'x': xi, 
-                'y': yi, 
-                'reason': " & ".join(exclusion_reason)
-            })
+
     
-    # Print detailed exclusion information
-    if excluded_points:
-        print(f"\nDebugging for {label}:")
-        print("Excluded points:")
-        for point in excluded_points:
-            print(f"  Point (x, y) = ({point['x']:.2f}, {point['y']:.2f}): Excluded [{point['reason']}]")
-    
-    # Print comparison of lines with and without exclusion
-    print("\nLine of Best Fit:")
-    print(f"  Without exclusion: {formula_full}")
-    
+
     if len(valid_x) > 1:
         # Getting statistics for filtered data
         slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
@@ -671,8 +647,7 @@ def calculate_statistics(x, y, color, label):
         x_cut = 10 ** (-b / m)
         x_at_y50 = 10 ** ((50 - b) / m)
         formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
-        
-        print(f"  With exclusion:    {formula}")
+    
     
         # Return as a dictionary since it's nice to call values from
         return {
@@ -685,8 +660,7 @@ def calculate_statistics(x, y, color, label):
             'x_at_y50': x_at_y50,
             'label': label,
             'color': color,  # Add the color to the statistics dictionary
-            'excluded_points': excluded_points,  # Include excluded points for reference
-            'full_line_formula': formula_full  # Include full line formula
+            'full_line_formula': formula # Include full line formula
         }
     
     return None
@@ -1035,13 +1009,10 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
     def create_stats_table(stats_subset):
         """Create a statistics table for a subset of stats (max 4 entries)"""
         # Dynamically adjust column widths based on number of entries
-        if len(stats_subset) <= 3:
             # If 3 or fewer entries, use wider columns
-            col_widths = [1.2 * inch]  # First column (row labels)
-            col_widths.extend([2.5 * inch] * len(stats_subset))  # Wider data columns
-        else:
-            col_widths = [1.2 * inch]  # First column (row labels)
-            col_widths.extend([1.5 * inch] * len(stats_subset))  # Standard data columns
+        col_widths = [1.8 * inch]  # First column (row labels)
+        col_widths.extend([1.8 * inch] * len(stats_subset))  # Wider data columns
+
 
 
         header_row = ['']
@@ -1132,7 +1103,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 aspect_ratio = width / height
 
             # Desired width while maintaining aspect ratio
-            desired_width = 7 * inch
+            desired_width = 6 * inch
             desired_height = desired_width / aspect_ratio
 
             # Reset img_data pointer
@@ -1143,8 +1114,8 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
             story.append(Spacer(1, 20))
             
             # Split stats into groups of 4 and create multiple tables if needed
-            for i in range(0, len(stats), 4):
-                stats_subset = stats[i:i+4]
+            for i in range(0, len(stats), 3):
+                stats_subset = stats[i:i+3]
                 table = create_stats_table(stats_subset)
                 story.append(table)
                 story.append(Spacer(1, 10))
