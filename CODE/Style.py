@@ -285,3 +285,153 @@ def round_rectangle(canvas,x1, y1, x2, y2, radius=35, **kwargs):
               x1, y1]
 
     return canvas.create_polygon(points, **kwargs, smooth=True)
+
+
+
+
+class RoundedEntry(tk.Frame):
+    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
+        super().__init__(parent, bg=DARK)
+        
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
+        
+        # Create rounded canvas background
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=height,
+            bg=DARK,
+            highlightthickness=0
+        )
+        self.canvas.grid(row=0, column=0)
+        
+        # Draw rounded rectangle
+        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
+            x1+r, y1,
+            x1+r, y1,
+            x2-r, y1,
+            x2-r, y1,
+            x2, y1,
+            x2, y1+r,
+            x2, y2-r,
+            x2, y2,
+            x2-r, y2,
+            x1+r, y2,
+            x1, y2,
+            x1, y2-r,
+            x1, y1+r,
+            x1, y1,
+            smooth=True,
+            **kwargs
+        )
+        
+        bg_box = self.canvas.create_rounded_rectangle(
+            2, 2, width-2, height-2,
+            corner_radius,
+            fill="white",
+            outline="#cccccc"
+        )
+        
+        self.entry = tk.Entry(
+            self,
+            bg="white",
+            fg=DARK,  # Ensure the text color is dark
+            bd=0,
+            highlightthickness=0,
+            **kwargs
+        )
+        self.entry.place(
+            x=10,
+            y=height//2,
+            width=width-20,
+            anchor="w"
+        )
+
+    # Add these delegate methods
+    def get(self):
+        """Delegate get() to the internal entry widget"""
+        return self.entry.get()
+    
+    def delete(self, first, last=None):
+        """Delegate delete() to the internal entry widget"""
+        return self.entry.delete(first, last)
+    
+    def insert(self, index, string):
+        """Delegate insert() to the internal entry widget"""
+        return self.entry.insert(index, string)
+
+
+class RoundedCheckbox(tk.Canvas):
+    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
+        super().__init__(
+            parent,
+            width=24,
+            height=24,
+            highlightthickness=0,
+            bg=DARK,
+            **kwargs
+        )
+        self.variable = variable
+        self.command = command
+        
+        # Create the rounded rectangle for the checkbox
+        self.box = self.create_rounded_rectangle(
+            2, 2, 22, 22,
+            5,  # corner radius
+            outline="#cccccc",
+            fill="white",
+            width=2
+        )
+        
+        # Create the checkmark (hidden initially)
+        self.checkmark = self.create_line(
+            6, 12, 10, 16, 18, 8,
+            fill=DARK,
+            width=3,
+            state="hidden"
+        )
+        
+        # Bind click event
+        self.bind("<Button-1>", self.toggle)
+        
+        # Create label
+        self.label = Label(
+            parent,
+            text=text,
+            bg=DARK,
+            fg=LIGHT,
+            font=(FONT, 12)
+        )
+        
+    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
+        points = [
+            x1+radius, y1,
+            x2-radius, y1,
+            x2, y1,
+            x2, y1+radius,
+            x2, y2-radius,
+            x2, y2,
+            x2-radius, y2,
+            x1+radius, y2,
+            x1, y2,
+            x1, y2-radius,
+            x1, y1+radius,
+            x1, y1
+        ]
+        return self.create_polygon(points, smooth=True, **kwargs)
+    
+    def toggle(self, event=None):
+        if self.variable:
+            self.variable.set(not self.variable.get())
+            self.update_state()
+            if self.command:
+                self.command()
+    
+    def update_state(self):
+        if self.variable and self.variable.get():
+            self.itemconfigure(self.checkmark, state="normal")
+        else:
+            self.itemconfigure(self.checkmark, state="hidden")
+
+

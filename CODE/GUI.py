@@ -53,54 +53,15 @@ base_y = 212.0
 heading_y = 20
 
 
-def upload_metadata_handler(window):
-    """
-    Handler for the Upload MetaData button.
-    Opens file dialog, loads data, and displays it.
-    """
-    try:
-        # Open file dialog for selecting the JSON file
-        filename = filedialog.askopenfilename(
-            title="Select Metadata File",
-            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-        )
-        
-        if not filename:  # User cancelled
-            return
-            
-        # Load the data
-        with open(filename, 'r') as file:
-            loaded_data = json.load(file)
-            
-        # Update the global data structure
-        window.all_plate_info = loaded_data
-        
-        # Print the loaded data in a formatted way
-        print("\nUploaded Metadata Contents:")
-        print("-" * 50)
-        
-        for idx, plate in enumerate(loaded_data, 1):
-            print(f"\nPlate {idx}:")
-            print("  Strains:", ", ".join(plate.get('strains', [])))
-            print("  Columns:", plate.get('column_indexes', []))
-            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
-            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
-            
-        print("-" * 50)
-        print(f"Successfully loaded data from: {filename}")
 
-        return loaded_data
-        
-    except json.JSONDecodeError:
-        print("Error: Invalid JSON file format")
-        return None
-    except Exception as e:
-        print(f"Error loading metadata: {str(e)}")
-        return None
-
-
-
-
+# d8888b. db       .d8b.  d888888b d88888b    .o88b. d8888b. d88888b  .d8b.  d888888b  .d88b.  d8888b. 
+# 88  `8D 88      d8' `8b `~~88~~' 88'       d8P  Y8 88  `8D 88'     d8' `8b `~~88~~' .8P  Y8. 88  `8D 
+# 88oodD' 88      88ooo88    88    88ooooo   8P      88oobY' 88ooooo 88ooo88    88    88    88 88oobY' 
+# 88~~~   88      88~~~88    88    88~~~~~   8b      88`8b   88~~~~~ 88~~~88    88    88    88 88`8b   
+# 88      88booo. 88   88    88    88.       Y8b  d8 88 `88. 88.     88   88    88    `8b  d8' 88 `88. 
+# 88      Y88888P YP   YP    YP    Y88888P    `Y88P' 88   YD Y88888P YP   YP    YP     `Y88P'  88   YD 
+                                                                                                     
+                                                                                                     
 def create_controls(control_frame, window, mode):
     y_offset = 100
     spacing = 80
@@ -240,7 +201,6 @@ def create_mode_switcher(control_frame, window):
     update_toggle_button()
 
 
-
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
         plate_frame,
@@ -297,7 +257,6 @@ def update_plate_display_layout_designer(window):
     
     draw_spots(window, strains, margin, cell_width, cell_height, x_dil,y_dil, rows)
 
-
 def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, rows):
     for strain in range(strains):
         start_col, end_col = window.plate_layout['strain_positions'][strain]
@@ -342,6 +301,9 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, r
                     )        
 
 
+
+
+
 def go_to_assignment_screen(window):
     valid_positions = {}
     for strain, (start_col, end_col) in window.plate_layout['strain_positions'].items():
@@ -377,6 +339,7 @@ def go_to_assignment_screen(window):
 #   `Y8b.    88    88`8b   88~~~88    88    88 V8o88   `Y8b. 
 # db   8D    88    88 `88. 88   88   .88.   88  V888 db   8D 
 # `8888Y'    YP    88   YD YP   YP Y888888P VP   V8P `8888Y' 
+
 
 def create_strain_designer(window):
     # Clear window
@@ -441,7 +404,6 @@ def create_strain_designer(window):
         x=buttonPosX,
         y=buttonPosY
     )
-
 
 
 
@@ -511,8 +473,6 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
 
         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
             current_x += cell_width
-
-
 
 def update_plate_display(window):
     print(f"Total plates: {len(window.plates)}")
@@ -584,7 +544,259 @@ def update_plate_display(window):
 
     print("======== PLATE DISPLAY UPDATE COMPLETE ========")
 
+def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
+                   margin_bottom, grid_width, grid_height):
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        return
+        
+    plate = window.plates[CURRENTPLATEINDEX]
+    num_strains = window.layout_data['strains']
 
+    # Draw plate header
+    additive_display = f"( Additive: {plate['additive']})" if plate.get('additive') is not None else ''
+    
+    # Draw plate header with corrected syntax
+    window.plate_canvas.create_text(
+        width // 2,
+        20,
+        text=f"Current Plate: {CURRENTPLATEINDEX + 1} - {plate['name']}{additive_display}",
+        fill=LIGHT,
+        font=(FONT, 16, 'bold')
+    )
+    
+    # Calculate cell dimensions
+    cols_per_strain = window.layout_data['columns'] // num_strains
+    total_gaps = num_strains - 1 if window.layout_data['gap_between_strains'] else 0
+    total_width = window.layout_data['columns'] + total_gaps
+    cell_width = grid_width / total_width
+    cell_height = grid_height / window.layout_data['rows']
+    
+    draw_positions_and_spots(window, margin_left, margin_top, 
+                           cell_width, cell_height, num_strains) 
+
+def draw_positions_and_spots(window, margin_left, margin_top, 
+                           cell_width, cell_height, num_strains):
+    plate = window.plates[CURRENTPLATEINDEX]                  
+    current_x = margin_left
+    for position_idx in range(num_strains):
+        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+        position_width = (end_col - start_col + 1) * cell_width
+        
+        # Find assigned strain from the current plate's assignments
+        assigned_strain = None
+        for pos_key in plate.get('assignments', {}):
+            row, col = map(int, pos_key.split('-'))
+            if start_col <= col <= end_col:
+                assigned_strain = plate['assignments'][pos_key]
+                break
+        
+        if window.current_mode =='A':
+            # Draw position label
+            label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+            window.plate_canvas.create_text(
+                current_x + position_width/2,
+                margin_top,
+                text=label_text,
+                font=(FONT, 16, 'bold'),
+                fill=LIGHT
+            )
+
+        
+        current_x += position_width
+        if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
+            current_x += cell_width
+
+
+
+
+
+def create_strain_controls(window):
+    if window.current_mode == 'A':
+        # "Add a strain" header
+        strain_header = tk.Label(
+            window.control_frame, 
+            text="Add a Strain", 
+            font=(FONT, 14, 'bold'), 
+            fg=LIGHT, 
+            bg=DARK
+        )
+        strain_header.pack(pady=(10, 5))
+        
+        # Strain name entry frame (same style as plate controls)
+        strain_frame = tk.Frame(window.control_frame, bg=DARK)
+        strain_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
+        
+        # Strain entry field with RoundedEntry
+        window.strain_entry = RoundedEntry(
+            strain_frame,
+            width=200,
+            height=35
+        )
+        window.strain_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
+        
+        # Canvas for the add strain button
+        add_strain_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=35, height=35)
+        add_strain_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Padding to the right
+        
+        create_rounded_button(
+            add_strain_canvas,
+            "+",
+            lambda: add_strain(window),
+            0, 0,
+            width=35,
+            height=35,
+            cornerradius=6,
+            fill=LIGHT,
+            accent=DARK
+        )
+        
+        # Blank space for added strains (same style as plate buttons)
+        window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
+        window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
+
+def add_strain(window):
+    strain = window.strain_entry.get().strip()
+    if strain and strain not in window.strains:
+        if len(window.strains) >= 6:
+            messagebox.showwarning("Warning", "Maximum number of strains reached")
+            return
+        
+        window.strains.append(strain)
+        window.strain_entry.delete(0, tk.END)
+        
+        # Create strain frame within strain_list_frame (same layout style as plate controls)
+        strain_frame = tk.Frame(window.strain_list_frame, bg=DARK)
+        strain_frame.pack(fill=tk.X, pady=2)
+
+        # Create circular color indicator
+        color_indicator = tk.Label(
+            strain_frame,
+            bg=window.strain_colors[len(window.strains) - 1],
+            width=2,
+            height=1,
+            relief="solid",  # Adding a border for better circular appearance
+            borderwidth=1
+        )
+        color_indicator.config(width=2, height=1)  # Set equal width and height for a circular appearance
+        color_indicator.grid(row=0, column=0, padx=(0, 5), sticky='w')  # Positioned on the left side
+        
+        # Strain label
+        strain_label = tk.Label(
+            strain_frame,
+            text=strain,
+            font=(FONT, 8),  # Smaller font size
+            fg=LIGHT,
+            bg=DARK
+        )
+        strain_label.grid(row=0, column=1, sticky='w')  # Placed to the right of the color indicator
+        
+        # Create a Canvas for the "Assign" button (necessary for rounded button)
+        assign_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=80, height=30)
+        assign_canvas.grid(row=0, column=2, padx=(5, 0), sticky='e')  # Positioned on the far right
+        
+        # Create the smaller rounded "Assign" button
+        create_rounded_button(
+            assign_canvas,
+            "Assign",
+            lambda s=strain: assign_strain_to_group(window, s),
+            0, 0,
+            width=60,  # Smaller width
+            height=25,  # Smaller height
+            cornerradius=6,
+            fill=LIGHT,
+            accent=DARK,
+            font_size=8,  # Smaller font size
+            bold=False  # Unbolded text
+        )
+        
+        window.strain_buttons.append((strain_label, assign_canvas))
+        update_plate_display(window)
+
+def update_strain_menu(window):
+    # Remove existing menu if it exists
+    for widget in window.control_frame.winfo_children():
+        if isinstance(widget, tk.OptionMenu):
+            widget.destroy()
+
+    if window.strains:
+        selected_strain = tk.StringVar(value=window.strains[0])
+        menu = tk.OptionMenu(
+            window.control_frame,
+            selected_strain,
+            *window.strains
+        )
+        menu.configure(font=(FONT, 10), bg=LIGHT, fg=DARK)
+        menu.grid(row=3, column=2, padx=20, pady=10)
+
+
+
+
+def create_plate_info(window, plate, rows, cols, unordered_quantifications,
+                      strains, column_indexes):
+    # Create preview image
+    preview_image = create_plate_preview_image(window, plate)
+    
+    return {
+        'mode': window.current_mode,
+        'filename': plate['name'],
+        'additive': plate.get('additive', None),
+        'dilutions': [],
+        'unorderedquantifications': unordered_quantifications,
+        'IMGcontours': None,
+        'IMGbinary': None,
+        'IMGbinaryAutomatic':None,
+        'IMGToolUsage': None,
+        'IMGgrid': None,
+        'threshold': 0,
+        'smallArea': 0,
+        'blocksize': 0,
+        'strains': strains,
+        'column_indexes': [list(indexes) for indexes in column_indexes],
+        'normalisation_values': [],
+        'strain_positions': window.plate_layout['strain_positions'],
+        'split_quantifications':[],
+        'ordered_quantifications':[],
+        'removed_positions': list(window.plate_layout['removed_positions']),
+        'layout': {
+            'rows': rows,
+            'columns': cols,
+            'x_dilution': window.layout_data['x_dilution'],
+            'y_dilution': window.layout_data['y_dilution'],
+            'gap_between_strains': window.layout_data['gap_between_strains'],
+            'IMGPreview': preview_image  # Store the base64 encoded image
+        }
+    }
+    
+
+
+# d8888b. db       .d8b.  d888888b d88888b     d8b   db  .d8b.  db    db d888888b  d888b   .d8b.  d888888b d888888b  .d88b.  d8b   db 
+# 88  `8D 88      d8' `8b `~~88~~' 88'         888o  88 d8' `8b 88    88   `88'   88' Y8b d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88 
+# 88oodD' 88      88ooo88    88    88ooooo     88V8o 88 88ooo88 Y8    8P    88    88      88ooo88    88       88    88    88 88V8o 88 
+# 88~~~   88      88~~~88    88    88~~~~~     88 V8o88 88~~~88 `8b  d8'    88    88  ooo 88~~~88    88       88    88    88 88 V8o88 
+# 88      88booo. 88   88    88    88.         88  V888 88   88  `8bd8'    .88.   88. ~8~ 88   88    88      .88.   `8b  d8' 88  V888 
+# 88      Y88888P YP   YP    YP    Y88888P     VP   V8P YP   YP    YP    Y888888P  Y888P  YP   YP    YP    Y888888P  `Y88P'  VP   V8P 
+                                                                                                                                  
+                                                                                                                                  
+
+
+def add_plate(window):
+    global CURRENTPLATEINDEX
+    name = window.plate_entry.get().strip()
+    if name:
+        additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
+        new_plate = {
+            'name': name,
+            'additive': additive_name,
+            'assignments': {},
+            'column_assignments': {}
+        }
+        window.plates.append(new_plate)
+        window.plate_entry.delete(0, tk.END)
+        window.current_plate = len(window.plates) - 1
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
+        CURRENTPLATEINDEX = (len(window.plates) - 1)
+        update_plate_display(window)
+        print(f"Plate added. Total plates: {len(window.plates)}")
 
 def delete_current_plate(window):
     global CURRENTPLATEINDEX
@@ -691,350 +903,350 @@ def rename_current_plate(window):
     y = window.winfo_y() + (window_height - dialog_height) // 2
     rename_dialog.geometry(f"+{x}+{y}")
 
-def create_strain_controls(window):
-    if window.current_mode == 'A':
-        # "Add a strain" header
-        strain_header = tk.Label(
-            window.control_frame, 
-            text="Add a Strain", 
-            font=(FONT, 14, 'bold'), 
-            fg=LIGHT, 
-            bg=DARK
-        )
-        strain_header.pack(pady=(10, 5))
+def prev_plate(window):
+    global CURRENTPLATEINDEX
+    if window.plates and window.current_plate > 0:
+        # Clear current display
+        window.plate_canvas.delete('all')
+        CURRENTPLATEINDEX = CURRENTPLATEINDEX -1
+        # Update current plate index
+        window.current_plate -= 1
+        new_plate = window.plates[window.current_plate]
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
+        # Update entry fields
+        window.plate_entry.delete(0, tk.END)
+        window.plate_entry.insert(0, new_plate['name'])
+        window.atc_var.set(new_plate.get('atc', ''))
         
-        # Strain name entry frame (same style as plate controls)
-        strain_frame = tk.Frame(window.control_frame, bg=DARK)
-        strain_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-        
-        # Strain entry field with RoundedEntry
-        window.strain_entry = RoundedEntry(
-            strain_frame,
-            width=200,
-            height=35
-        )
-        window.strain_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
-        
-        # Canvas for the add strain button
-        add_strain_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=35, height=35)
-        add_strain_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Padding to the right
-        
-        create_rounded_button(
-            add_strain_canvas,
-            "+",
-            lambda: add_strain(window),
-            0, 0,
-            width=35,
-            height=35,
-            cornerradius=6,
-            fill=LIGHT,
-            accent=DARK
-        )
-        
-        # Blank space for added strains (same style as plate buttons)
-        window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
-        window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
-
-
-def add_strain(window):
-    strain = window.strain_entry.get().strip()
-    if strain and strain not in window.strains:
-        if len(window.strains) >= 6:
-            messagebox.showwarning("Warning", "Maximum number of strains reached")
-            return
-        
-        window.strains.append(strain)
-        window.strain_entry.delete(0, tk.END)
-        
-        # Create strain frame within strain_list_frame (same layout style as plate controls)
-        strain_frame = tk.Frame(window.strain_list_frame, bg=DARK)
-        strain_frame.pack(fill=tk.X, pady=2)
-
-        # Create circular color indicator
-        color_indicator = tk.Label(
-            strain_frame,
-            bg=window.strain_colors[len(window.strains) - 1],
-            width=2,
-            height=1,
-            relief="solid",  # Adding a border for better circular appearance
-            borderwidth=1
-        )
-        color_indicator.config(width=2, height=1)  # Set equal width and height for a circular appearance
-        color_indicator.grid(row=0, column=0, padx=(0, 5), sticky='w')  # Positioned on the left side
-        
-        # Strain label
-        strain_label = tk.Label(
-            strain_frame,
-            text=strain,
-            font=(FONT, 8),  # Smaller font size
-            fg=LIGHT,
-            bg=DARK
-        )
-        strain_label.grid(row=0, column=1, sticky='w')  # Placed to the right of the color indicator
-        
-        # Create a Canvas for the "Assign" button (necessary for rounded button)
-        assign_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.grid(row=0, column=2, padx=(5, 0), sticky='e')  # Positioned on the far right
-        
-        # Create the smaller rounded "Assign" button
-        create_rounded_button(
-            assign_canvas,
-            "Assign",
-            lambda s=strain: assign_strain_to_group(window, s),
-            0, 0,
-            width=60,  # Smaller width
-            height=25,  # Smaller height
-            cornerradius=6,
-            fill=LIGHT,
-            accent=DARK,
-            font_size=8,  # Smaller font size
-            bold=False  # Unbolded text
-        )
-        
-        window.strain_buttons.append((strain_label, assign_canvas))
+        # Update display with new plate index
         update_plate_display(window)
+        window.plate_canvas.focus_set()
+    else:
+        print("Cannot go to previous plate")
+
+def next_plate(window):
+    global CURRENTPLATEINDEX
+    if window.plates and window.current_plate < len(window.plates) - 1:
+        # Clear current display
+        CURRENTPLATEINDEX = CURRENTPLATEINDEX +1
+        window.plate_canvas.delete('all')
+        
+        # Update current plate index
+        window.current_plate += 1
+        new_plate = window.plates[window.current_plate]
+        
+        # Update entry fields
+        window.plate_entry.delete(0, tk.END)
+        window.plate_entry.insert(0, new_plate['name'])
+        window.atc_var.set(new_plate.get('atc', ''))
+        
 
 
-def create_plate_canvas(window):
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
+        # Update display with new plate index
+        update_plate_display(window)
+        window.plate_canvas.focus_set()
+    else:
+        print("Cannot go to next plate")
+
+
+
+
+def create_plate_controls(window):
+    # Main controls container at the top
+    controls_container = tk.Frame(window.control_frame, bg=DARK)
+    controls_container.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
+    
+    # "Add a plate" header
+    plate_header = tk.Label(
+        controls_container, 
+        text="Add a Plate", 
+        font=(FONT, 14, 'bold'), 
+        fg=LIGHT, 
+        bg=DARK
+    )
+    plate_header.pack(pady=(0, 10))
+
+
+       # Additive controls
+    window.additive_var = tk.BooleanVar(value=False)
+    additive_frame = tk.Frame(controls_container, bg=DARK)
+    additive_frame.pack(fill=tk.X, pady=(0, 5))
+    
+    additive_check = RoundedCheckbox(
+        additive_frame,
+        text="Additive",
+        variable=window.additive_var,
+        command=lambda: toggle_additive_entry(window)
+    )
+    additive_check.pack(side=tk.LEFT)
+    additive_check.label.pack(side=tk.LEFT, padx=(5, 0))
+    
+    window.additive_entry = RoundedEntry(
+        additive_frame,
+        width=150,
+        height=35,
+        state=tk.DISABLED
+    )
+    window.additive_entry.pack(side=tk.RIGHT)
+
+    # Plate name entry frame
+    name_frame = tk.Frame(controls_container, bg=DARK)
+    name_frame.pack(fill=tk.X, pady=(0, 5))
+    
+    window.plate_entry = RoundedEntry(
+        name_frame,
+        width=200,
+        height=35
+    )
+    window.plate_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
+    
+ 
+
+    # Create a canvas for the add plate button on the name frame
+    add_plate_canvas = tk.Canvas(name_frame, bg=DARK, highlightthickness=0, width=35, height=45)  # Increased height for the button
+    add_plate_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Adding some padding to the right
+
+    create_rounded_button(
+        add_plate_canvas, 
+        "+", 
+        lambda: add_plate(window), 
+        0, 2, 
+        width=35, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK
+    )
+
+    # Plate management buttons
+    buttons_frame = tk.Frame(controls_container, bg=DARK)
+    buttons_frame.pack(fill=tk.X, pady=(5, 0))
+    
+    # Create a canvas for management buttons
+    management_button_canvas = tk.Canvas(buttons_frame, bg=DARK, highlightthickness=0, width=300, height=40)  # Increased height
+    management_button_canvas.pack(fill=tk.X)
+    
+    # Delete button
+    create_rounded_button(
+        management_button_canvas, 
+        "Delete", 
+        lambda: delete_current_plate(window), 
+        0, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6, 
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
+    )
+    
+    # Clear button
+    create_rounded_button(
+        management_button_canvas, 
+        "Clear", 
+        lambda: clear_current_plate(window), 
+        90, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
+    )
+    
+    # Rename button
+    create_rounded_button(
+        management_button_canvas, 
+        "Rename", 
+        lambda: rename_current_plate(window), 
+        180, 0, 
+        width=80, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold=False  # Unbolded text
+    )
+
+def create_navigation_controls(window):
+    # Navigation controls at the bottom
+    nav_container = tk.Frame(window.control_frame, bg=DARK)
+    nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+    
+    # Navigation buttons frame
+    nav_frame = tk.Frame(nav_container, bg=DARK)
+    nav_frame.pack(fill=tk.X, pady=(0, 5))
+    
+    # Create a canvas for navigation buttons
+    navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
+    navigation_button_canvas.pack(fill=tk.X)
+    
+    # Previous Plate button
+    create_rounded_button(
+        navigation_button_canvas, 
+        "Previous", 
+        lambda: prev_plate(window), 
+        0, 0, 
+        width=120, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+    
+    # Next Plate button
+    create_rounded_button(
+        navigation_button_canvas, 
+        "Next ", 
+        lambda: next_plate(window), 
+        140, 0, 
+        width=120, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+    
+    # Action buttons frame
+    action_frame = tk.Frame(nav_container, bg=DARK)
+    action_frame.pack(fill=tk.X)
+    
+    # Create a canvas for action buttons
+    action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
+    action_button_canvas.pack(fill=tk.X)
+    
+    # Preview All Plates button
+    create_rounded_button(
+        action_button_canvas, 
+        "Preview All Plates", 
+        lambda: preview_all_plates(window), 
+        0, 0, 
+        width=260, 
+        height=35, 
+        cornerradius=6,
+        fill = LIGHT, accent = DARK,
+        bold = False
+    )
+
+def toggle_additive_entry(window):
+    if window.additive_var.get():
+        window.additive_entry.entry.config(state=tk.NORMAL)
+    else:
+        window.additive_entry.entry.config(state=tk.DISABLED)
+        window.additive_entry.entry.delete(0, tk.END)
+
+def setup_frames(window):
+    # Main frames
+    window.plate_frame = tk.Frame(window, bg=DARK)
+    window.plate_frame.place(x=27, y=178, width=1070, height=638)
+    
+    window.control_frame = tk.Frame(window, bg=DARK)
+    window.control_frame.place(x=1130, y=178, width=282, height=638)
+    
+    # Create three subframes within the control frame
+    window.plate_controls_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.plate_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
+    
+    
+    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+    
+    # Populate the frames
+    create_plate_controls(window)
+    create_strain_controls(window)  # You'll need to define this function
+    create_navigation_controls(window)
+    
+    
+
+
+
+    ####Create plate canvas:
     window.plate_canvas = tk.Canvas(
         window.plate_frame,
         bg=DARK,
         highlightthickness=0
     )
     window.plate_canvas.pack(expand=True, fill='both')
-    window.plate_canvas.bind("<Button-3>", lambda e: unselect_position(window, window.current_plate, e))
     
     # Force initial update with current plate index
     window.plate_canvas.after(100, lambda: update_plate_display(window))
 
 
-def add_plate(window):
-    global CURRENTPLATEINDEX
-    name = window.plate_entry.get().strip()
-    if name:
-        additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
-        new_plate = {
-            'name': name,
-            'additive': additive_name,
-            'assignments': {},
-            'column_assignments': {}
-        }
-        window.plates.append(new_plate)
-        window.plate_entry.delete(0, tk.END)
-        window.current_plate = len(window.plates) - 1
-        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        CURRENTPLATEINDEX = (len(window.plates) - 1)
-        update_plate_display(window)
-        print(f"Plate added. Total plates: {len(window.plates)}")
-
-def unselect_position(window, event):
-    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
-        return
-        
-    clicked_items = window.plate_canvas.find_closest(event.x, event.y)
-    if not clicked_items:
-        return
-        
-    clicked_item = clicked_items[0]
-    tags = window.plate_canvas.gettags(clicked_item)
+def create_plate_designer(window, mode="A"):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
     
-    if "spot" in tags:
-        pos_key = tags[0]
-        row, col = map(int, pos_key.split('-'))
-        
-        for position_key, strain in list(window.column_assignments.items()):
-            start, end = map(int, position_key.split('-'))
-            if start <= col <= end:
-                del window.column_assignments[position_key]
-                
-        plate = window.plates[CURRENTPLATEINDEX]
-        for row_idx in range(window.layout_data['rows']):
-            key = f"{row_idx}-{col}"
-            if key in plate['assignments']:
-                del plate['assignments'][key]
-        
-        update_plate_display(window)
-
-
-
-def update_strain_menu(window):
-    # Remove existing menu if it exists
-    for widget in window.control_frame.winfo_children():
-        if isinstance(widget, tk.OptionMenu):
-            widget.destroy()
-
-    if window.strains:
-        selected_strain = tk.StringVar(value=window.strains[0])
-        menu = tk.OptionMenu(
-            window.control_frame,
-            selected_strain,
-            *window.strains
-        )
-        menu.configure(font=(FONT, 10), bg=LIGHT, fg=DARK)
-        menu.grid(row=3, column=2, padx=20, pady=10)
-
-
-def assign_strain_to_group(window, strain):
-    if window.current_mode =='A':
-        if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
-            messagebox.showwarning("Warning", "Please create a plate first")
-            return
-        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        # Create menu of available positions
-        available_positions = []
-        for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
-            position_key = f"{start_col}-{end_col}"
-            # if position_key not in window.column_assignments:
-            #    
-            available_positions.append((strain_idx, start_col, end_col))
-
-        if available_positions:
-            strain_location_menu = tk.Menu(window, tearoff=0)
-            for strain_idx, start_col, end_col in available_positions:
-                label = f"Position {window.position_labels[strain_idx]}"
-                strain_location_menu.add_command(
-                    label=label,
-                    command=lambda s=start_col, e=end_col, idx=strain_idx: 
-                        assign_strain_to_columns(window, strain, s, e, idx)
-                )
-
-            try:
-                strain_location_menu.tk_popup(window.winfo_pointerx(), window.winfo_pointery())
-            finally:
-                strain_location_menu.grab_release()
-        else:
-            messagebox.showwarning("Warning", "All positions are already assigned.")
-
-
-def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
-    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
-        return
-        
-    plate = window.plates[CURRENTPLATEINDEX]
-    position_key = f"{start_col}-{end_col}"
-    
-    # Check if columns are already assigned
-    # for existing_key in list(window.column_assignments.keys()):
-    #     existing_start, existing_end = map(int, existing_key.split('-'))
-    #     if (start_col <= existing_end and end_col >= existing_start):
-    #         return
-            
-    window.column_assignments[position_key] = {
-        'strain': strain,
-        'position': window.position_labels[position_idx],
-        'position_idx': position_idx
+    # Initialize plate layout attributes with defaults
+    window.plate_layout = {
+        'rows': tk.IntVar(value=8),
+        'columns': tk.IntVar(value=12),
+        'strains': tk.IntVar(value=1 if mode == "B" else 3),
+        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
+        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
+        'gap_between_strains': tk.BooleanVar(value=False),
+        'removed_positions': set(),
+        'strain_positions': {}
     }
     
-    # Assign spots to strain
-    for row in range(window.layout_data['rows']):
-        for col in range(start_col, end_col + 1):
-            pos_key = f"{row}-{col}"
-            if pos_key not in window.layout_data['removed_positions']:
-                plate['assignments'][pos_key] = strain
-                
-    update_plate_display(window)
-
-
-def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
-                   margin_bottom, grid_width, grid_height):
-    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
-        return
-        
-    plate = window.plates[CURRENTPLATEINDEX]
-    num_strains = window.layout_data['strains']
-
-    # Draw plate header
-    additive_display = f"( Additive: {plate['additive']})" if plate.get('additive') is not None else ''
+    # Store the current mode
+    window.current_mode = mode
     
-    # Draw plate header with corrected syntax
-    window.plate_canvas.create_text(
-        width // 2,
-        20,
-        text=f"Current Plate: {CURRENTPLATEINDEX + 1} - {plate['name']}{additive_display}",
-        fill=LIGHT,
-        font=(FONT, 16, 'bold')
+    # Create canvas for layout
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    
+    # Add background images and frames
+    image_image_1 = PhotoImage(file=("Icons/image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
+    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
+    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+    
+    # Create frames for plate and controls
+    plate_frame = Frame(window, bg=DARK)
+    plate_frame.place(x=27, y=178, width=1070, height=638)
+    
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178, width=282, height=638)
+    
+    # Create mode switcher and controls
+    create_mode_switcher(control_frame, window)
+    create_controls(control_frame, window, mode)
+    create_plate_display(plate_frame, window)
+    
+    # Add navigation buttons
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
     )
     
-    # Calculate cell dimensions
-    cols_per_strain = window.layout_data['columns'] // num_strains
-    total_gaps = num_strains - 1 if window.layout_data['gap_between_strains'] else 0
-    total_width = window.layout_data['columns'] + total_gaps
-    cell_width = grid_width / total_width
-    cell_height = grid_height / window.layout_data['rows']
-    
-    draw_positions_and_spots(window, margin_left, margin_top, 
-                           cell_width, cell_height, num_strains) 
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_titleFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )    
 
 
-def draw_positions_and_spots(window, margin_left, margin_top, 
-                           cell_width, cell_height, num_strains):
-    plate = window.plates[CURRENTPLATEINDEX]                  
-    current_x = margin_left
-    for position_idx in range(num_strains):
-        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-        position_width = (end_col - start_col + 1) * cell_width
-        
-        # Find assigned strain from the current plate's assignments
-        assigned_strain = None
-        for pos_key in plate.get('assignments', {}):
-            row, col = map(int, pos_key.split('-'))
-            if start_col <= col <= end_col:
-                assigned_strain = plate['assignments'][pos_key]
-                break
-        
-        if window.current_mode =='A':
-            # Draw position label
-            label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
-            window.plate_canvas.create_text(
-                current_x + position_width/2,
-                margin_top,
-                text=label_text,
-                font=(FONT, 16, 'bold'),
-                fill=LIGHT
-            )
-
-        
-        current_x += position_width
-        if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
-            current_x += cell_width
 
 
-def create_plate_info(window, plate, rows, cols, unordered_quantifications,
-                      strains, column_indexes):
-    # Create preview image
-    preview_image = create_plate_preview_image(window, plate)
-    
-    return {
-        'mode': window.current_mode,
-        'filename': plate['name'],
-        'additive': plate.get('additive', None),
-        'dilutions': [],
-        'unorderedquantifications': unordered_quantifications,
-        'IMGcontours': None,
-        'IMGbinary': None,
-        'IMGbinaryAutomatic':None,
-        'IMGToolUsage': None,
-        'IMGgrid': None,
-        'threshold': 0,
-        'smallArea': 0,
-        'blocksize': 0,
-        'strains': strains,
-        'column_indexes': [list(indexes) for indexes in column_indexes],
-        'normalisation_values': [],
-        'strain_positions': window.plate_layout['strain_positions'],
-        'split_quantifications':[],
-        'ordered_quantifications':[],
-        'removed_positions': list(window.plate_layout['removed_positions']),
-        'layout': {
-            'rows': rows,
-            'columns': cols,
-            'x_dilution': window.layout_data['x_dilution'],
-            'y_dilution': window.layout_data['y_dilution'],
-            'gap_between_strains': window.layout_data['gap_between_strains'],
-            'IMGPreview': preview_image  # Store the base64 encoded image
-        }
-    }
-    
+# d8888b. d8888b. d88888b db    db d888888b d88888b db   d8b   db 
+# 88  `8D 88  `8D 88'     88    88   `88'   88'     88   I8I   88 
+# 88oodD' 88oobY' 88ooooo Y8    8P    88    88ooooo 88   I8I   88 
+# 88~~~   88`8b   88~~~~~ `8b  d8'    88    88~~~~~ Y8   I8I   88 
+# 88      88 `88. 88.      `8bd8'    .88.   88.     `8b d8'8b d8' 
+# 88      88   YD Y88888P    YP    Y888888P Y88888P  `8b8' `8d8'  
+
 def create_plate_preview_image(window, plate, width=1600, height=1200):
     margin = 20
     img_width = width - 40
@@ -1311,51 +1523,24 @@ def draw_plate_preview(window, canvas, plate):
 
 
 
-def prev_plate(window):
-    global CURRENTPLATEINDEX
-    if window.plates and window.current_plate > 0:
-        # Clear current display
-        window.plate_canvas.delete('all')
-        CURRENTPLATEINDEX = CURRENTPLATEINDEX -1
-        # Update current plate index
-        window.current_plate -= 1
-        new_plate = window.plates[window.current_plate]
-        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        # Update entry fields
-        window.plate_entry.delete(0, tk.END)
-        window.plate_entry.insert(0, new_plate['name'])
-        window.atc_var.set(new_plate.get('atc', ''))
-        
-        # Update display with new plate index
-        update_plate_display(window)
-        window.plate_canvas.focus_set()
-    else:
-        print("Cannot go to previous plate")
-
-def next_plate(window):
-    global CURRENTPLATEINDEX
-    if window.plates and window.current_plate < len(window.plates) - 1:
-        # Clear current display
-        CURRENTPLATEINDEX = CURRENTPLATEINDEX +1
-        window.plate_canvas.delete('all')
-        
-        # Update current plate index
-        window.current_plate += 1
-        new_plate = window.plates[window.current_plate]
-        
-        # Update entry fields
-        window.plate_entry.delete(0, tk.END)
-        window.plate_entry.insert(0, new_plate['name'])
-        window.atc_var.set(new_plate.get('atc', ''))
-        
 
 
-        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        # Update display with new plate index
-        update_plate_display(window)
-        window.plate_canvas.focus_set()
-    else:
-        print("Cannot go to next plate")
+
+
+
+
+
+# d88888b db    db d8888b.  .d88b.  d8888b. d888888b   .88b  d88. d88888b d888888b  .d8b.  d8888b.  .d8b.  d888888b  .d8b.  
+# 88'     `8b  d8' 88  `8D .8P  Y8. 88  `8D `~~88~~'   88'YbdP`88 88'     `~~88~~' d8' `8b 88  `8D d8' `8b `~~88~~' d8' `8b 
+# 88ooooo  `8bd8'  88oodD' 88    88 88oobY'    88      88  88  88 88ooooo    88    88ooo88 88   88 88ooo88    88    88ooo88 
+# 88~~~~~  .dPYb.  88~~~   88    88 88`8b      88      88  88  88 88~~~~~    88    88~~~88 88   88 88~~~88    88    88~~~88 
+# 88.     .8P  Y8. 88      `8b  d8' 88 `88.    88      88  88  88 88.        88    88   88 88  .8D 88   88    88    88   88 
+# Y88888P YP    YP 88       `Y88P'  88   YD    YP      YP  YP  YP Y88888P    YP    YP   YP Y8888D' YP   YP    YP    YP   YP 
+                                                                                                                          
+                                                                                                                          
+
+
+
 
 def export_data(window):
     """
@@ -1426,466 +1611,61 @@ def save_to_file(data, filename):
         print(f"Error saving file: {str(e)}")
         raise
 
-def load_from_file(filename):
+def upload_metadata_handler(window):
     """
-    Load plate data from a JSON file
-    Returns: List of plate info loaded from file
+    Handler for the Upload MetaData button.
+    Opens file dialog, loads data, and displays it.
     """
     try:
-        if not os.path.exists(filename):
-            raise FileNotFoundError(f"File not found: {filename}")
+        # Open file dialog for selecting the JSON file
+        filename = filedialog.askopenfilename(
+            title="Select Metadata File",
+            filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
+        )
+        
+        if not filename:  # User cancelled
+            return
             
-        with open(filename, 'r') as f:
-            data = json.load(f)
-            print(f"Data loaded successfully from {filename}")
-            return data
+        # Load the data
+        with open(filename, 'r') as file:
+            loaded_data = json.load(file)
             
+        # Update the global data structure
+        window.all_plate_info = loaded_data
+        
+        # Print the loaded data in a formatted way
+        print("\nUploaded Metadata Contents:")
+        print("-" * 50)
+        
+        for idx, plate in enumerate(loaded_data, 1):
+            print(f"\nPlate {idx}:")
+            print("  Strains:", ", ".join(plate.get('strains', [])))
+            print("  Columns:", plate.get('column_indexes', []))
+            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
+            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
+            
+        print("-" * 50)
+        print(f"Successfully loaded data from: {filename}")
+
+        return loaded_data
+        
+    except json.JSONDecodeError:
+        print("Error: Invalid JSON file format")
+        return None
     except Exception as e:
-        print(f"Error loading file: {str(e)}")
-        raise
-
-def get_available_data_files():
-    """
-    Get list of available plate data files in current directory
-    Returns: List of filenames matching the plate data pattern
-    """
-    files = [f for f in os.listdir('.') if f.startswith('plate_data_') and f.endswith('.json')]
-    return sorted(files, reverse=True)
-
-def create_plate_controls(window):
-    # Main controls container at the top
-    controls_container = tk.Frame(window.control_frame, bg=DARK)
-    controls_container.pack(side=tk.TOP, fill=tk.X, padx=10, pady=5)
-    
-    # "Add a plate" header
-    plate_header = tk.Label(
-        controls_container, 
-        text="Add a Plate", 
-        font=(FONT, 14, 'bold'), 
-        fg=LIGHT, 
-        bg=DARK
-    )
-    plate_header.pack(pady=(0, 10))
-
-
-       # Additive controls
-    window.additive_var = tk.BooleanVar(value=False)
-    additive_frame = tk.Frame(controls_container, bg=DARK)
-    additive_frame.pack(fill=tk.X, pady=(0, 5))
-    
-    additive_check = RoundedCheckbox(
-        additive_frame,
-        text="Additive",
-        variable=window.additive_var,
-        command=lambda: toggle_additive_entry(window)
-    )
-    additive_check.pack(side=tk.LEFT)
-    additive_check.label.pack(side=tk.LEFT, padx=(5, 0))
-    
-    window.additive_entry = RoundedEntry(
-        additive_frame,
-        width=150,
-        height=35,
-        state=tk.DISABLED
-    )
-    window.additive_entry.pack(side=tk.RIGHT)
-
-    # Plate name entry frame
-    name_frame = tk.Frame(controls_container, bg=DARK)
-    name_frame.pack(fill=tk.X, pady=(0, 5))
-    
-    window.plate_entry = RoundedEntry(
-        name_frame,
-        width=200,
-        height=35
-    )
-    window.plate_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
-    
- 
-
-    # Create a canvas for the add plate button on the name frame
-    add_plate_canvas = tk.Canvas(name_frame, bg=DARK, highlightthickness=0, width=35, height=45)  # Increased height for the button
-    add_plate_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Adding some padding to the right
-
-    create_rounded_button(
-        add_plate_canvas, 
-        "+", 
-        lambda: add_plate(window), 
-        0, 2, 
-        width=35, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK
-    )
-
-    # Plate management buttons
-    buttons_frame = tk.Frame(controls_container, bg=DARK)
-    buttons_frame.pack(fill=tk.X, pady=(5, 0))
-    
-    # Create a canvas for management buttons
-    management_button_canvas = tk.Canvas(buttons_frame, bg=DARK, highlightthickness=0, width=300, height=40)  # Increased height
-    management_button_canvas.pack(fill=tk.X)
-    
-    # Delete button
-    create_rounded_button(
-        management_button_canvas, 
-        "Delete", 
-        lambda: delete_current_plate(window), 
-        0, 0, 
-        width=80, 
-        height=35, 
-        cornerradius=6, 
-        fill = LIGHT, accent = DARK,
-        bold=False  # Unbolded text
-    )
-    
-    # Clear button
-    create_rounded_button(
-        management_button_canvas, 
-        "Clear", 
-        lambda: clear_current_plate(window), 
-        90, 0, 
-        width=80, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold=False  # Unbolded text
-    )
-    
-    # Rename button
-    create_rounded_button(
-        management_button_canvas, 
-        "Rename", 
-        lambda: rename_current_plate(window), 
-        180, 0, 
-        width=80, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold=False  # Unbolded text
-    )
-
-def create_navigation_controls(window):
-    # Navigation controls at the bottom
-    nav_container = tk.Frame(window.control_frame, bg=DARK)
-    nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
-    
-    # Navigation buttons frame
-    nav_frame = tk.Frame(nav_container, bg=DARK)
-    nav_frame.pack(fill=tk.X, pady=(0, 5))
-    
-    # Create a canvas for navigation buttons
-    navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
-    navigation_button_canvas.pack(fill=tk.X)
-    
-    # Previous Plate button
-    create_rounded_button(
-        navigation_button_canvas, 
-        "Previous", 
-        lambda: prev_plate(window), 
-        0, 0, 
-        width=120, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
-    
-    # Next Plate button
-    create_rounded_button(
-        navigation_button_canvas, 
-        "Next ", 
-        lambda: next_plate(window), 
-        140, 0, 
-        width=120, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
-    
-    # Action buttons frame
-    action_frame = tk.Frame(nav_container, bg=DARK)
-    action_frame.pack(fill=tk.X)
-    
-    # Create a canvas for action buttons
-    action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
-    action_button_canvas.pack(fill=tk.X)
-    
-    # Preview All Plates button
-    create_rounded_button(
-        action_button_canvas, 
-        "Preview All Plates", 
-        lambda: preview_all_plates(window), 
-        0, 0, 
-        width=260, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
-
-
-
-
-def toggle_additive_entry(window):
-    if window.additive_var.get():
-        window.additive_entry.entry.config(state=tk.NORMAL)
-    else:
-        window.additive_entry.entry.config(state=tk.DISABLED)
-        window.additive_entry.entry.delete(0, tk.END)
-
-
-
-def setup_frames(window):
-    # Main frames
-    window.plate_frame = tk.Frame(window, bg=DARK)
-    window.plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    window.control_frame = tk.Frame(window, bg=DARK)
-    window.control_frame.place(x=1130, y=178, width=282, height=638)
-    
-    # Create three subframes within the control frame
-    window.plate_controls_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.plate_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
-    
-    
-    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
-    
-    # Populate the frames
-    create_plate_controls(window)
-    create_strain_controls(window)  # You'll need to define this function
-    create_navigation_controls(window)
-    create_plate_canvas(window)
-
-class RoundedEntry(tk.Frame):
-    def __init__(self, parent, width=100, height=35, corner_radius=10, **kwargs):
-        super().__init__(parent, bg=DARK)
-        
-        self.grid_rowconfigure(0, weight=1)
-        self.grid_columnconfigure(0, weight=1)
-        
-        # Create rounded canvas background
-        self.canvas = tk.Canvas(
-            self,
-            width=width,
-            height=height,
-            bg=DARK,
-            highlightthickness=0
-        )
-        self.canvas.grid(row=0, column=0)
-        
-        # Draw rounded rectangle
-        self.canvas.create_rounded_rectangle = lambda x1, y1, x2, y2, r, **kwargs: self.canvas.create_polygon(
-            x1+r, y1,
-            x1+r, y1,
-            x2-r, y1,
-            x2-r, y1,
-            x2, y1,
-            x2, y1+r,
-            x2, y2-r,
-            x2, y2,
-            x2-r, y2,
-            x1+r, y2,
-            x1, y2,
-            x1, y2-r,
-            x1, y1+r,
-            x1, y1,
-            smooth=True,
-            **kwargs
-        )
-        
-        bg_box = self.canvas.create_rounded_rectangle(
-            2, 2, width-2, height-2,
-            corner_radius,
-            fill="white",
-            outline="#cccccc"
-        )
-        
-        self.entry = tk.Entry(
-            self,
-            bg="white",
-            fg=DARK,  # Ensure the text color is dark
-            bd=0,
-            highlightthickness=0,
-            **kwargs
-        )
-        self.entry.place(
-            x=10,
-            y=height//2,
-            width=width-20,
-            anchor="w"
-        )
-
-    # Add these delegate methods
-    def get(self):
-        """Delegate get() to the internal entry widget"""
-        return self.entry.get()
-    
-    def delete(self, first, last=None):
-        """Delegate delete() to the internal entry widget"""
-        return self.entry.delete(first, last)
-    
-    def insert(self, index, string):
-        """Delegate insert() to the internal entry widget"""
-        return self.entry.insert(index, string)
-
-
-class RoundedCheckbox(tk.Canvas):
-    def __init__(self, parent, text="", command=None, variable=None, **kwargs):
-        super().__init__(
-            parent,
-            width=24,
-            height=24,
-            highlightthickness=0,
-            bg=DARK,
-            **kwargs
-        )
-        self.variable = variable
-        self.command = command
-        
-        # Create the rounded rectangle for the checkbox
-        self.box = self.create_rounded_rectangle(
-            2, 2, 22, 22,
-            5,  # corner radius
-            outline="#cccccc",
-            fill="white",
-            width=2
-        )
-        
-        # Create the checkmark (hidden initially)
-        self.checkmark = self.create_line(
-            6, 12, 10, 16, 18, 8,
-            fill=DARK,
-            width=3,
-            state="hidden"
-        )
-        
-        # Bind click event
-        self.bind("<Button-1>", self.toggle)
-        
-        # Create label
-        self.label = Label(
-            parent,
-            text=text,
-            bg=DARK,
-            fg=LIGHT,
-            font=(FONT, 12)
-        )
-        
-    def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
-        points = [
-            x1+radius, y1,
-            x2-radius, y1,
-            x2, y1,
-            x2, y1+radius,
-            x2, y2-radius,
-            x2, y2,
-            x2-radius, y2,
-            x1+radius, y2,
-            x1, y2,
-            x1, y2-radius,
-            x1, y1+radius,
-            x1, y1
-        ]
-        return self.create_polygon(points, smooth=True, **kwargs)
-    
-    def toggle(self, event=None):
-        if self.variable:
-            self.variable.set(not self.variable.get())
-            self.update_state()
-            if self.command:
-                self.command()
-    
-    def update_state(self):
-        if self.variable and self.variable.get():
-            self.itemconfigure(self.checkmark, state="normal")
-        else:
-            self.itemconfigure(self.checkmark, state="hidden")
-
-def create_plate_designer(window, mode="A"):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
-    
-    # Initialize plate layout attributes with defaults
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=1 if mode == "B" else 3),
-        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
-        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-    
-    # Store the current mode
-    window.current_mode = mode
-    
-    # Create canvas for layout
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    
-    # Add background images and frames
-
-    image_image_1 = PhotoImage("Icons/image_1.png")
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
-    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
-    # Create frames for plate and controls
-    plate_frame = Frame(window, bg=DARK)
-    plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-    
-    # Create mode switcher and controls
-    create_mode_switcher(control_frame, window)
-    create_controls(control_frame, window, mode)
-    create_plate_display(plate_frame, window)
-    
-    # Add navigation buttons
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        x=buttonPosX,
-        y=buttonPosY
-    )
-    
-    create_rounded_button(
-        canvas=canvas,
-        text="Back",
-        command=lambda: create_titleFrame(window),
-        x=17.0,
-        y=buttonPosY
-    )
+        print(f"Error loading metadata: {str(e)}")
+        return None
 
 
 
 
 
-
-######  ########  ########    ###    ######## ########     ######   ######  ########  ######## ######## ##    ##  ######  
-##    ## ##     ## ##         ## ##      ##    ##          ##    ## ##    ## ##     ## ##       ##       ###   ## ##    ## 
-##       ##     ## ##        ##   ##     ##    ##          ##       ##       ##     ## ##       ##       ####  ## ##       
-##       ########  ######   ##     ##    ##    ######       ######  ##       ########  ######   ######   ## ## ##  ######  
-##       ##   ##   ##       #########    ##    ##                ## ##       ##   ##   ##       ##       ##  ####       ## 
-##    ## ##    ##  ##       ##     ##    ##    ##          ##    ## ##    ## ##    ##  ##       ##       ##   ### ##    ## 
- ######  ##     ## ######## ##     ##    ##    ########     ######   ######  ##     ## ######## ######## ##    ##  ######  
-
+# d888888b d888888b d888888b db      d88888b 
+# `~~88~~'   `88'   `~~88~~' 88      88'     
+#    88       88       88    88      88ooooo 
+#    88       88       88    88      88~~~~~ 
+#    88      .88.      88    88booo. 88.     
+#    YP    Y888888P    YP    Y88888P Y88888P 
 
 def create_titleFrame(window):
     canvas = Canvas(
@@ -1948,260 +1728,157 @@ def create_titleFrame(window):
     return canvas
 
 
-def display_results(window):
-
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    #logo
-
-    image_path_10 = "Icons/image_10.png"
-    img_logobig = Image.open(image_path_10)
-    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
-
-    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
-    canvas.image_image_10 = image_image_10 
-    canvas.create_image(720.0, 420.0, image=image_image_10)
+def validate_and_proceed(window):
+    """
+    Validates if the image paths and image info are properly initialized and match entries in window.all_plate_info.
+    Proceeds to create the crop frame if valid, otherwise shows a warning.
+    """
+    # Ensure `window.image_paths`, `window.all_plate_info`, and `window.image_info` are initialized
+    if (
+        hasattr(window, 'image_paths') and window.image_paths
+        and hasattr(window, 'all_plate_info') and window.all_plate_info
+    ):
+        # Check if all filenames in `window.image_info` exist in `window.all_plate_info`
+        all_filenames = {info['filename'].lower() for info in window.all_plate_info}
+        
+        create_cropFrame(window)
+    else:
+        messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
 
 
-    canvas.create_text(
-        720,  
-        750.0,
-        text="Results Downloading......",
-        fill=DARK,
-        font=(FONT, 12, "bold"),
-        anchor="center" 
-    )
+def process_image(window):
+    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
+    window.contrast_value = idealContrast
 
-    #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
-    window.update()
+    window.gray_image = gray_image
+    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
 
-    #generates the PDF, the excel and the images 
-    processResults(window)
-    #this will only display once the results are generated
-    create_rounded_button(
-        canvas=canvas,
-        text="Finish",
-        command=lambda: window.quit(),#will exit the program
-        x=720 - (200 // 2),  
-        y=buttonPosY-100,
-        button_tag="Finish"
-    )
-
-def create_plate_designer(window, mode="A"):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
+    window.contour_img = contour_img
+    window.binarized_image = final_binary
+    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
     
-    # Initialize plate layout attributes with defaults
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=1 if mode == "B" else 3),
-        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
-        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-    
-    # Store the current mode
-    window.current_mode = mode
-    
-    # Create canvas for layout
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    
-    # Add background images and frames
-    image_image_1 = PhotoImage(file=("Icons/image_1.png"))
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
-    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
-    # Create frames for plate and controls
-    plate_frame = Frame(window, bg=DARK)
-    plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-    
-    # Create mode switcher and controls
-    create_mode_switcher(control_frame, window)
-    create_controls(control_frame, window, mode)
-    create_plate_display(plate_frame, window)
-    
-    # Add navigation buttons
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        x=buttonPosX,
-        y=buttonPosY
-    )
-    
-    create_rounded_button(
-        canvas=canvas,
-        text="Back",
-        command=lambda: create_titleFrame(window),
-        x=17.0,
-        y=buttonPosY
-    )    
+    # only initialize history if it's empty, othewise its adding doubles
 
-def display_final_image(window, override =False):
-    add_to_history(window) #incase the user goes back
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-
-    image_image_1 = PhotoImage(
-    file=("Icons/image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
+    #create_editFrame(window)
+    create_slidersFrame(window)
 
 
-    create_rounded_button(
-        canvas=canvas,
-        text="Redo Edit",
-        command=lambda: create_editFrame(window),
-        x=720-225,
-        y=buttonPosY,
-        button_tag = "back_button_edit" )
+def upload_images(window):
+    """
+    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
+    Warn the user if there are filenames in the metadata that were not uploaded.
+    """
+    import os
+    from tkinter import filedialog, messagebox
+
+    # Allow user to select image files
+    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tif")])
+
+    # Ensure file_paths are selected and window.all_plate_info is initialized
+    if file_paths and hasattr(window, 'all_plate_info'):
+        window.image_paths = []
+        unmatched_filenames = []  # Collect filenames that don't match the metadata
+        uploaded_filenames = {os.path.basename(path).lower() for path in file_paths}  # Extract uploaded filenames
+        
+        # Get the list of expected filenames from metadata
+        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
+
+        # Find filenames in metadata that were not uploaded
+        missing_filenames = valid_filenames - uploaded_filenames
+
+        # Check the selected files for matches
+        for path in file_paths:
+            filename = os.path.basename(path).lower()
+            if filename in valid_filenames:
+                window.image_paths.append(path)
+
+        if missing_filenames:
+            messagebox.showwarning(
+                "Missing Files",
+                f"The following expected files were not uploaded:\n"
+                f"{', '.join(missing_filenames)}"
+            )
+
+        # Load the first matching image if there are matches
+        if window.image_paths:
+            window.current_image_index = 0
+            load_current_image(window)  # Load the first matching image
+        else:
+            messagebox.showwarning(
+                "Warning",
+                "No matching images found for any entries in the metadata."
+            )
+    else:
+        messagebox.showwarning(
+            "Warning",
+            "No files selected or metadata not initialized."
+        )
 
 
-    create_rounded_button(
-        canvas=canvas,
-        text="Override Grid",
-        command=lambda: open_grid_override(window),
-        x=720+25,
-        y=buttonPosY,
-        button_tag = "override_button" )
+def load_current_image(window):
+    #within correct bounds
+    if 0 <= window.current_image_index < len(window.image_paths):
+        window.image_path = window.image_paths[window.current_image_index]
+        window.original_image = cv2.imread(window.image_path)
+        if window.original_image is None:
+            messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
+            return
+        window.current_image = window.original_image.copy()
+       
+        # # Update the current image info
+        # print("IS IT HERE??????")
 
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: next_image(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "DisplayNext" )
+        # print("AFTER")
 
-
-    canvas.create_text(
-        720,  
-        750.0,
-        text="Loading Image Please wait",
-        fill=DARK,
-        font=(FONT, 12, "bold"),
-        anchor="center" 
-    )
-    window.update()
-    #frame where result will be displayed
-    frame = Frame(window, bg=LIGHT)
-    frame.place(relx=0.5, rely=0.5, anchor="center")
-    if (override):#ie if the user has over ridden the grid
-        marked_image = window.marked_image
-        result_grid = window.result_grid
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        #TODO NEED TO FIX HERE TO LOAD THE INFO
+        window.current_info = window.all_plate_info[window.current_image_index].copy()
+        # print(f"Debug: Loading image {window.current_image_index}")
         # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
-    else:   
-        gray_image = window.gray_image  
-        columns = window.all_plate_info[window.current_image_index]['layout']['columns']
-        rows = window.all_plate_info[window.current_image_index]['layout']['rows']
-        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+    else:
+        messagebox.showerror("Error", "No image to load")
 
-    #make sure its the correct type
-    if isinstance(marked_image, Image.Image):
-        marked_image = np.array(marked_image)
-        # print("yes is instance")
+def next_image(window):
+    window.history = []
+    if window.current_image_index < len(window.image_paths) - 1:
+        window.current_image_index += 1
+        load_current_image(window)
+        create_cropFrame(window)
+        update_progress_bar(window)
 
-    #this is also taking into account that the one uses RGB and the other uses BGR    
-    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)   
+    else:
+        save_window_state(window, 'FORREPORTA2.pkl')
 
-
-    #resizing the image to fit
-    max_width, max_height = 1200, 700
-    h, w = marked_image.shape[:2]
-    scale = min(max_width / w, max_height / h)
-    new_size = (int(w * scale), int(h * scale))
+        display_results(window)
+        
 
 
-    #saving what values and images to be used in the PDF reort
-    window.all_plate_info [window.current_image_index]["threshold"] = window.contrast_value
-    window.all_plate_info [window.current_image_index]["smallArea"] = window.excludeSmallDots
-    window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
-    window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
-    window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
-    
-    
-    #Has to be PIL image for tkinkter, resizing and displaying
-    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
-    img = Image.fromarray(resized_image)
-    photo = ImageTk.PhotoImage(img)
-    x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2
-    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
-    canvas.image = photo
+#  .o88b. d8888b.  .d88b.  d8888b. 
+# d8P  Y8 88  `8D .8P  Y8. 88  `8D 
+# 8P      88oobY' 88    88 88oodD' 
+# 8b      88`8b   88    88 88~~~   
+# Y8b  d8 88 `88. `8b  d8' 88      
+#  `Y88P' 88   YD  `Y88P'  88      
+                                 
 
 
 
 
 
-    #progress bar was created with help from Chat GBT
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    
-    update_progress_bar(window)
 
-def go_to_edit_frame(window):
-    if not window.history:
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
-    
-    update_undo_redo_buttons(window)
-    create_editFrame(window)
+# .d8888. db      d888888b d8888b. d88888b d8888b. .d8888. 
+# 88'  YP 88        `88'   88  `8D 88'     88  `8D 88'  YP 
+# `8bo.   88         88    88   88 88ooooo 88oobY' `8bo.   
+#   `Y8b. 88         88    88   88 88~~~~~ 88`8b     `Y8b. 
+# db   8D 88booo.   .88.   88  .8D 88.     88 `88. db   8D 
+# `8888Y' Y88888P Y888888P Y8888D' Y88888P 88   YD `8888Y' 
 
-
-
+#progress bar update - help from chatGBT
+def update_progress_bar(window):
+    if hasattr(window, 'progress_bar') and window.progress_bar:
+        progress = (window.current_image_index + 1) / len(window.image_paths) * 100
+        window.progress_bar['value'] = progress
+        window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
+        
 def create_slidersFrame(window):
     # Create main canvas
     canvas = Canvas(
@@ -2352,6 +2029,7 @@ def create_slidersFrame(window):
     display_image(window)
     return canvas
 
+
 def on_contrast_change(window, value, backToEdit = False):
     global backToEdit2
     if (backToEdit2 == False):
@@ -2407,64 +2085,6 @@ def on_block_size_change(window, value, backToEdit = False):
         backToEdit2 = False
 
 
-def export_data(window):
-    """
-    Export plate data and allow the user to choose the file location and name.
-    Returns: List of plate info and saves to a user-specified JSON file.
-    """
-    all_plate_info = []
-   
-    for plate in window.plates:
-        rows = window.layout_data['rows']
-        cols = window.layout_data['columns']
-        unordered_quantifications = [[0 for _ in range(cols)] for _ in range(rows)]
-       
-        ordered_assignments = []
-        plate_assignments = plate.get('assignments', {})
-       
-        # Process assignments in order of positions
-        for pos_idx in range(window.layout_data['strains']):
-            start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
-           
-            strain = None
-            for col in range(start_col, end_col + 1):
-                test_key = f"0-{col}"
-                if test_key in plate_assignments:
-                    strain = plate_assignments[test_key]
-                    break
-           
-            if strain:
-                ordered_assignments.append({
-                    'strain': strain,
-                    'columns': list(range(start_col, end_col + 1))
-                })
-       
-        strains = [assignment['strain'] for assignment in ordered_assignments]
-        column_indexes = [assignment['columns'] for assignment in ordered_assignments]
-       
-        plate_info = create_plate_info(window, plate, rows, cols, unordered_quantifications,
-                                     strains, column_indexes)
-        all_plate_info.append(plate_info)
-   
-    # Ask the user for the file name and location
-    filename = filedialog.asksaveasfilename(
-        title="Save Plate Data",
-        defaultextension=".json",
-        filetypes=[("JSON files", "*.json"), ("All files", "*.*")]
-    )
-   
-    # Check if the user canceled the file dialog
-    if not filename:
-        print("Export canceled by the user.")
-        return None
-        
-    save_to_file(all_plate_info, filename)
-    print(f"Data exported successfully to {filename}")
-    
-    window.all_plate_info = all_plate_info
-    create_titleFrame(window)
-    return all_plate_info
-
 def display_image(window):
     try:
         # Get original image dimensions
@@ -2517,43 +2137,18 @@ def display_image(window):
     except Exception as e:
         print(f"Error in display_image: {e}")
 
-def on_excludeSmallDots(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
-
-    if (backToEdit2 == False):
-        window.excludeSmallDots = float(value)
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots,block_size = window.block_size)
-
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        display_image(window)
-    else:
-        backToEdit2 = False
 
 
-def on_block_size_change(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
-    global backToEdit2
+# d88888b d8888b. d888888b d888888b 
+# 88'     88  `8D   `88'   `~~88~~' 
+# 88ooooo 88   88    88       88    
+# 88~~~~~ 88   88    88       88    
+# 88.     88  .8D   .88.      88    
+# Y88888P Y8888D' Y888888P    YP    
 
-    if (backToEdit2 == False):
-        if int(value)%2 ==0:
-            window.block_size = int(value)+1
-        else:   
-            window.block_size = int(value) 
-        binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
 
-        #save new images
-        window.binarized_image = final_binary
-        window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        #reset history, cannot use undo redo buttons to undo this
-        display_image(window)
-    else:
-        backToEdit2 = False
+
+
 
 def create_editFrame(window, backToEdit = False):
 
@@ -2961,7 +2556,14 @@ def create_editFrame(window, backToEdit = False):
     return canvas
 
 
-    
+# d88888D  .d88b.   .d88b.  .88b  d88. 
+# YP  d8' .8P  Y8. .8P  Y8. 88'YbdP`88 
+#    d8'  88    88 88    88 88  88  88 
+#   d8'   88    88 88    88 88  88  88 
+#  d8' db `8b  d8' `8b  d8' 88  88  88 
+# d88888P  `Y88P'   `Y88P'  YP  YP  YP 
+                                         
+
 def update_zoomed_images(window):
     """Update both canvases with zoomed images, maintaining scrollable content"""
     window.left_canvas.delete("all")
@@ -2990,6 +2592,201 @@ def update_zoomed_images(window):
         # Display images at (0,0) - scrolling will handle visibility
         window.left_canvas.create_image(0, 0, anchor=NW, image=window.left_photo)
         window.right_canvas.create_image(0, 0, anchor=NW, image=window.right_photo)
+
+
+
+#  d888b  d8888b. d888888b d8888b.   d8888b. d88888b .d8888. db    db db      d888888b 
+# 88' Y8b 88  `8D   `88'   88  `8D   88  `8D 88'     88'  YP 88    88 88      `~~88~~' 
+# 88      88oobY'    88    88   88   88oobY' 88ooooo `8bo.   88    88 88         88    
+# 88  ooo 88`8b      88    88   88   88`8b   88~~~~~   `Y8b. 88    88 88         88    
+# 88. ~8~ 88 `88.   .88.   88  .8D   88 `88. 88.     db   8D 88b  d88 88booo.    88    
+#  Y888P  88   YD Y888888P Y8888D'   88   YD Y88888P `8888Y' ~Y8888P' Y88888P    YP    
+
+
+
+def display_results(window):
+
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    #logo
+
+    image_path_10 = "Icons/image_10.png"
+    img_logobig = Image.open(image_path_10)
+    img_logobig_resized = img_logobig.resize((img_logobig.width // 2, img_logobig.height //2), Image.LANCZOS)
+
+    image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
+    canvas.image_image_10 = image_image_10 
+    canvas.create_image(720.0, 420.0, image=image_image_10)
+
+
+    canvas.create_text(
+        720,  
+        750.0,
+        text="Results Downloading......",
+        fill=DARK,
+        font=(FONT, 12, "bold"),
+        anchor="center" 
+    )
+
+    #this makes sure that the screen doesnt freeze on the previous screen. It loads up will here, generates the results and then displays the finish button
+    window.update()
+
+    #generates the PDF, the excel and the images 
+    processResults(window)
+    #this will only display once the results are generated
+    create_rounded_button(
+        canvas=canvas,
+        text="Finish",
+        command=lambda: window.quit(),#will exit the program
+        x=720 - (200 // 2),  
+        y=buttonPosY-100,
+        button_tag="Finish"
+    )
+
+def display_final_image(window, override =False):
+    add_to_history(window) #incase the user goes back
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+
+    image_image_1 = PhotoImage(
+    file=("Icons/image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Redo Edit",
+        command=lambda: create_editFrame(window),
+        x=720-225,
+        y=buttonPosY,
+        button_tag = "back_button_edit" )
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Override Grid",
+        command=lambda: open_grid_override(window),
+        x=720+25,
+        y=buttonPosY,
+        button_tag = "override_button" )
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: next_image(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "DisplayNext" )
+
+
+    canvas.create_text(
+        720,  
+        750.0,
+        text="Loading Image Please wait",
+        fill=DARK,
+        font=(FONT, 12, "bold"),
+        anchor="center" 
+    )
+    window.update()
+    #frame where result will be displayed
+    frame = Frame(window, bg=LIGHT)
+    frame.place(relx=0.5, rely=0.5, anchor="center")
+    if (override):#ie if the user has over ridden the grid
+        marked_image = window.marked_image
+        result_grid = window.result_grid
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
+        # print(f"Debug: Current image info: {window.current_info}")
+        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
+    else:   
+        gray_image = window.gray_image  
+        columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+        rows = window.all_plate_info[window.current_image_index]['layout']['rows']
+        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
+        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+
+    #make sure its the correct type
+    if isinstance(marked_image, Image.Image):
+        marked_image = np.array(marked_image)
+        # print("yes is instance")
+
+    #this is also taking into account that the one uses RGB and the other uses BGR    
+    marked_image = cv2.cvtColor(marked_image, cv2.COLOR_RGB2BGR)   
+
+
+    #resizing the image to fit
+    max_width, max_height = 1200, 700
+    h, w = marked_image.shape[:2]
+    scale = min(max_width / w, max_height / h)
+    new_size = (int(w * scale), int(h * scale))
+
+
+    #saving what values and images to be used in the PDF reort
+    window.all_plate_info [window.current_image_index]["threshold"] = window.contrast_value
+    window.all_plate_info [window.current_image_index]["smallArea"] = window.excludeSmallDots
+    window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
+    window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
+    window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
+    
+    
+    #Has to be PIL image for tkinkter, resizing and displaying
+    resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
+    img = Image.fromarray(resized_image)
+    photo = ImageTk.PhotoImage(img)
+    x_position = (1440 - new_size[0]) // 2
+    y_position = (974 - new_size[1]) // 2
+    canvas.create_image(x_position, y_position, anchor="nw", image=photo)
+    canvas.image = photo
+
+
+
+
+
+    #progress bar was created with help from Chat GBT
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
+
+def go_to_edit_frame(window):
+    if not window.history:
+        window.history = [window.binarized_image.copy()]
+        window.redo_stack = []
+    
+    update_undo_redo_buttons(window)
+    create_editFrame(window)
 
 
 def open_grid_override(window):
@@ -3158,7 +2955,6 @@ def open_grid_override(window):
 
     window.mainloop()
 
-
 def recalculate_grid(window):
     #user clicked and previously detected
     all_points = window.blob_points + window.clicked_points
@@ -3204,58 +3000,6 @@ def recalculate_grid(window):
     window.marked_image = marked_image
     display_final_image(window, True)
 
-
-#progress bar update - help from chatGBT
-def update_progress_bar(window):
-    if hasattr(window, 'progress_bar') and window.progress_bar:
-        progress = (window.current_image_index + 1) / len(window.image_paths) * 100
-        window.progress_bar['value'] = progress
-        window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
-
-def validate_and_proceed(window):
-    """
-    Validates if the image paths and image info are properly initialized and match entries in window.all_plate_info.
-    Proceeds to create the crop frame if valid, otherwise shows a warning.
-    """
-    # Ensure `window.image_paths`, `window.all_plate_info`, and `window.image_info` are initialized
-    if (
-        hasattr(window, 'image_paths') and window.image_paths
-        and hasattr(window, 'all_plate_info') and window.all_plate_info
-    ):
-        # Check if all filenames in `window.image_info` exist in `window.all_plate_info`
-        all_filenames = {info['filename'].lower() for info in window.all_plate_info}
-        
-        # Debugging: Print out expected filenames from the metadata
-        # print("Expected filenames from metadata:")
-        # for filename in all_filenames:
-        #     print(f"- {filename}")
-        
-        # if unmatched:
-        #     messagebox.showwarning(
-        #         "Warning",
-        #         f"The following filenames do not match metadata entries:\n{', '.join(unmatched)}"
-        #     )
-       # else:
-        create_cropFrame(window)
-    else:
-        messagebox.showwarning("Warning", "Please upload both text file and images that match metadata entries.")
-
-
-def process_image(window):
-    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
-    window.contrast_value = idealContrast
-
-    window.gray_image = gray_image
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
-
-    window.contour_img = contour_img
-    window.binarized_image = final_binary
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-    
-    # only initialize history if it's empty, othewise its adding doubles
-
-    #create_editFrame(window)
-    create_slidersFrame(window)
 
 
 #  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
@@ -3418,94 +3162,6 @@ def create_cropFrame(window):
     window.progress_label.pack(side="left")
     update_progress_bar(window)
 
-
-def upload_images(window):
-    """
-    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
-    Warn the user if there are filenames in the metadata that were not uploaded.
-    """
-    import os
-    from tkinter import filedialog, messagebox
-
-    # Allow user to select image files
-    file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tif")])
-
-    # Ensure file_paths are selected and window.all_plate_info is initialized
-    if file_paths and hasattr(window, 'all_plate_info'):
-        window.image_paths = []
-        unmatched_filenames = []  # Collect filenames that don't match the metadata
-        uploaded_filenames = {os.path.basename(path).lower() for path in file_paths}  # Extract uploaded filenames
-        
-        # Get the list of expected filenames from metadata
-        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
-
-        # Find filenames in metadata that were not uploaded
-        missing_filenames = valid_filenames - uploaded_filenames
-
-        # Check the selected files for matches
-        for path in file_paths:
-            filename = os.path.basename(path).lower()
-            if filename in valid_filenames:
-                window.image_paths.append(path)
-
-        if missing_filenames:
-            messagebox.showwarning(
-                "Missing Files",
-                f"The following expected files were not uploaded:\n"
-                f"{', '.join(missing_filenames)}"
-            )
-
-        # Load the first matching image if there are matches
-        if window.image_paths:
-            window.current_image_index = 0
-            load_current_image(window)  # Load the first matching image
-        else:
-            messagebox.showwarning(
-                "Warning",
-                "No matching images found for any entries in the metadata."
-            )
-    else:
-        messagebox.showwarning(
-            "Warning",
-            "No files selected or metadata not initialized."
-        )
-
-
-def load_current_image(window):
-    #within correct bounds
-    if 0 <= window.current_image_index < len(window.image_paths):
-        window.image_path = window.image_paths[window.current_image_index]
-        window.original_image = cv2.imread(window.image_path)
-        if window.original_image is None:
-            messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
-            return
-        window.current_image = window.original_image.copy()
-       
-        # # Update the current image info
-        # print("IS IT HERE??????")
-
-        # print("AFTER")
-
-        #TODO NEED TO FIX HERE TO LOAD THE INFO
-        window.current_info = window.all_plate_info[window.current_image_index].copy()
-        # print(f"Debug: Loading image {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-    else:
-        messagebox.showerror("Error", "No image to load")
-
-def next_image(window):
-    window.history = []
-    if window.current_image_index < len(window.image_paths) - 1:
-        window.current_image_index += 1
-        load_current_image(window)
-        create_cropFrame(window)
-        update_progress_bar(window)
-
-    else:
-        save_window_state(window, 'FORREPORTA2.pkl')
-
-        display_results(window)
-        
 
 
 def process_tool_usage(window):
@@ -4021,20 +3677,6 @@ window.mainloop()
 # processResults(window)
 
 
-
-
-
-
-
-#Different saved states:
-
-#window_state.pkl   - real test its testing these images where https://www.dropbox.com/scl/fo/55v2k6p7hfb4hws18diod/AK-1lWdCixipX0rCeqPYjYc?rlkey=4uou81nqbu13wig1f8vwbx4ie&e=1&st=4vqqji7x&dl=0 
-#1 additive and 4 repeats for each
-
-#'window_state_multipulAdditives.pkl   4 attitives with 2 repeats for each
-
-#window_state_IntermediaryImages.pkl checking to see if the binary images and preview are saving correctyl
-#window_state_Test_Positions.pkl testing the postitions are correct
 
 
 
