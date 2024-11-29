@@ -1859,6 +1859,156 @@ def next_image(window):
 # Y8b  d8 88 `88. `8b  d8' 88      
 #  `Y88P' 88   YD  `Y88P'  88      
                                  
+#makes sure that the crop takes into account the scale of the image, since its downsized
+def resize_for_display_crop(image, max_width=1000, max_height=650):
+    h, w = image.shape[:2]
+    scale = min(max_width/w, max_height/h)
+    new_size = (int(w*scale), int(h*scale))
+    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
+
+
+#get the co-ordnates of the click , where the crop starts
+def start_crop(event, window):
+    window.cropping = True
+    window.x_start, window.y_start = event.x, event.y
+
+
+def crop(event, window, canvas):
+
+    #removes old rectangle and creates a new one
+    if window.cropping:
+        window.x_end, window.y_end = event.x, event.y
+        canvas.delete("crop_rectangle")
+
+        # Create the rectangle
+        canvas.create_rectangle(
+            window.x_start, window.y_start, window.x_end, window.y_end,
+            outline=LIGHT,
+            width=2,
+            fill=LIGHT,
+            stipple="gray50", #only had this option for low opacity
+            tags="crop_rectangle"
+        )
+
+def end_crop(event, window, canvas):
+    window.cropping = False
+
+def apply_crop(window):
+    if window.x_start != window.x_end and window.y_start != window.y_end:
+        #dimensions of the original image
+        original_height, original_width = window.original_image.shape[:2]
+        
+        #scaling factors
+        scale_x = original_width / window.display_width
+        scale_y = original_height / window.display_height
+        
+        #offset of the image on the canvas
+        canvas_width = 1440  # From your create_cropFrame function
+        canvas_height = 1024  # From your create_cropFrame function
+        offset_x = (canvas_width - window.display_width) // 2 
+        offset_y = (canvas_height - window.display_height) // 2
+        
+        #scaling to crop coordinates, accounting for the offset
+        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
+        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
+        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
+        
+        #check within image bounds, or map to beinging end of bounds
+        x_start = max(0, x_start)
+        y_start = max(0, y_start)
+        x_end = min(x_end, original_width)
+        y_end = min(y_end, original_height)
+        
+        #actual crop
+        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
+        h, w = window.current_image.shape[:2]
+        # print("width")
+        # print(w)
+        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
+        process_image(window)
+    else:
+        messagebox.showwarning("Warning", "Please select an area to crop.")
+
+def create_cropFrame(window):
+    for widget in window.winfo_children():
+        widget.destroy()
+
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    window.edit_images = []
+
+    image_image_1 = PhotoImage(
+    file=("Icons/image_1.png"))
+    window.edit_images.append(image_image_1)
+    image_1 = canvas.create_image(
+        719.0,
+        57.0,
+        image=image_image_1
+    )
+
+    canvas.create_text(
+        720,
+        TITLEHEIGHT,
+        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
+        fill=DARK,
+        font=(FONT, 12, 
+        "bold")
+    )
+
+    #resize image
+    display_image, scale_factor = resize_for_display_crop(window.original_image)
+    window.scale_factor = scale_factor
+
+    #convert OpenCV to PhotoImage for Tkinkter to use
+    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
+    image = Image.fromarray(image)
+    photo = ImageTk.PhotoImage(image=image)
+
+    #place image on canvas
+    canvas.create_image(720, 512, image=photo, anchor="center")
+    canvas.image = photo
+
+    #keep dimensions
+    window.display_width = photo.width()
+    window.display_height = photo.height()
+
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Crop",
+        command=lambda: apply_crop(window),
+        x=buttonPosX,
+        y=buttonPosY,
+        button_tag = "cropNext" )
+
+
+    #default cropping variables
+    window.cropping = False
+    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
+
+    #bind mouse events
+    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
+    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
+    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
+
+    #progress bar things - same as other screens
+    window.progress_frame = Frame(window, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    update_progress_bar(window)
+
 
 
 
@@ -2555,6 +2705,221 @@ def create_editFrame(window, backToEdit = False):
 
     return canvas
 
+def display_images(window):
+    """Display images while maintaining original aspect ratio with zoom support"""
+    try:
+        # Get original image dimensions
+        original_width = window.debug_image.shape[1]
+        original_height = window.debug_image.shape[0]
+        
+        # Calculate available space
+        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
+        max_height = int((window.winfo_height() - 200) * window.zoom_level)
+        
+        # Calculate scaling factors for both dimensions
+        width_scale = max_width / original_width
+        height_scale = max_height / original_height
+        
+        # Use the smaller scaling factor to maintain aspect ratio
+        scale = min(width_scale, height_scale)
+        
+        # Calculate new dimensions
+        zoomed_width = int(original_width * scale)
+        zoomed_height = int(original_height * scale)
+        
+        # Right image (editing image)
+        img_editing = Image.fromarray(window.debug_image)
+        img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        window.photo_editing = ImageTk.PhotoImage(img_editing)
+        
+        # Configure right canvas
+        window.right_canvas.config(
+            width=window.photo_editing.width(),
+            height=window.photo_editing.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
+        window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
+        
+        # Store display dimensions
+        window.display_width = window.photo_editing.width()
+        window.display_height = window.photo_editing.height()
+        
+        # Left image (toggleable)
+        if window.show_original:
+            img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
+        else:
+            # img_np = window.debug_image
+            # # img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
+            # img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
+            # contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            # contour_img = img_np.copy()
+            # for cntr in contours:
+            #     cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
+            img_np = window.debug_image
+            img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
+            contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            contour_img = window.current_image.copy()
+            cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
+
+            window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
+            window.current_info["IMGcontours"] = contour_img
+            img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
+            
+        # Resize left image with zoom while maintaining aspect ratio
+        img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
+        window.photo_left = ImageTk.PhotoImage(img_left)
+        
+        # Configure left canvas
+        window.left_canvas.config(
+            width=window.photo_left.width(),
+            height=window.photo_left.height(),
+            scrollregion=(0, 0, zoomed_width, zoomed_height)
+        )
+        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
+    except Exception as e:
+        print(f"Error in display_images: {e}")
+
+
+
+
+
+# d888888b  .d88b.   .d88b.  db      .d8888. 
+# `~~88~~' .8P  Y8. .8P  Y8. 88      88'  YP 
+#    88    88    88 88    88 88      `8bo.   
+#    88    88    88 88    88 88        `Y8b. 
+#    88    `8b  d8' `8b  d8' 88booo. db   8D 
+#    YP     `Y88P'   `Y88P'  Y88888P `8888Y' 
+
+
+
+def set_mode(window, mode):
+    window.mode = mode
+    if mode == "small_brush" or mode == "small_eraser":
+        window.brush_size = 10
+    elif mode == "large_brush" or mode == "large_eraser":
+        window.brush_size = 50
+
+def toggle_image(window):
+    window.show_original = not window.show_original
+    display_images(window)
+
+# Update the draw functions to work with zoom
+def start_draw(window, event):
+    window.is_drawing = True
+    window.last_x = event.widget.canvasx(event.x)
+    window.last_y = event.widget.canvasy(event.y)
+    window.active_canvas = event.widget
+    draw(window, event)
+
+def draw(window, event):
+    if window.is_drawing:
+        # Get current canvas coordinates considering scroll
+        x = window.active_canvas.canvasx(event.x)
+        y = window.active_canvas.canvasy(event.y)
+        
+        # Get actual image dimensions
+        img_height, img_width = window.binarized_image.shape[:2]
+        
+        # Calculate scaling factors considering zoom
+        scale_x = img_width / (window.display_width / window.zoom_level)
+        scale_y = img_height / (window.display_height / window.zoom_level)
+        
+        # Convert coordinates
+        x_img = int(x / window.zoom_level * scale_x)
+        y_img = int(y / window.zoom_level * scale_y)
+        last_x_img = int(window.last_x / window.zoom_level * scale_x)
+        last_y_img = int(window.last_y / window.zoom_level * scale_y)
+        
+        # Apply drawing operation
+        if window.mode == "flood":
+            flood_erase(window, x_img, y_img)
+        else:
+            # Scale brush size with zoom
+            original_brush_size = window.brush_size
+            window.brush_size = max(1, int(window.brush_size / window.zoom_level))
+            brush_draw(window, last_x_img, last_y_img, x_img, y_img)
+            window.brush_size = original_brush_size
+        
+        window.last_x = x
+        window.last_y = y
+        display_images(window)
+
+
+
+def stop_draw(window, event):
+    window.is_drawing = False
+    current_state = window.binarized_image.copy()
+    if len(window.history) == 0 or not np.array_equal(current_state, window.history[-1]):
+        add_to_history(window)
+    update_undo_redo_buttons(window)
+
+def flood_erase(window, x, y):
+    if window.binarized_image[y, x] == 255:  # If the clicked pixel is white
+        cv2.floodFill(window.binarized_image, None, (x, y), 0)  # Fill with black
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+
+def brush_draw(window, x1, y1, x2, y2):
+    if window.mode in ["small_brush", "large_brush"]:
+        color = 255  #white drawing
+    else:
+        color = 0  #black erasing
+    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+
+def brush_erase(window, x1, y1, x2, y2):
+    cv2.line(window.binarized_image, (x1, y1), (x2, y2), 0, window.brush_size * 2)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
+def add_to_history(window):
+    current_state = window.binarized_image.copy()
+    if not window.history or not np.array_equal(current_state, window.history[-1]):
+        window.history.append(current_state)
+        window.redo_stack.clear()
+        update_undo_redo_buttons(window)
+
+def clear_history(window): 
+    window.history.clear()
+    window.redo_stack.clear()
+
+    current_state = window.binarized_image.copy()
+    window.history.append(current_state)
+
+    update_undo_redo_buttons(window)
+
+def undo(window):
+    if len(window.history) > 1:
+        current_state = window.binarized_image.copy()
+        window.redo_stack.append(current_state)
+        window.binarized_image = window.history.pop().copy()
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+        display_images(window)
+    elif len(window.history) == 1:
+        # If there's only one item in history, it's the original image
+        current_state = window.binarized_image.copy()
+        if not np.array_equal(current_state, window.history[0]):
+            window.redo_stack.append(current_state)
+            window.binarized_image = window.history[0].copy()
+            window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+            display_images(window)
+    update_undo_redo_buttons(window)
+
+def redo(window):
+    if window.redo_stack:
+        window.history.append(window.binarized_image.copy())
+        window.binarized_image = window.redo_stack.pop().copy()
+        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
+        display_images(window)
+        update_undo_redo_buttons(window)
+
+def update_undo_redo_buttons(window):
+    if hasattr(window, 'undo_btn') and window.undo_btn is not None:
+        window.undo_btn['state'] = "normal" if len(window.history) > 1 else "disabled"
+    if hasattr(window, 'redo_btn') and window.redo_btn is not None:
+        window.redo_btn['state'] = "normal" if window.redo_stack else "disabled"
+
+
 
 # d88888D  .d88b.   .d88b.  .88b  d88. 
 # YP  d8' .8P  Y8. .8P  Y8. 88'YbdP`88 
@@ -2593,6 +2958,60 @@ def update_zoomed_images(window):
         window.left_canvas.create_image(0, 0, anchor=NW, image=window.left_photo)
         window.right_canvas.create_image(0, 0, anchor=NW, image=window.right_photo)
 
+def setup_zoom_controls(window):
+    """Set up zoom controls and initialize zoom-related variables"""
+    window.zoom_level = 1.0
+    window.zoom_min = 0.5
+    window.zoom_max = 4.0
+    
+    # Create zoom frame
+    zoom_frame = Frame(window, bg=DARK)
+    zoom_frame.place(x=1376, y=300)
+    
+
+    
+ # Zoom in button
+    zoomin = ("Icons/zoomin.png")
+    img_zoomin = Image.open(zoomin)
+    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
+    image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
+    window.edit_images.append(image_zoomin_2)
+    button_zoomin = Button(
+        window,
+        image=image_zoomin_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 1.2),
+        bg=DARK
+    )
+    button_zoomin.place(x=1377.0, y=base_y + 78)
+
+    # Zoom out button
+    zoomout = ("Icons/zoomout.png")
+    img_zoomout = Image.open(zoomout)
+    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
+    image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
+    window.edit_images.append(image_zoomout_2)
+    button_zoomout = Button(
+        window,
+        image=image_zoomout_2,
+        borderwidth=0,
+        highlightthickness=0,
+        command=lambda: adjust_zoom(window, 0.8),
+        bg=DARK
+    )
+    button_zoomout.place(x=1377.0, y=base_y + 117)
+
+
+
+
+def adjust_zoom(window, factor):
+    
+
+    new_zoom = window.zoom_level * factor
+    if window.zoom_min <= new_zoom <= window.zoom_max:
+        window.zoom_level = new_zoom
+        display_images(window)
 
 
 #  d888b  d8888b. d888888b d8888b.   d8888b. d88888b .d8888. db    db db      d888888b 
@@ -2974,26 +3393,6 @@ def recalculate_grid(window):
     counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size,columns, rows)
 
     window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
-    # #SAVING INFO
-    # if hasattr(window, 'current_info'):
-    #     window.current_info['QuantificationA'] = ordered_counts["Strain 1"]
-    #     window.current_info['QuantificationB'] = ordered_counts["Strain 2"]
-    #     window.current_info['QuantificationC'] = ordered_counts["Strain 3"]
-    #     # Update the window.image_info with the modified current_info
-    #     window.image_info[window.current_image_index] = window.current_info.copy()
-        
-    #     # print("RECALCULATED:      TESTER INFORMATION:") 
-    #     # print("_______________________________________________________________________")
-    #     # print(ordered_counts["Strain 1"])    
-    #     # print(ordered_counts["Strain 2"])   
-    #     # print(ordered_counts["Strain 3"])   
-
-    #     # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-    #     # print(f"Debug: Current image info: {window.current_info}")
-    #     # print(f"Debug: in recalcgrid ALL INFO : {window.image_info}" )
-
-    # else:
-    #     print("Error: current_info not initialized")
 
     #update so the new override one is used
     window.result_grid= counts
@@ -3002,167 +3401,12 @@ def recalculate_grid(window):
 
 
 
-#  .o88b. d8888b.  .d88b.  d8888b. d8888b. d888888b d8b   db  d888b  
-# d8P  Y8 88  `8D .8P  Y8. 88  `8D 88  `8D   `88'   888o  88 88' Y8b 
-# 8P      88oobY' 88    88 88oodD' 88oodD'    88    88V8o 88 88      
-# 8b      88`8b   88    88 88~~~   88~~~      88    88 V8o88 88  ooo 
-# Y8b  d8 88 `88. `8b  d8' 88      88        .88.   88  V888 88. ~8~ 
-#  `Y88P' 88   YD  `Y88P'  88      88      Y888888P VP   V8P  Y888P  
-
-
-#makes sure that the crop takes into account the scale of the image, since its downsized
-def resize_for_display_crop(image, max_width=1000, max_height=650):
-    h, w = image.shape[:2]
-    scale = min(max_width/w, max_height/h)
-    new_size = (int(w*scale), int(h*scale))
-    return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
-
-
-#get the co-ordnates of the click , where the crop starts
-def start_crop(event, window):
-    window.cropping = True
-    window.x_start, window.y_start = event.x, event.y
-
-
-
-def crop(event, window, canvas):
-
-    #removes old rectangle and creates a new one
-    if window.cropping:
-        window.x_end, window.y_end = event.x, event.y
-        canvas.delete("crop_rectangle")
-
-        # Create the rectangle
-        canvas.create_rectangle(
-            window.x_start, window.y_start, window.x_end, window.y_end,
-            outline=LIGHT,
-            width=2,
-            fill=LIGHT,
-            stipple="gray50", #only had this option for low opacity
-            tags="crop_rectangle"
-        )
-
-def end_crop(event, window, canvas):
-    window.cropping = False
-
-def apply_crop(window):
-    if window.x_start != window.x_end and window.y_start != window.y_end:
-        #dimensions of the original image
-        original_height, original_width = window.original_image.shape[:2]
-        
-        #scaling factors
-        scale_x = original_width / window.display_width
-        scale_y = original_height / window.display_height
-        
-        #offset of the image on the canvas
-        canvas_width = 1440  # From your create_cropFrame function
-        canvas_height = 1024  # From your create_cropFrame function
-        offset_x = (canvas_width - window.display_width) // 2 
-        offset_y = (canvas_height - window.display_height) // 2
-        
-        #scaling to crop coordinates, accounting for the offset
-        x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
-        x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
-        
-        #check within image bounds, or map to beinging end of bounds
-        x_start = max(0, x_start)
-        y_start = max(0, y_start)
-        x_end = min(x_end, original_width)
-        y_end = min(y_end, original_height)
-        
-        #actual crop
-        window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        h, w = window.current_image.shape[:2]
-        # print("width")
-        # print(w)
-        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
-        process_image(window)
-    else:
-        messagebox.showwarning("Warning", "Please select an area to crop.")
-
-
-def create_cropFrame(window):
-    for widget in window.winfo_children():
-        widget.destroy()
-
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    window.edit_images = []
-
-    image_image_1 = PhotoImage(
-    file=("Icons/image_1.png"))
-    window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
-
-    canvas.create_text(
-        720,
-        TITLEHEIGHT,
-        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
-        fill=DARK,
-        font=(FONT, 12, 
-        "bold")
-    )
-
-    #resize image
-    display_image, scale_factor = resize_for_display_crop(window.original_image)
-    window.scale_factor = scale_factor
-
-    #convert OpenCV to PhotoImage for Tkinkter to use
-    image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
-    image = Image.fromarray(image)
-    photo = ImageTk.PhotoImage(image=image)
-
-    #place image on canvas
-    canvas.create_image(720, 512, image=photo, anchor="center")
-    canvas.image = photo
-
-    #keep dimensions
-    window.display_width = photo.width()
-    window.display_height = photo.height()
-
-
-    create_rounded_button(
-        canvas=canvas,
-        text="Crop",
-        command=lambda: apply_crop(window),
-        x=buttonPosX,
-        y=buttonPosY,
-        button_tag = "cropNext" )
-
-
-    #default cropping variables
-    window.cropping = False
-    window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
-
-    #bind mouse events
-    canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
-    canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
-    canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
-
-    #progress bar things - same as other screens
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
-
-
+# d88888b d888888b d8b   db d888888b .d8888. db   db d888888b d8b   db  d888b  
+# 88'       `88'   888o  88   `88'   88'  YP 88   88   `88'   888o  88 88' Y8b 
+# 88ooo      88    88V8o 88    88    `8bo.   88ooo88    88    88V8o 88 88      
+# 88~~~      88    88 V8o88    88      `Y8b. 88~~~88    88    88 V8o88 88  ooo 
+# 88        .88.   88  V888   .88.   db   8D 88   88   .88.   88  V888 88. ~8~ 
+# YP      Y888888P VP   V8P Y888888P `8888Y' YP   YP Y888888P VP   V8P  Y888P  
 
 def process_tool_usage(window):
     """
@@ -3265,6 +3509,15 @@ def processResults(window):
     
     print(f"Files saved in: {project_folder}")
 
+
+
+# .d8888. d888888b  .d8b.  d888888b d88888b 
+# 88'  YP `~~88~~' d8' `8b `~~88~~' 88'     
+# `8bo.      88    88ooo88    88    88ooooo 
+#   `Y8b.    88    88~~~88    88    88~~~~~ 
+# db   8D    88    88   88    88    88.     
+# `8888Y'    YP    YP   YP    YP    Y88888P 
+
 def save_window_state(window, filename):
     # Extract the all_plate_info from the window object
     all_plate_info = window.all_plate_info
@@ -3280,335 +3533,6 @@ def restore_window_state(window, filename):
     
     # Restore the all_plate_info attribute in the window object
     window.all_plate_info = all_plate_info
-
-def process_split_order_quantifications(window):
-    """
-    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
-    into split_quantifications based on strain_positions, and saving ordered quantifications.
-
-    Parameters:
-    window (object): The window object containing all_plate_info
-    """
-    for plate in window.all_plate_info:
-        # Extract plate layout and dilution factors
-        rows = plate['layout']['rows']
-        cols = len(plate['column_indexes'][0])
-        x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
-        y_dilution_factor = plate['layout']['y_dilution']
-
-        # Calculate the dilution series
-        dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
-        plate['dilutions'] = dilution_array 
-
-        # Get sorted positions based on dilution series
-        sorted_positions = get_sorted_positions(dilution_array)
-        
-        # Split unorderedquantifications into split_quantifications
-        unordered_quantifications = np.array(plate['unorderedquantifications'])
-        strain_positions = plate['strain_positions']
-        
-        split_quantifications = []
-        for strain, pos_range in strain_positions.items():
-            start, end = pos_range
-            split_quantifications.append(unordered_quantifications[:, start:end + 1])
-        
-        # Save split_quantifications to the plate
-        plate['split_quantifications'] = split_quantifications
-        
-        # Create ordered_quantifications based on sorted positions
-        ordered_quantifications = []
-        for strain_data in split_quantifications:
-            ordered_strain_values = extract_values_at_positions(strain_data, sorted_positions)
-            ordered_quantifications.append(ordered_strain_values)
-        
-        # Save ordered_quantifications to the plate
-        plate['ordered_quantifications'] = ordered_quantifications
-
-
-
-
-
-
-
-
-##     ##  #######  ########  ########  ######  
-###   ### ##     ## ##     ## ##       ##    ## 
-#### #### ##     ## ##     ## ##       ##       
-## ### ## ##     ## ##     ## ######    ######  
-##     ## ##     ## ##     ## ##             ## s
-##     ## ##     ## ##     ## ##       ##    ## 
-##     ##  #######  ########  ########  ###### 
-
-
-
-def set_mode(window, mode):
-    window.mode = mode
-    if mode == "small_brush" or mode == "small_eraser":
-        window.brush_size = 10
-    elif mode == "large_brush" or mode == "large_eraser":
-        window.brush_size = 50
-
-def toggle_image(window):
-    window.show_original = not window.show_original
-    display_images(window)
-
-
-def setup_zoom_controls(window):
-    """Set up zoom controls and initialize zoom-related variables"""
-    window.zoom_level = 1.0
-    window.zoom_min = 0.5
-    window.zoom_max = 4.0
-    
-    # Create zoom frame
-    zoom_frame = Frame(window, bg=DARK)
-    zoom_frame.place(x=1376, y=300)
-    
-
-    
- # Zoom in button
-    zoomin = ("Icons/zoomin.png")
-    img_zoomin = Image.open(zoomin)
-    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
-    image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
-    window.edit_images.append(image_zoomin_2)
-    button_zoomin = Button(
-        window,
-        image=image_zoomin_2,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: adjust_zoom(window, 1.2),
-        bg=DARK
-    )
-    button_zoomin.place(x=1377.0, y=base_y + 78)
-
-    # Zoom out button
-    zoomout = ("Icons/zoomout.png")
-    img_zoomout = Image.open(zoomout)
-    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
-    image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
-    window.edit_images.append(image_zoomout_2)
-    button_zoomout = Button(
-        window,
-        image=image_zoomout_2,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: adjust_zoom(window, 0.8),
-        bg=DARK
-    )
-    button_zoomout.place(x=1377.0, y=base_y + 117)
-
-
-
-
-
-
-
-
-
-
-
-    
-
-def adjust_zoom(window, factor):
-    
-
-    new_zoom = window.zoom_level * factor
-    if window.zoom_min <= new_zoom <= window.zoom_max:
-        window.zoom_level = new_zoom
-        display_images(window)
-
-def display_images(window):
-    """Display images while maintaining original aspect ratio with zoom support"""
-    try:
-        # Get original image dimensions
-        original_width = window.debug_image.shape[1]
-        original_height = window.debug_image.shape[0]
-        
-        # Calculate available space
-        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
-        max_height = int((window.winfo_height() - 200) * window.zoom_level)
-        
-        # Calculate scaling factors for both dimensions
-        width_scale = max_width / original_width
-        height_scale = max_height / original_height
-        
-        # Use the smaller scaling factor to maintain aspect ratio
-        scale = min(width_scale, height_scale)
-        
-        # Calculate new dimensions
-        zoomed_width = int(original_width * scale)
-        zoomed_height = int(original_height * scale)
-        
-        # Right image (editing image)
-        img_editing = Image.fromarray(window.debug_image)
-        img_editing = img_editing.resize((zoomed_width, zoomed_height), Image.LANCZOS)
-        window.photo_editing = ImageTk.PhotoImage(img_editing)
-        
-        # Configure right canvas
-        window.right_canvas.config(
-            width=window.photo_editing.width(),
-            height=window.photo_editing.height(),
-            scrollregion=(0, 0, zoomed_width, zoomed_height)
-        )
-        window.right_canvas.create_image(0, 0, anchor="nw", image=window.photo_editing)
-        
-        # Store display dimensions
-        window.display_width = window.photo_editing.width()
-        window.display_height = window.photo_editing.height()
-        
-        # Left image (toggleable)
-        if window.show_original:
-            img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
-        else:
-            # img_np = window.debug_image
-            # # img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
-            # img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
-            # contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # contour_img = img_np.copy()
-            # for cntr in contours:
-            #     cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
-            img_np = window.debug_image
-            img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
-            contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
-            contour_img = window.current_image.copy()
-            cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
-
-            window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
-            window.current_info["IMGcontours"] = contour_img
-            img_left = Image.fromarray(cv2.cvtColor(contour_img, cv2.COLOR_BGR2RGB))
-            
-        # Resize left image with zoom while maintaining aspect ratio
-        img_left = img_left.resize((zoomed_width, zoomed_height), Image.LANCZOS)
-        window.photo_left = ImageTk.PhotoImage(img_left)
-        
-        # Configure left canvas
-        window.left_canvas.config(
-            width=window.photo_left.width(),
-            height=window.photo_left.height(),
-            scrollregion=(0, 0, zoomed_width, zoomed_height)
-        )
-        window.left_canvas.create_image(0, 0, anchor="nw", image=window.photo_left)
-    except Exception as e:
-        print(f"Error in display_images: {e}")
-
-# Update the draw functions to work with zoom
-def start_draw(window, event):
-    window.is_drawing = True
-    window.last_x = event.widget.canvasx(event.x)
-    window.last_y = event.widget.canvasy(event.y)
-    window.active_canvas = event.widget
-    draw(window, event)
-
-def draw(window, event):
-    if window.is_drawing:
-        # Get current canvas coordinates considering scroll
-        x = window.active_canvas.canvasx(event.x)
-        y = window.active_canvas.canvasy(event.y)
-        
-        # Get actual image dimensions
-        img_height, img_width = window.binarized_image.shape[:2]
-        
-        # Calculate scaling factors considering zoom
-        scale_x = img_width / (window.display_width / window.zoom_level)
-        scale_y = img_height / (window.display_height / window.zoom_level)
-        
-        # Convert coordinates
-        x_img = int(x / window.zoom_level * scale_x)
-        y_img = int(y / window.zoom_level * scale_y)
-        last_x_img = int(window.last_x / window.zoom_level * scale_x)
-        last_y_img = int(window.last_y / window.zoom_level * scale_y)
-        
-        # Apply drawing operation
-        if window.mode == "flood":
-            flood_erase(window, x_img, y_img)
-        else:
-            # Scale brush size with zoom
-            original_brush_size = window.brush_size
-            window.brush_size = max(1, int(window.brush_size / window.zoom_level))
-            brush_draw(window, last_x_img, last_y_img, x_img, y_img)
-            window.brush_size = original_brush_size
-        
-        window.last_x = x
-        window.last_y = y
-        display_images(window)
-
-
-
-
-
-def stop_draw(window, event):
-    window.is_drawing = False
-    current_state = window.binarized_image.copy()
-    if len(window.history) == 0 or not np.array_equal(current_state, window.history[-1]):
-        add_to_history(window)
-    update_undo_redo_buttons(window)
-
-def flood_erase(window, x, y):
-    if window.binarized_image[y, x] == 255:  # If the clicked pixel is white
-        cv2.floodFill(window.binarized_image, None, (x, y), 0)  # Fill with black
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-
-def brush_draw(window, x1, y1, x2, y2):
-    if window.mode in ["small_brush", "large_brush"]:
-        color = 255  #white drawing
-    else:
-        color = 0  #black erasing
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), color, window.brush_size)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-
-def brush_erase(window, x1, y1, x2, y2):
-    cv2.line(window.binarized_image, (x1, y1), (x2, y2), 0, window.brush_size * 2)
-    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-    # cv2.line(window.debug_image, (x1, y1), (x2, y2), (0, 0, 255), 2)
-def add_to_history(window):
-    current_state = window.binarized_image.copy()
-    if not window.history or not np.array_equal(current_state, window.history[-1]):
-        window.history.append(current_state)
-        window.redo_stack.clear()
-        update_undo_redo_buttons(window)
-
-def clear_history(window): 
-    window.history.clear()
-    window.redo_stack.clear()
-
-    current_state = window.binarized_image.copy()
-    window.history.append(current_state)
-
-    update_undo_redo_buttons(window)
-
-def undo(window):
-    if len(window.history) > 1:
-        current_state = window.binarized_image.copy()
-        window.redo_stack.append(current_state)
-        window.binarized_image = window.history.pop().copy()
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-        display_images(window)
-    elif len(window.history) == 1:
-        # If there's only one item in history, it's the original image
-        current_state = window.binarized_image.copy()
-        if not np.array_equal(current_state, window.history[0]):
-            window.redo_stack.append(current_state)
-            window.binarized_image = window.history[0].copy()
-            window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-            display_images(window)
-    update_undo_redo_buttons(window)
-
-def redo(window):
-    if window.redo_stack:
-        window.history.append(window.binarized_image.copy())
-        window.binarized_image = window.redo_stack.pop().copy()
-        window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-        display_images(window)
-        update_undo_redo_buttons(window)
-
-def update_undo_redo_buttons(window):
-    if hasattr(window, 'undo_btn') and window.undo_btn is not None:
-        window.undo_btn['state'] = "normal" if len(window.history) > 1 else "disabled"
-    if hasattr(window, 'redo_btn') and window.redo_btn is not None:
-        window.redo_btn['state'] = "normal" if window.redo_stack else "disabled"
-
 
 
 

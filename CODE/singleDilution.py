@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import string
 from matplotlib.patches import Patch
 
-# Define constants
 FONT = "Microsoft New Tai Lue"
 FOREGROUND_COLOR = '#073b3a'  # Darker blue for better visibility
 CONTROL_COLOR = '#C1CEBE'     # Orange for better contrast
@@ -14,9 +13,13 @@ TEXT_COLOR = 'black'
 ALPHA = 0.8
 LIGHT_ALPHA = 0.2 
 
-def generate_plate_labels(rows, cols):
+def generate_plate_labels_excelFormat(rows, cols):
     col_labels = list(string.ascii_uppercase[:cols])
     return [f"{col}{row+1}" for row in range(rows) for col in col_labels]
+
+def generate_plate_labels(rows, cols):
+    col_labels = list(string.ascii_uppercase[:cols])
+    return [f"{col}{row+1}" for row in range(rows) for col in col_labels]    
 
 def create_mean_plot(df, control_quants_list, treatment_quants_list, 
                     control_plates, treatment_plates):
@@ -264,9 +267,6 @@ def analyze_plate_data(all_plate_info):
     
     return df, mean_fig, knockdown_fig, individual_fig
 
-import pandas as pd
-import numpy as np
-
 def export_plate_data_to_excel(all_plate_info, output_path='plate_analysis.xlsx'):
     """
     Export plate data to Excel in tidy format with one position per row.
@@ -321,5 +321,3 @@ def export_plate_data_to_excel(all_plate_info, output_path='plate_analysis.xlsx'
     
     return df
 
-# Example usage:
-# df = export_plate_data_to_excel(all_plate_info, 'plate_analysis.xlsx')    

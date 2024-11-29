@@ -1,18 +1,23 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import matplotlib.pyplot as plt
-import numpy as np
 from scipy import stats as scipy_stats
 from pathlib import Path
+import pandas as pd
 import seaborn as sns
+import string
+from matplotlib.patches import Patch
+
+
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
-from reportlab.lib.enums import TA_CENTER  # Add this line
-from io import BytesIO
+from reportlab.lib.enums import TA_CENTER 
+from reportlab.graphics.shapes import Drawing, Rect, String
+from reportlab.graphics import renderPDF
+
 import cv2
 import sys
 from PIL import Image 
@@ -24,15 +29,9 @@ import base64
 import io
 import math
 from collections import defaultdict
-from reportlab.graphics.shapes import Drawing, Rect, String
-from reportlab.lib import colors
-from reportlab.graphics import renderPDF
-from PIL import Image
+
 from io import BytesIO
-import base64
-import pandas as pd
-import numpy as np
-import string
+
 from PIL import Image, ImageTk
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH  / "Icons"
@@ -51,18 +50,363 @@ PURPLESCOLOURS =["#591C5F", "#81377E", "#A9599C", "#D07BB9"] #https://coolors.co
 FONT = "Microsoft New Tai Lue"
 plt.rcParams['font.family'] = FONT
 sns.set_style("whitegrid")
-import numpy as np
-from scipy import stats
-import matplotlib.pyplot as plt
-import seaborn as sns
 
+#  .d8888b.
+#  88   `8D 
+#  88ooooY'
+#  88~~~~b.
+#  88    8D
+#  Y88888P'
+
+FOREGROUND_COLOR = '#073b3a'  # Darker blue for better visibility
+CONTROL_COLOR = '#C1CEBE'     # Orange for better contrast
+FACE_COLOR = '#F5F5F5'
+TEXT_COLOR = 'black'
+ALPHA = 0.8
+LIGHT_ALPHA = 0.2 
+
+
+
+
+# d8888b.  .d8b.  d888888b  .d8b.        .d88b.  d8888b. d8888b. d88888b d8888b. d888888b d8b   db  d888b  
+# 88  `8D d8' `8b `~~88~~' d8' `8b      .8P  Y8. 88  `8D 88  `8D 88'     88  `8D   `88'   888o  88 88' Y8b 
+# 88   88 88ooo88    88    88ooo88      88    88 88oobY' 88   88 88ooooo 88oobY'    88    88V8o 88 88      
+# 88   88 88~~~88    88    88~~~88      88    88 88`8b   88   88 88~~~~~ 88`8b      88    88 V8o88 88  ooo 
+# 88  .8D 88   88    88    88   88      `8b  d8' 88 `88. 88  .8D 88.     88 `88.   .88.   88  V888 88. ~8~ 
+# Y8888D' YP   YP    YP    YP   YP       `Y88P'  88   YD Y8888D' Y88888P 88   YD Y888888P VP   V8P  Y888P  
+                                                                                                      
+                                                                                                      
 
 def normalize_array(arr, norm_value):
-    """Normalize an array by a given value"""
     return [100 * x / norm_value for x in arr]
 
+def normalize_array(values, norm_value):
+    return np.array(values) / norm_value * 100
+
+def calculate_strain_normalization_value(data_series, strain):
+    norm_values = [
+        series['y_values'][0] for series in data_series 
+        if (series.get('additive') in [None, 'Control']) and (series['strain'] == strain)
+    ]
+    
+    if not norm_values:
+        raise ValueError(f"Must have at least one control series for strain {strain}")
+    
+    return sum(norm_values) / len(norm_values)
 
 
+def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
+    # Initialize the result array
+    result = np.zeros((rows, cols))
+    
+    # Calculate dilutions along x-axis (first row)
+    for j in range(cols):
+        result[0,j] = (x_dilution_factor ** j)
+    
+    # Calculate dilutions along y-axis for each column
+    for i in range(1, rows):
+        for j in range(cols):
+            result[i,j] = result[0,j] * (y_dilution_factor ** i)
+    
+    print (result)
+    return result
+
+def print_dilution_series(dilution_array):
+    """
+    Print the dilution series in a formatted way.
+    
+    Parameters:
+    dilution_array (numpy.ndarray): 2D array of dilution values
+    """
+    print("\nDilution Series:")
+    for row in dilution_array:
+        print([f"{x:.6g}" for x in row])
+
+def get_sorted_positions(dilution_array):
+    """
+    Get the positions of entries in ascending order based on their values.
+    
+    Parameters:
+    dilution_array (numpy.ndarray): 2D array of dilution values
+    
+    Returns:
+    list: List of tuples containing (row, column) sorted by corresponding dilution values
+    """
+    # Create list of positions and values
+    positions = []
+    for i in range(dilution_array.shape[0]):
+        for j in range(dilution_array.shape[1]):
+            positions.append((i, j, dilution_array[i,j]))
+    
+    # Sort by value and extract only the positions
+    sorted_positions = [(row, col) for row, col, _ in sorted(positions, key=lambda x: x[2])]
+    
+    return sorted_positions
+
+def extract_values_at_positions(array, positions):
+    """
+    Extract values from an array using a list of positions.
+    
+    Parameters:
+    array (numpy.ndarray): 2D array to extract values from
+    positions (list): List of (row, column) tuples
+    
+    Returns:
+    list: Values from the array at the specified positions
+    """
+    # print('extract_values_at_positions')
+    # print(array)
+    # print(positions)
+    return [array[row, col] for row, col in positions]  
+
+def generate_data_series(window):
+    # Dictionary to store data series for each strain
+    strain_data = defaultdict(list)
+    dilution_series = window.all_plate_info[0]['dilutions']
+   
+    # Temporary list to collect all data series for normalization
+    all_data_series = []
+   
+    # Iterate over all plates
+    for plate in window.all_plate_info:
+       
+        additive = plate.get('additive', 'Control') or 'Control'
+        filename = plate.get('filename', 'Unnamed Plate')
+        strains = plate['strains']
+        column_indexes = plate['column_indexes']
+        ordered_quantifications = plate['ordered_quantifications']
+       
+        # Ensure ordered_quantifications and column_indexes match strain count
+        if len(ordered_quantifications) != len(strains):
+            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
+       
+        # For each strain in the plate
+        for strain_idx, strain in enumerate(strains):
+            # Extract y_values for this strain
+            y_values = ordered_quantifications[strain_idx]
+            column_indexes_for_strain = column_indexes[strain_idx]
+   
+            # Calculate the range of column indexes
+            start_col = min(column_indexes_for_strain)
+            end_col = max(column_indexes_for_strain)
+           
+            # Generate a label for this series
+            label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
+           
+            # Create data series dictionary
+            series_dict = {
+                'y_values': y_values,
+                'additive': additive,
+                'label': label,
+                'strain': strain,
+                'filename': filename,
+                'column_indexes': column_indexes_for_strain
+            }
+            
+            # Add to temporary list for normalization calculation
+            all_data_series.append(series_dict)
+    
+    # Calculate normalization values for each strain
+    for strain in set(series['strain'] for series in all_data_series):
+        # Calculate normalization value for this strain
+        norm_value = calculate_strain_normalization_value(all_data_series, strain)
+        
+        # Update series with normalized values for this strain
+        for series_dict in all_data_series:
+            if series_dict['strain'] == strain:
+                # Normalize values
+                normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
+                
+                # Update series with normalized values and normalization value
+                series_dict['normalized_y_values'] = normalized_y_values
+                series_dict['norm_value'] = norm_value
+                
+                # Add to strain data
+                strain_data[strain].append(series_dict)
+    
+    # Convert strain_data to a list of series if needed
+    data_series = []
+    for strain, series_list in strain_data.items():
+        data_series.extend(series_list)
+   
+    return strain_data, dilution_series
+
+def process_split_order_quantifications(window):
+    """
+    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
+    into split_quantifications based on strain_positions, and saving ordered quantifications.
+
+    Parameters:
+    window (object): The window object containing all_plate_info
+    """
+    for plate in window.all_plate_info:
+        # Extract plate layout and dilution factors
+        rows = plate['layout']['rows']
+        cols = len(plate['column_indexes'][0])
+        x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
+        y_dilution_factor = plate['layout']['y_dilution']
+
+        # Calculate the dilution series
+        dilution_array = calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor)
+        plate['dilutions'] = dilution_array 
+
+        # Get sorted positions based on dilution series
+        sorted_positions = get_sorted_positions(dilution_array)
+        
+        # Split unorderedquantifications into split_quantifications
+        unordered_quantifications = np.array(plate['unorderedquantifications'])
+        strain_positions = plate['strain_positions']
+        
+        split_quantifications = []
+        for strain, pos_range in strain_positions.items():
+            start, end = pos_range
+            split_quantifications.append(unordered_quantifications[:, start:end + 1])
+        
+        # Save split_quantifications to the plate
+        plate['split_quantifications'] = split_quantifications
+        
+        # Create ordered_quantifications based on sorted positions
+        ordered_quantifications = []
+        for strain_data in split_quantifications:
+            ordered_strain_values = extract_values_at_positions(strain_data, sorted_positions)
+            ordered_quantifications.append(ordered_strain_values)
+        
+        # Save ordered_quantifications to the plate
+        plate['ordered_quantifications'] = ordered_quantifications
+
+
+
+#  .d8888b.
+#  88   `8D 
+#  88ooooY'
+#  88~~~~b.
+#  88    8D
+#  Y88888P'
+def analyze_plate_data(all_plate_info):
+    """
+    Analyze plate data and create three separate figures:
+    1. Bar plot with means and dashed lines
+    2. Knockdown plot
+    3. Individual values plot
+    """
+    # Separate control and treatment data
+    control_plates = []
+    treatment_plates = []
+    for plate in all_plate_info:
+        additive = plate['additive']
+        print(f"Additive: {additive}")
+        
+        if additive is None:
+            control_plates.append(plate)
+        else:
+            treatment_plates.append(plate)
+    
+    # Ensure we have both control and treatment data
+    if not control_plates or not treatment_plates:
+        raise ValueError("Must have both control and treatment plates")
+    
+    # Get all control and treatment quantifications
+    control_quants_list = [plate['unorderedquantifications'].flatten() 
+                          for plate in control_plates]
+    treatment_quants_list = [plate['unorderedquantifications'].flatten() 
+                            for plate in treatment_plates]
+    
+    # Convert to arrays
+    control_quants_array = np.array(control_quants_list)
+    treatment_quants_array = np.array(treatment_quants_list)
+    
+    # Calculate averages
+    control_means = np.mean(control_quants_array, axis=0)
+    treatment_means = np.mean(treatment_quants_array, axis=0)
+    
+    # Generate labels
+    rows, cols = control_plates[0]['unorderedquantifications'].shape
+    labels = generate_plate_labels(rows, cols)
+    
+    # Prepare DataFrame
+    df = pd.DataFrame({
+        'Position': labels,
+        'Control Mean': control_means,
+        'Treatment Mean': treatment_means
+    })
+    
+    df['Knockdown'] = np.where(
+        (df['Control Mean'] == 0) | (df['Treatment Mean'] == 0),
+        np.nan,
+        df['Treatment Mean'] / df['Control Mean']
+    )
+    
+    # Create categorical column for sorting
+    df['Category'] = 'both_nonzero'
+    df.loc[df['Treatment Mean'] == 0, 'Category'] = 'treatment_zero'
+    df.loc[df['Control Mean'] == 0, 'Category'] = 'control_zero'
+    df.loc[(df['Control Mean'] == 0) & (df['Treatment Mean'] == 0), 'Category'] = 'both_zero'
+    
+    # Remove pairs where both values are zero
+    df = df[df['Category'] != 'both_zero']
+    df = df.reset_index(drop=True)
+    
+    # Create three separate figures
+    mean_fig = create_mean_plot(df, control_quants_list, treatment_quants_list, 
+                              control_plates, treatment_plates)
+    knockdown_fig = create_knockdown_plot(df)
+    individual_fig = create_individual_plot(df, control_quants_list, treatment_quants_list,
+                                          control_plates, treatment_plates)
+    
+    return df, mean_fig, knockdown_fig, individual_fig
+
+
+
+
+# d888888b .88b  d88.  .d8b.   d888b  d88888b   db   db d88888b db      d8888b. d88888b d8888b. 
+#   `88'   88'YbdP`88 d8' `8b 88' Y8b 88'       88   88 88'     88      88  `8D 88'     88  `8D 
+#    88    88  88  88 88ooo88 88      88ooooo   88ooo88 88ooooo 88      88oodD' 88ooooo 88oobY' 
+#    88    88  88  88 88~~~88 88  ooo 88~~~~~   88~~~88 88~~~~~ 88      88~~~   88~~~~~ 88`8b   
+#   .88.   88  88  88 88   88 88. ~8~ 88.       88   88 88.     88booo. 88      88.     88 `88. 
+# Y888888P YP  YP  YP YP   YP  Y888P  Y88888P   YP   YP Y88888P Y88888P 88      Y88888P 88   YD 
+                                                                                              
+                                                                                              
+def cv2_to_pil(cv2_img, convertColour = True):
+    if cv2_img is None:
+        return None
+    if len(cv2_img.shape) == 2: #2 channels = greyscale
+        return Image.fromarray(cv2_img)
+    elif len(cv2_img.shape) == 3 and convertColour:  #3 channels = color
+        return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
+    else:
+        return Image.fromarray(cv2_img) 
+
+
+def get_image_size(img, max_width, max_height):
+    img_width, img_height = img.size
+    aspect_ratio = img_width / img_height
+    if img_width > max_width:
+        img_width = max_width
+        img_height = img_width / aspect_ratio
+    if img_height > max_height:
+        img_height = max_height
+        img_width = img_height * aspect_ratio
+    return img_width, img_height
+
+
+
+def resize_for_display(image, max_width=1280, max_height=720):
+    h, w = image.shape[:2]
+    if h > max_height or w > max_width:
+        scale = min(max_height/h, max_width/w)
+        new_size = (int(w*scale), int(h*scale))
+        return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
+    return image
+
+
+#  d888b  d8888b.  .d8b.  d8888b. db   db .d8888.        .d8b.
+# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP       d8' `8b 
+# 88      88oobY' 88ooo88 88oodD' 88ooo88 `8bo.         88ooo88
+# 88  ooo 88`8b   88~~~88 88~~~   88~~~88   `Y8b.       88~~~88
+# 88. ~8~ 88 `88. 88   88 88      88   88 db   8D       88   88
+#  Y888P  88   YD YP   YP 88      YP   YP `8888Y'       YP   YP
+                                                
+                                                
 
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     
@@ -254,41 +598,260 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     return figures_and_stats
 
 
+def save_graph_image(fig, filename):
+    fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 
-def normalize_array(values, norm_value):
-    """
-    Normalize an array of values relative to a normalization value.
-    
-    Args:
-        values (list or np.array): Original values to normalize
-        norm_value (float): Value to normalize against
-    
-    Returns:
-        np.array: Normalized values as percentages
-    """
-    return np.array(values) / norm_value * 100
 
-def calculate_strain_normalization_value(data_series, strain):
-    """
-    Calculate normalization value for a specific strain from control series.
+def calculate_statistics(x, y, color, label):
+    valid_x = []
+    valid_y = []
+    excluded_points = []
     
-    Args:
-        data_series (list): List of data series dictionaries
-        strain (str): Strain to calculate normalization for
+
     
-    Returns:
-        float: Normalization value (average of first values in control series for the strain)
-    """
-    # Find control series (None or 'Control' additive) for the specific strain
-    norm_values = [
-        series['y_values'][0] for series in data_series 
-        if (series.get('additive') in [None, 'Control']) and (series['strain'] == strain)
+    # Track points excluded from calculations
+    for xi, yi in zip(x, y):
+        if xi > 0 and yi > 10:
+            # Convert to log 10 because of the dilution sequence
+            valid_x.append(np.log10(xi))
+            valid_y.append(yi)
+
+    
+
+    if len(valid_x) > 1:
+        # Getting statistics for filtered data
+        slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
+        r_squared = r_value ** 2
+        m, b = np.polyfit(valid_x, valid_y, 1)
+        y_cut = b
+        x_cut = 10 ** (-b / m)
+        x_at_y50 = 10 ** ((50 - b) / m)
+        formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
+    
+    
+        # Return as a dictionary since it's nice to call values from
+        return {
+            'slope': m,
+            'intercept': b,
+            'r_squared': r_squared,
+            'formula': formula,
+            'y_cut': y_cut,
+            'x_cut': x_cut,
+            'x_at_y50': x_at_y50,
+            'label': label,
+            'color': color,  # Add the color to the statistics dictionary
+            'full_line_formula': formula # Include full line formula
+        }
+    
+    return None
+
+#  d888b  d8888b.  .d8b.  d8888b. db   db .d8888.       .d8888b.
+# 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP       88   `8D 
+# 88      88oobY' 88ooo88 88oodD' 88ooo88 `8bo.         88ooooY'
+# 88  ooo 88`8b   88~~~88 88~~~   88~~~88   `Y8b.       88~~~~b.
+# 88. ~8~ 88 `88. 88   88 88      88   88 db   8D       88    8D
+#  Y888P  88   YD YP   YP 88      YP   YP `8888Y'       Y88888P'
+
+
+
+
+
+def generate_plate_labels_excelFormat(rows, cols):
+    col_labels = list(string.ascii_uppercase[:cols])
+    return [f"{col}{row+1}" for row in range(rows) for col in col_labels]
+
+def generate_plate_labels(rows, cols):
+    col_labels = list(string.ascii_uppercase[:cols])
+    return [f"{col}{row+1}" for row in range(rows) for col in col_labels]    
+
+def create_mean_plot(df, control_quants_list, treatment_quants_list, 
+                    control_plates, treatment_plates):
+    """Create the mean bar plot with dashed lines"""
+    plt.style.use('default')
+    plt.rcParams['font.family'] = FONT
+    plt.rcParams['font.weight'] = 'bold'
+    
+    fig, ax = plt.subplots(figsize=(15, 6))
+    ax.set_facecolor(FACE_COLOR)
+    fig.patch.set_facecolor('white')
+    
+    for i, row in df.iterrows():
+        control_mean = row['Control Mean']
+        treatment_mean = row['Treatment Mean']
+        
+        # Plot bars for means
+        if control_mean > treatment_mean:
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=ALPHA, 
+                  edgecolor='black', linewidth=1)
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+        else:
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=ALPHA,
+                  edgecolor='black', linewidth=1)
+        
+        # # Plot dashed lines for individual values
+        # for control_values in control_quants_list:
+        #     ax.plot([i-0.2, i+0.2], [control_values[i], control_values[i]], 
+        #            color=CONTROL_COLOR, linestyle='--', linewidth=1.5, alpha=0.8)
+        
+        # for treatment_values in treatment_quants_list:
+        #     ax.plot([i-0.2, i+0.2], [treatment_values[i], treatment_values[i]], 
+        #            color=FOREGROUND_COLOR, linestyle=':', linewidth=1.5, alpha=0.8)
+    
+    # Create legend
+    legend_elements = [
+        Patch(facecolor=CONTROL_COLOR, alpha=ALPHA, edgecolor='black', 
+              label=f'Average Control Quantication (No additive)', linewidth=1),
+        Patch(facecolor=FOREGROUND_COLOR, alpha=ALPHA, edgecolor='black', 
+              label=f'Average Additive Quantification ({treatment_plates[0]["additive"]})', linewidth=1)
+        # plt.Line2D([0], [0], color=CONTROL_COLOR, linestyle='--',
+        #           label='Individual Control Values', linewidth=1.5),
+        # plt.Line2D([0], [0], color=FOREGROUND_COLOR, linestyle=':',
+        #           label='Individual Treatment Values', linewidth=1.5)
     ]
+    ax.legend(handles=legend_elements, loc='upper right', 
+             fontsize=8, frameon=True, facecolor='white')
     
-    if not norm_values:
-        raise ValueError(f"Must have at least one control series for strain {strain}")
+    style_axis(ax, df)
+    ax.set_title('Average Quantification Between Control and Additive Plates',
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
+    ax.set_ylabel('Quantification Value', color=TEXT_COLOR, 
+                 fontsize=10, fontweight='bold')
     
-    return sum(norm_values) / len(norm_values)
+    plt.tight_layout()
+    return fig
+
+def create_knockdown_plot(df):
+    """Create the knockdown plot"""
+    plt.style.use('default')
+    plt.rcParams['font.family'] = FONT
+    plt.rcParams['font.weight'] = 'bold'
+    
+    fig, ax = plt.subplots(figsize=(15, 6))
+    ax.set_facecolor(FACE_COLOR)
+    fig.patch.set_facecolor('white')
+    
+    df_filtered = df.dropna(subset=['Knockdown']).copy()
+    df_filtered = df_filtered.sort_values('Knockdown', ascending=False)
+    
+    for i, row in df_filtered.iterrows():
+        idx = df_filtered.index.get_loc(i)
+        color = FOREGROUND_COLOR if row['Knockdown'] > 1 else CONTROL_COLOR
+        ax.bar(idx, row['Knockdown'], color=color, alpha=ALPHA,
+               edgecolor='black', linewidth=1)
+        
+        # plt.text(idx, row['Knockdown'],
+        #         f"{row['Knockdown']:.2f}",
+        #         horizontalalignment='center',
+        #         verticalalignment='bottom',
+        #         color='black',
+        #         fontsize=6,
+        #         fontweight='bold')
+    
+    ax.axhline(y=1, color='black', linestyle='--', alpha=0.5, linewidth=1)
+    
+    style_axis(ax, df_filtered)
+    excluded_count = len(df) - len(df_filtered)
+    ax.set_title(f'Average Knockdown by Position\n{len(df_filtered)} positions shown ({excluded_count} positions with zero values excluded)',
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
+    ax.set_ylabel('Knockdown (Treatment/Control)', color=TEXT_COLOR,
+                 fontsize=10, fontweight='bold')
+    
+    plt.tight_layout()
+    return fig
+
+def create_individual_plot(df, control_quants_list, treatment_quants_list,
+                         control_plates, treatment_plates):
+    """Create plot showing individual values as circles"""
+    plt.style.use('default')
+    plt.rcParams['font.family'] = FONT
+    plt.rcParams['font.weight'] = 'bold'
+    
+    fig, ax = plt.subplots(figsize=(15, 6))
+    ax.set_facecolor(FACE_COLOR)
+    fig.patch.set_facecolor('white')
+    
+    for i, row in df.iterrows():
+        control_mean = row['Control Mean']
+        treatment_mean = row['Treatment Mean']
+        
+        # Plot light background bars
+        if control_mean > treatment_mean:
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=LIGHT_ALPHA, 
+                  edgecolor='gray', linewidth=0.5)
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=LIGHT_ALPHA,
+                  edgecolor='gray', linewidth=0.5)
+        else:
+            ax.bar(i, treatment_mean, color=FOREGROUND_COLOR, alpha=LIGHT_ALPHA,
+                  edgecolor='gray', linewidth=0.5)
+            ax.bar(i, control_mean, color=CONTROL_COLOR, alpha=LIGHT_ALPHA,
+                  edgecolor='gray', linewidth=0.5)
+        
+        # Plot individual values as circles
+        for control_values in control_quants_list:
+            ax.scatter(i, control_values[i], color=CONTROL_COLOR, 
+                      edgecolor='black', linewidth=1, s=50, alpha=0.8)
+        
+        for treatment_values in treatment_quants_list:
+            ax.scatter(i, treatment_values[i], color=FOREGROUND_COLOR,
+                      edgecolor='black', linewidth=1, s=50, alpha=0.8)
+    
+    # Create legend
+    legend_elements = [
+        Patch(facecolor=CONTROL_COLOR, alpha=LIGHT_ALPHA, edgecolor='gray', 
+              label=f'Average Control', linewidth=0.5),
+        Patch(facecolor=FOREGROUND_COLOR, alpha=LIGHT_ALPHA, edgecolor='gray', 
+              label=f'Average Additive', linewidth=0.5),
+        plt.scatter([], [], color=CONTROL_COLOR, edgecolor='black',
+                   label='Individual Control Quantifications', s=50),
+        plt.scatter([], [], color=FOREGROUND_COLOR, edgecolor='black',
+                   label='Individual Additive Quantificaitons', s=50)
+    ]
+    ax.legend(handles=legend_elements, loc='upper right', 
+             fontsize=8, frameon=True, facecolor='white')
+    
+    style_axis(ax, df)
+    ax.set_title('Individual Quantications Over Average Quantifications',
+                color=TEXT_COLOR, pad=20, fontsize=25, fontweight='bold')
+    ax.set_ylabel('Quantification Value', color=TEXT_COLOR,
+                 fontsize=10, fontweight='bold')
+    
+    plt.tight_layout()
+    return fig
+
+def style_axis(ax, df):
+    """Apply common styling to all axes"""
+    ax.tick_params(colors=TEXT_COLOR, labelsize=8)
+    ax.yaxis.grid(True, linestyle='-', alpha=0.7, color='gray')
+    ax.xaxis.grid(False)
+    ax.set_axisbelow(True)
+    
+    for spine in ax.spines.values():
+        spine.set_color('black')
+        spine.set_linewidth(1.5)
+    
+    plt.sca(ax)
+    plt.xticks(range(len(df)), df['Position'], rotation=45, ha='right')
+    ax.set_xlim(-0.5, len(df) - 0.5)
+    ax.set_xlabel('Position', color=TEXT_COLOR, fontsize=10, fontweight='bold')
+
+
+
+
+
+
+
+
+
+# d88888b db    db  .o88b. d88888b db      
+# 88'     `8b  d8' d8P  Y8 88'     88      
+# 88ooooo  `8bd8'  8P      88ooooo 88      
+# 88~~~~~  .dPYb.  8b      88~~~~~ 88      
+# 88.     .8P  Y8. Y8b  d8 88.     88booo. 
+# Y88888P YP    YP  `Y88P' Y88888P Y88888P 
+                                         
 
 
 def export_strain_data_to_excel(strain_data, dilution_series, output_filename='strain_data_export.xlsx'):
@@ -402,81 +965,25 @@ def export_plate_data_to_excel(all_plate_info, output_path='plate_analysis.xlsx'
     
     return df
 
-def generate_data_series(window):
-    # Dictionary to store data series for each strain
-    strain_data = defaultdict(list)
-    dilution_series = window.all_plate_info[0]['dilutions']
-   
-    # Temporary list to collect all data series for normalization
-    all_data_series = []
-   
-    # Iterate over all plates
-    for plate in window.all_plate_info:
-       
-        additive = plate.get('additive', 'Control') or 'Control'
-        filename = plate.get('filename', 'Unnamed Plate')
-        strains = plate['strains']
-        column_indexes = plate['column_indexes']
-        ordered_quantifications = plate['ordered_quantifications']
-       
-        # Ensure ordered_quantifications and column_indexes match strain count
-        if len(ordered_quantifications) != len(strains):
-            raise ValueError("Mismatch between strains and ordered_quantifications length in plate.")
-       
-        # For each strain in the plate
-        for strain_idx, strain in enumerate(strains):
-            # Extract y_values for this strain
-            y_values = ordered_quantifications[strain_idx]
-            column_indexes_for_strain = column_indexes[strain_idx]
-   
-            # Calculate the range of column indexes
-            start_col = min(column_indexes_for_strain)
-            end_col = max(column_indexes_for_strain)
-           
-            # Generate a label for this series
-            label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
-           
-            # Create data series dictionary
-            series_dict = {
-                'y_values': y_values,
-                'additive': additive,
-                'label': label,
-                'strain': strain,
-                'filename': filename,
-                'column_indexes': column_indexes_for_strain
-            }
-            
-            # Add to temporary list for normalization calculation
-            all_data_series.append(series_dict)
+def export_tidy_data_to_excel(window, output_filename='tidy_data.xlsx'):
+    """
+    Export tidy data to an Excel workbook.
     
-    # Calculate normalization values for each strain
-    for strain in set(series['strain'] for series in all_data_series):
-        # Calculate normalization value for this strain
-        norm_value = calculate_strain_normalization_value(all_data_series, strain)
-        
-        # Update series with normalized values for this strain
-        for series_dict in all_data_series:
-            if series_dict['strain'] == strain:
-                # Normalize values
-                normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
-                
-                # Update series with normalized values and normalization value
-                series_dict['normalized_y_values'] = normalized_y_values
-                series_dict['norm_value'] = norm_value
-                
-                # Add to strain data
-                strain_data[strain].append(series_dict)
+    Args:
+        window: The window object containing plate information
+        output_filename: Name of the Excel file to save (default: 'tidy_data.xlsx')
     
-    # Convert strain_data to a list of series if needed
-    data_series = []
-    for strain, series_list in strain_data.items():
-        data_series.extend(series_list)
-   
-    return strain_data, dilution_series
-
-
-
-
+    Returns:
+        str: Path to the saved Excel file
+    """
+    # Generate tidy dataframe
+    tidy_df = generate_tidy_dataframe(window)
+    
+    # Export to Excel
+    tidy_df.to_excel(output_filename, index=False)
+    
+    print(f"Tidy data exported to {output_filename}")
+    return output_filename
 
 def generate_tidy_dataframe(window):
     """
@@ -541,76 +1048,7 @@ def generate_tidy_dataframe(window):
     
     return df
 
-def export_tidy_data_to_excel(window, output_filename='tidy_data.xlsx'):
-    """
-    Export tidy data to an Excel workbook.
-    
-    Args:
-        window: The window object containing plate information
-        output_filename: Name of the Excel file to save (default: 'tidy_data.xlsx')
-    
-    Returns:
-        str: Path to the saved Excel file
-    """
-    # Generate tidy dataframe
-    tidy_df = generate_tidy_dataframe(window)
-    
-    # Export to Excel
-    tidy_df.to_excel(output_filename, index=False)
-    
-    print(f"Tidy data exported to {output_filename}")
-    return output_filename
 
-def save_graph_image(fig, filename):
-    fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
-
-
-
-
-
-
-def calculate_statistics(x, y, color, label):
-    valid_x = []
-    valid_y = []
-    excluded_points = []
-    
-
-    
-    # Track points excluded from calculations
-    for xi, yi in zip(x, y):
-        if xi > 0 and yi > 10:
-            # Convert to log 10 because of the dilution sequence
-            valid_x.append(np.log10(xi))
-            valid_y.append(yi)
-
-    
-
-    if len(valid_x) > 1:
-        # Getting statistics for filtered data
-        slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
-        r_squared = r_value ** 2
-        m, b = np.polyfit(valid_x, valid_y, 1)
-        y_cut = b
-        x_cut = 10 ** (-b / m)
-        x_at_y50 = 10 ** ((50 - b) / m)
-        formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
-    
-    
-        # Return as a dictionary since it's nice to call values from
-        return {
-            'slope': m,
-            'intercept': b,
-            'r_squared': r_squared,
-            'formula': formula,
-            'y_cut': y_cut,
-            'x_cut': x_cut,
-            'x_at_y50': x_at_y50,
-            'label': label,
-            'color': color,  # Add the color to the statistics dictionary
-            'full_line_formula': formula # Include full line formula
-        }
-    
-    return None
 
 
 
@@ -620,39 +1058,6 @@ def calculate_statistics(x, y, color, label):
 # 88~~~   88   88 88~~~   
 # 88      88  .8D 88      
 # 88      Y8888D' YP      
-
-
-def cv2_to_pil(cv2_img, convertColour = True):
-    if cv2_img is None:
-        return None
-    if len(cv2_img.shape) == 2: #2 channels = greyscale
-        return Image.fromarray(cv2_img)
-    elif len(cv2_img.shape) == 3 and convertColour:  #3 channels = color
-        return Image.fromarray(cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB))
-    else:
-        return Image.fromarray(cv2_img) 
-
-#determining which proportion the image is contrained by and using that ration to keep everything the same proportion
-def get_image_size(img, max_width, max_height):
-    img_width, img_height = img.size
-    aspect_ratio = img_width / img_height
-    if img_width > max_width:
-        img_width = max_width
-        img_height = img_width / aspect_ratio
-    if img_height > max_height:
-        img_height = max_height
-        img_width = img_height * aspect_ratio
-    return img_width, img_height
-
-
-
-def resize_for_display(image, max_width=1280, max_height=720):
-    h, w = image.shape[:2]
-    if h > max_height or w > max_width:
-        scale = min(max_height/h, max_width/w)
-        new_size = (int(w*scale), int(h*scale))
-        return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA)
-    return image
 
 
 def add_info_page(plate_info, story, logo, title_style, body_style):
@@ -1075,8 +1480,6 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
     story.append(add_final_info_page())
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
-
-
 def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdown_fig, individual_fig, version="1.0.0"):
     from reportlab.lib.units import inch
     from io import BytesIO
@@ -1194,70 +1597,6 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     # Build the PDF with footer
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
-
-def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
-    # Initialize the result array
-    result = np.zeros((rows, cols))
-    
-    # Calculate dilutions along x-axis (first row)
-    for j in range(cols):
-        result[0,j] = (x_dilution_factor ** j)
-    
-    # Calculate dilutions along y-axis for each column
-    for i in range(1, rows):
-        for j in range(cols):
-            result[i,j] = result[0,j] * (y_dilution_factor ** i)
-    
-    print (result)
-    return result
-
-def print_dilution_series(dilution_array):
-    """
-    Print the dilution series in a formatted way.
-    
-    Parameters:
-    dilution_array (numpy.ndarray): 2D array of dilution values
-    """
-    print("\nDilution Series:")
-    for row in dilution_array:
-        print([f"{x:.6g}" for x in row])
-
-def get_sorted_positions(dilution_array):
-    """
-    Get the positions of entries in ascending order based on their values.
-    
-    Parameters:
-    dilution_array (numpy.ndarray): 2D array of dilution values
-    
-    Returns:
-    list: List of tuples containing (row, column) sorted by corresponding dilution values
-    """
-    # Create list of positions and values
-    positions = []
-    for i in range(dilution_array.shape[0]):
-        for j in range(dilution_array.shape[1]):
-            positions.append((i, j, dilution_array[i,j]))
-    
-    # Sort by value and extract only the positions
-    sorted_positions = [(row, col) for row, col, _ in sorted(positions, key=lambda x: x[2])]
-    
-    return sorted_positions
-
-def extract_values_at_positions(array, positions):
-    """
-    Extract values from an array using a list of positions.
-    
-    Parameters:
-    array (numpy.ndarray): 2D array to extract values from
-    positions (list): List of (row, column) tuples
-    
-    Returns:
-    list: Values from the array at the specified positions
-    """
-    # print('extract_values_at_positions')
-    # print(array)
-    # print(positions)
-    return [array[row, col] for row, col in positions]  
 
 
 
