@@ -28,7 +28,7 @@ from scipy.spatial import distance
 from Processing import *
 from Style import *
 from outputs import *
-from singleDilution import *
+# from help import *
 
 
 DARK = "#092934"
@@ -45,7 +45,7 @@ FONT = "Microsoft New Tai Lue"
 
 TITLEHEIGHT = 130
 buttonPosX = 1200
-buttonPosY = 850
+buttonPosY = 800
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
@@ -299,8 +299,6 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, r
                         fill=LIGHT,
                         font=(FONT, 8)
                     )        
-
-
 
 
 
@@ -2148,6 +2146,21 @@ def create_slidersFrame(window):
         accent=DARK
     )
 
+    # create_rounded_button(
+    #     canvas=canvas,
+    #     text="?",
+    #     command=lambda: create_help_popup_sliders(window),
+    #     x=50,
+    #     y=10,
+    #     button_tag="Help",
+    #     width=100,
+    #     height=40,
+    #     fill=LIGHT,
+    #     accent=DARK,
+    #     font_size=30
+
+    # )
+
 
     # # Next button
     # create_rounded_button(
@@ -2846,7 +2859,6 @@ def draw(window, event):
         display_images(window)
 
 
-
 def stop_draw(window, event):
     window.is_drawing = False
     current_state = window.binarized_image.copy()
@@ -3001,9 +3013,6 @@ def setup_zoom_controls(window):
         bg=DARK
     )
     button_zoomout.place(x=1377.0, y=base_y + 117)
-
-
-
 
 def adjust_zoom(window, factor):
     
@@ -3537,6 +3546,10 @@ def restore_window_state(window, filename):
 
 
 
+
+
+
+
 def initialize_window_attributes(window):
     #progress bar style
     s = ttk.Style()
@@ -3583,8 +3596,6 @@ window.geometry("1440x1000")
 window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 BASE_PATH = Path(__file__).parent
-
-# Construct the path to the icon file
 icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
 
@@ -3595,9 +3606,11 @@ title_frame_widgets = create_titleFrame(window)
 window.resizable(True, True)
 window.mainloop()
 
+
+
+
+
 # restore_window_state(window, 'FORREPORTA2.pkl')
-
-
 # processResults(window)
 
 

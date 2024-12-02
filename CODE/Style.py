@@ -435,3 +435,5 @@ class RoundedCheckbox(tk.Canvas):
             self.itemconfigure(self.checkmark, state="hidden")
 
 
+
+

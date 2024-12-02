@@ -94,7 +94,6 @@ def calculate_strain_normalization_value(data_series, strain):
     
     return sum(norm_values) / len(norm_values)
 
-
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
     # Initialize the result array
     result = np.zeros((rows, cols))
@@ -110,17 +109,6 @@ def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
     
     print (result)
     return result
-
-def print_dilution_series(dilution_array):
-    """
-    Print the dilution series in a formatted way.
-    
-    Parameters:
-    dilution_array (numpy.ndarray): 2D array of dilution values
-    """
-    print("\nDilution Series:")
-    for row in dilution_array:
-        print([f"{x:.6g}" for x in row])
 
 def get_sorted_positions(dilution_array):
     """
@@ -1466,8 +1454,8 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
             story.append(Spacer(1, 20))
             
             # Split stats into groups of 4 and create multiple tables if needed
-            for i in range(0, len(stats), 2):
-                stats_subset = stats[i:i+2]
+            for i in range(0, len(stats), 3):
+                stats_subset = stats[i:i+3]
                 table = create_stats_table(stats_subset)
                 story.append(table)
                 story.append(Spacer(1, 10))
