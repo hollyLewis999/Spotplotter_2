@@ -1058,10 +1058,11 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     
     max_width = 280
     max_height = 170
-    def create_image_with_caption(img_key, caption, max_width=max_width, max_height=max_height):
+    def create_image_with_caption(img_key, caption, max_width=280, max_height=170):
         """
         Creates an image and caption for the PDF report using ReportLab components.
         Handles both OpenCV images and base64-encoded preview images.
+        Limits maximum image resolution to 2500x2500 pixels.
         Caption is centered and placed above the image.
         """
         try:
@@ -1082,23 +1083,32 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
                         pil_img = cv2_to_pil(plate_info[img_key])
                 else:
                     raise KeyError(f"{img_key} not found in plate_info")
-    
+
             if pil_img:
                 # Convert to RGB if needed
                 if pil_img.mode != 'RGB':
                     pil_img = pil_img.convert('RGB')
-            
-                # Resize image maintaining aspect ratio
+                
+                # Check and limit maximum resolution
+                orig_width, orig_height = pil_img.size
+                if orig_width > 2500 or orig_height > 2500:
+                    # Calculate scaling factor to fit within 2500x2500
+                    scale_factor = min(2500 / orig_width, 2500 / orig_height)
+                    new_width = int(orig_width * scale_factor)
+                    new_height = int(orig_height * scale_factor)
+                    pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
+                
+                # Resize image maintaining aspect ratio for PDF display
                 img_width, img_height = get_image_size(pil_img, max_width, max_height)
-            
+                
                 # Save to bytes buffer
                 img_data = BytesIO()
                 pil_img.save(img_data, format='JPEG', quality=40)
                 img_data.seek(0)
-            
+                
                 # Create ReportLab image without border
                 img = ImageR(img_data, width=img_width, height=img_height)
-            
+                
                 # Create centered, bold, and italic caption style
                 caption_style = ParagraphStyle(
                     'CaptionStyle',
@@ -1107,7 +1117,7 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
                     fontStyle='italic',
                     alignment=TA_CENTER  # Center align the text
                 )
-            
+                
                 # Return caption first, then the image
                 return [
                     Paragraph(caption, caption_style),  # Centered caption
@@ -1116,8 +1126,8 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
         except Exception as e:
             print(f"Error creating image with caption: {e}")
             return []
-
     def create_info_text(plate_info):
+        # if (plate_info['layout']['x_dilution'] == -1 ):
         info_text = f"""
         <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
         <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>

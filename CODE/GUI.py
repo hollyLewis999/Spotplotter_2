@@ -44,8 +44,8 @@ FONT = "Microsoft New Tai Lue"
 
 
 TITLEHEIGHT = 130
-buttonPosX = 1200
-buttonPosY = 800
+buttonPosX = 1171
+buttonPosY = 728 +20
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
@@ -1686,7 +1686,7 @@ def create_titleFrame(window):
     #has to be a photoimage for Tkinkter, 
     image_image_10 = ImageTk.PhotoImage(img_logobig_resized)
     canvas.image_image_10 = image_image_10
-    canvas.create_image(720.0, 420.0, image=image_image_10)
+    canvas.create_image(720.0, 350.0, image=image_image_10)
 
 
     create_rounded_button(
@@ -1694,7 +1694,7 @@ def create_titleFrame(window):
         text="Upload Assays",
         command=lambda: upload_images(window),
         x=855.0,
-        y=670.0, )
+        y=600.0, )
 
 
     create_rounded_button(
@@ -1711,14 +1711,14 @@ def create_titleFrame(window):
     text="Create Metadata",
     command=lambda: create_plate_designer(window),
     x=385.0,
-    y=670.0)    
+    y=600.0)    
 
     create_rounded_button(
     canvas=canvas,
     text="Upload MetaData",
     command=lambda: upload_metadata_handler(window),
     x=620.0,
-    y=670.0)
+    y=600.0)
 
     if hasattr(window, 'window.plates'):
         print("works")
@@ -1858,13 +1858,11 @@ def next_image(window):
 #  `Y88P' 88   YD  `Y88P'  88      
                                  
 #makes sure that the crop takes into account the scale of the image, since its downsized
-def resize_for_display_crop(image, max_width=1000, max_height=650):
+def resize_for_display_crop(image, max_width=1000, max_height=600):  # Reduced from 650 to 600
     h, w = image.shape[:2]
     scale = min(max_width/w, max_height/h)
     new_size = (int(w*scale), int(h*scale))
     return cv2.resize(image, new_size, interpolation=cv2.INTER_AREA), scale
-
-
 #get the co-ordnates of the click , where the crop starts
 def start_crop(event, window):
     window.cropping = True
@@ -1891,6 +1889,7 @@ def crop(event, window, canvas):
 def end_crop(event, window, canvas):
     window.cropping = False
 
+
 def apply_crop(window):
     if window.x_start != window.x_end and window.y_start != window.y_end:
         #dimensions of the original image
@@ -1902,31 +1901,37 @@ def apply_crop(window):
         
         #offset of the image on the canvas
         canvas_width = 1440  # From your create_cropFrame function
-        canvas_height = 1024  # From your create_cropFrame function
+        canvas_height = 974  # From your create_cropFrame function
+        
+        # Calculate offset, accounting for the 25-pixel upward shift
         offset_x = (canvas_width - window.display_width) // 2 
-        offset_y = (canvas_height - window.display_height) // 2
+        offset_y = ((canvas_height - window.display_height) // 2) 
         
-        #scaling to crop coordinates, accounting for the offset
+        # Adjust crop coordinates relative to the original image
         x_start = int((min(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_start = int((min(window.y_start, window.y_end) - offset_y) * scale_y)
+        y_start = int((min(window.y_start, window.y_end) - (offset_y)) * scale_y)  # Remove the 25-pixel shift here
         x_end = int((max(window.x_start, window.x_end) - offset_x) * scale_x)
-        y_end = int((max(window.y_start, window.y_end) - offset_y) * scale_y)
+        y_end = int((max(window.y_start, window.y_end) - (offset_y)) * scale_y)  # Remove the 25-pixel shift here
         
-        #check within image bounds, or map to beinging end of bounds
+        # Ensure coordinates are within image bounds
         x_start = max(0, x_start)
         y_start = max(0, y_start)
         x_end = min(x_end, original_width)
         y_end = min(y_end, original_height)
         
-        #actual crop
+        # Perform the crop
         window.current_image = window.original_image[y_start:y_end, x_start:x_end]
-        h, w = window.current_image.shape[:2]
-        # print("width")
-        # print(w)
-        #cv2.imshow("Cropped", resize_for_display(window.current_image) )
-        process_image(window)
+        
+        # Update debug_image and process
+        if window.current_image.size > 0:
+            window.debug_image = window.current_image.copy()
+            process_image(window)
+        else:
+            messagebox.showwarning("Warning", "Invalid crop area. Please try again.")
     else:
         messagebox.showwarning("Warning", "Please select an area to crop.")
+
+        
 
 def create_cropFrame(window):
     for widget in window.winfo_children():
@@ -1972,7 +1977,7 @@ def create_cropFrame(window):
     photo = ImageTk.PhotoImage(image=image)
 
     #place image on canvas
-    canvas.create_image(720, 512, image=photo, anchor="center")
+    canvas.create_image(720, 487, image=photo, anchor="center")
     canvas.image = photo
 
     #keep dimensions
@@ -1986,7 +1991,7 @@ def create_cropFrame(window):
         command=lambda: apply_crop(window),
         x=buttonPosX,
         y=buttonPosY,
-        button_tag = "cropNext" )
+        button_tag = "cropNext")
 
 
     #default cropping variables
@@ -2028,6 +2033,7 @@ def update_progress_bar(window):
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
         
 def create_slidersFrame(window):
+    calculate_drawing_thickness(window)
     # Create main canvas
     canvas = Canvas(
         window,
@@ -2054,7 +2060,9 @@ def create_slidersFrame(window):
         command=lambda: go_to_edit_frame(window),
         x=buttonPosX,
         y=buttonPosY,
-        button_tag = "slidersNext" )
+        button_tag = "slidersNext",
+        fill = LIGHT,
+        accent = DARK  )
 
     # Main dark rectangle for image area
     round_rectangle(canvas,
@@ -2076,17 +2084,17 @@ def create_slidersFrame(window):
 
     # Create frame for image canvas
     main_frame = Frame(window, bg=DARK)
-    main_frame.place(x=27, y=178, width=1070, height=638)
+    main_frame.place(x=27, y=178, width=1063, height=638)
 
     # Create single canvas for image display
     window.image_canvas = Canvas(
         main_frame,
         width=1050,
-        height=580,
+        height=608,
         bg=DARK,
         highlightthickness=0
     )
-    window.image_canvas.pack(expand=True, fill='both')
+    window.image_canvas.place(x=0, y=15)
 
     # Control panel
     control_frame = Frame(window, bg=DARK)
@@ -2102,7 +2110,7 @@ def create_slidersFrame(window):
     create_circular_slider(
         control_frame, 
         min_val=0, 
-        max_val=40,
+        max_val=60,
         position=(16, y_offset + 30),
         command=lambda v: on_contrast_change(window, v, False),
         initial_value=window.contrast_value
@@ -2125,52 +2133,34 @@ def create_slidersFrame(window):
     block_label.place(x=16, y=y_offset + spacing * 2)
     create_circular_slider(
         control_frame, 
-        min_val=51, 
-        max_val=1001,
+        min_val=3, 
+        max_val=601,
         position=(16, y_offset + spacing * 2 + 30),
         command=lambda v: on_block_size_change(window, v, False),
         initial_value=window.block_size if hasattr(window, 'block_size') else 301
     )
+    button_canvas = Canvas(
+        control_frame, 
+        width=302,  # Adjust size as needed
+        height=200, 
+        bg=DARK, 
+        bd=0, 
+        highlightthickness=0, 
+        relief="ridge"
+    )
+    button_canvas.place(x=0, y=550)  # Position inside the control_frame
 
-    # Toggle Original/Processed Image
     create_rounded_button(
-        canvas=canvas,
-        text="Toggle View",
-        command=lambda: toggle_image(window),
-        x=1130,
-        y=y_offset + spacing * 3 + 30,
-        button_tag="Toggle",
-        width=140,
-        height=40,
+        canvas=button_canvas,  # Use the new button_canvas
+        text="Next",
+        command=lambda: go_to_edit_frame(window),
+        x=41,  # Adjust x relative to the button_canvas
+        y=0,  # Adjust y relative to the button_canvas
+        button_tag="slidersNext",
         fill=LIGHT,
         accent=DARK
     )
 
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="?",
-    #     command=lambda: create_help_popup_sliders(window),
-    #     x=50,
-    #     y=10,
-    #     button_tag="Help",
-    #     width=100,
-    #     height=40,
-    #     fill=LIGHT,
-    #     accent=DARK,
-    #     font_size=30
-
-    # )
-
-
-    # # Next button
-    # create_rounded_button(
-    #     canvas=canvas,
-    #     text="Next",
-    #     command=lambda: switch_to_edit_screen(window),
-    #     x=1130,
-    #     y=750,
-    #     button_tag="adjustmentNext"
-    # )
 
     # Progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
@@ -2198,7 +2188,9 @@ def on_contrast_change(window, value, backToEdit = False):
     if (backToEdit2 == False):
         window.contrast_value = float(value)
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-
+        # cv2.imshow("grey", resize_for_display(window.gray_image))
+        # cv2.waitKey(0)
+        # cv2.destroyAllWindows()
         #save new iamges
         window.binarized_image = final_binary
         window.contour_img = contour_img
@@ -2207,6 +2199,7 @@ def on_contrast_change(window, value, backToEdit = False):
         # print("SAVED")
         #cannot use undo redo buttons to undo this
         display_image(window)
+        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
     else:
         backToEdit2 = False   
 
@@ -2225,6 +2218,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         # print("am i resetting here?")
         # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
         display_image(window)
+        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
     else:
         backToEdit2 = False
 
@@ -2244,6 +2238,8 @@ def on_block_size_change(window, value, backToEdit = False):
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
         display_image(window)
+        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
+        # cv2.imshow()
     else:
         backToEdit2 = False
 
@@ -2256,7 +2252,7 @@ def display_image(window):
         
         # Calculate available space
         canvas_width = 1050  # Fixed canvas width
-        canvas_height = 580  # Fixed canvas height
+        canvas_height = 608  # Fixed canvas height
         
         # Calculate scaling factors
         width_scale = canvas_width / original_width
@@ -2277,7 +2273,7 @@ def display_image(window):
         contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
         contour_img = cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB).copy()
-        cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
+        cv2.drawContours(contour_img, contours, -1, (0, 0, 255), window.contour_thickness)
         
         window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img
         window.current_info["IMGcontours"] = contour_img
@@ -2314,7 +2310,10 @@ def display_image(window):
 
 
 def create_editFrame(window, backToEdit = False):
-
+    font_size = 12
+    resize = 14
+    button_offset = 30
+    base_y = 240.0
     global backToEdit2 #have to put this here if i want to edit it within this function
     if backToEdit == False:
         # Only set if not already set, or force overwrite is needed
@@ -2352,20 +2351,21 @@ def create_editFrame(window, backToEdit = False):
         x=buttonPosX,
         y=buttonPosY,
         button_tag = "editNext" )
+    y_offset_edit  = 30
 
     round_rectangle(canvas,
        1362.0,
-        168.0,
+        168.0 -y_offset_edit ,
         1422.0,
-        826.0,
+        730,
         fill=DARK,
         outline="")
 
     round_rectangle(canvas,
         17.0,
-        168.0,
+        168.0 -y_offset_edit,
         1350.0,
-        826.0,
+        730,
         fill=DARK,
         outline="")
 
@@ -2382,14 +2382,14 @@ def create_editFrame(window, backToEdit = False):
     # Toggle section
     canvas.create_text(
         1391.0,
-        base_y - 15,
+        base_y - 15-y_offset_edit,
         text="Toggle",
         fill=LIGHT,
-        font=(FONT, 14 * -1, 'bold')
+        font=(FONT, font_size * -1, 'bold')
     )
     toggle = ("Icons/toggle.png")
     img_toggle = Image.open(toggle)
-    img_toggle_resized = img_toggle.resize((img_toggle.width // 11, img_toggle.height // 11), Image.LANCZOS)
+    img_toggle_resized = img_toggle.resize((img_toggle.width // resize, img_toggle.height // resize), Image.LANCZOS)
     image_toggle = ImageTk.PhotoImage(img_toggle_resized)
     window.edit_images.append(image_toggle)
     toggle_button = Button(
@@ -2401,21 +2401,21 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    toggle_button.place(x=1376.0, y=base_y)
+    toggle_button.place(x=1376.0, y=base_y-y_offset_edit)
 
     # Zoom section
     canvas.create_text(
         1391.0,
-        base_y + 39+heading_y,
+        base_y + (button_offset) +heading_y-y_offset_edit,
         text="Zoom",
         fill=LIGHT,
-        font=(FONT, 14 * -1, 'bold')
+        font=(FONT, font_size * -1, 'bold')
     )
 
     # Zoom in button
     zoomin = ("Icons/zoomin.png")
     img_zoomin = Image.open(zoomin)
-    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
+    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // resize, img_zoomin.height // resize), Image.LANCZOS)
     image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
     window.edit_images.append(image_zoomin_2)
     button_zoomin = Button(
@@ -2426,12 +2426,12 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 1.2),
         bg=DARK
     )
-    button_zoomin.place(x=1377.0, y=base_y + 78)
+    button_zoomin.place(x=1377.0, y=base_y + (2*button_offset) -y_offset_edit)
 
     # Zoom out button
     zoomout = ("Icons/zoomout.png")
     img_zoomout = Image.open(zoomout)
-    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
+    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // resize, img_zoomout.height // resize), Image.LANCZOS)
     image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
     window.edit_images.append(image_zoomout_2)
     button_zoomout = Button(
@@ -2442,21 +2442,21 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 0.8),
         bg=DARK
     )
-    button_zoomout.place(x=1377.0, y=base_y + 117)
+    button_zoomout.place(x=1377.0, y=base_y + (3*button_offset)-y_offset_edit)
 
     # History section (Undo and Redo)
     canvas.create_text(
         1391.0,
-        base_y + 156+heading_y,
+        base_y + (4*button_offset)+heading_y-y_offset_edit,
         text="History",
         fill=LIGHT,
-        font=(FONT, 14 * -1, 'bold')
+        font=(FONT, font_size * -1, 'bold')
     )
 
     # Undo button (image_8)
     image_path_8 = ("Icons/image_8.png")
     img_undo = Image.open(image_path_8) 
-    img_undo_resized = img_undo.resize((img_undo.width // 11, img_undo.height // 11), Image.LANCZOS)
+    img_undo_resized = img_undo.resize((img_undo.width // resize, img_undo.height // resize), Image.LANCZOS)
     image_image_8 = ImageTk.PhotoImage(img_undo_resized)
     window.edit_images.append(image_image_8)
     undo_button = Button(
@@ -2468,12 +2468,12 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    undo_button.place(x=1376.0, y=base_y + 195)
+    undo_button.place(x=1376.0, y=base_y + (5*button_offset) -y_offset_edit)
 
     # Redo button (image_7)
     image_path_7 = ("Icons/image_7.png")
     img_redo = Image.open(image_path_7)
-    img_redo_resized = img_redo.resize((img_redo.width // 11, img_redo.height // 11), Image.LANCZOS)
+    img_redo_resized = img_redo.resize((img_redo.width // resize, img_redo.height // resize), Image.LANCZOS)
     image_image_7 = ImageTk.PhotoImage(img_redo_resized)
     window.edit_images.append(image_image_7)
     redo_button = Button(
@@ -2485,21 +2485,21 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    redo_button.place(x=1376.0, y=base_y + 234)
+    redo_button.place(x=1376.0, y=base_y + (6*button_offset)-y_offset_edit)
 
     # "Add" text 
     canvas.create_text(
         1391.0,
-        base_y + 273+ heading_y,
+        base_y + (7*button_offset)+ heading_y-y_offset_edit,
         text="Add",
         fill=LIGHT,
-        font=(FONT, 14 * -1, 'bold')
+        font=(FONT, font_size * -1, 'bold')
     )
 
     # Thin pen (image_2)
     image_path_2 = ("Icons/image_2.png")
     img_thinPen = Image.open(image_path_2) 
-    img_thinPen_resized = img_thinPen.resize((img_thinPen.width // 11, img_thinPen.height // 11), Image.LANCZOS)
+    img_thinPen_resized = img_thinPen.resize((img_thinPen.width // resize, img_thinPen.height // resize), Image.LANCZOS)
     image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
     window.edit_images.append(image_image_2)
     button_thin_pen = Button(
@@ -2510,12 +2510,12 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: set_mode(window, "thin_brush"),
         bg=DARK
     )
-    button_thin_pen.place(x=1377.0, y=base_y + 312)
+    button_thin_pen.place(x=1377.0, y=base_y + (8*button_offset)-y_offset_edit)
 
     # Big pen (image_5)
     image_path_5 = ("Icons/image_5.png")
     img_thickPen = Image.open(image_path_5) 
-    img_thickPen_resized = img_thickPen.resize((img_thickPen.width // 11, img_thickPen.height // 11), Image.LANCZOS)
+    img_thickPen_resized = img_thickPen.resize((img_thickPen.width // resize, img_thickPen.height // resize), Image.LANCZOS)
     image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
     window.edit_images.append(image_image_5)
     big_pen_button = Button(
@@ -2527,21 +2527,21 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    big_pen_button.place(x=1377.0, y=base_y + 351)
+    big_pen_button.place(x=1377.0, y=base_y + (9*button_offset)-y_offset_edit)
 
     # "Delete" text
     canvas.create_text(
         1391.0,
-        base_y + 390 + heading_y ,
+        base_y + (10*button_offset) + heading_y -y_offset_edit,
         text="Delete",
         fill=LIGHT,
-        font=(FONT, 14 * -1, 'bold')
+        font=(FONT, font_size * -1, 'bold')
     )
 
     # Flood eraser (image_6)
     image_path_6 = ("Icons/image_6.png")
     img_flood = Image.open(image_path_6) 
-    img_flood_resized = img_flood.resize((img_flood.width // 11, img_flood.height // 11), Image.LANCZOS)
+    img_flood_resized = img_flood.resize((img_flood.width // resize, img_flood.height // resize), Image.LANCZOS)
     image_image_6 = ImageTk.PhotoImage(img_flood_resized)
     window.edit_images.append(image_image_6)
     flood_eraser_button = Button(
@@ -2553,12 +2553,12 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    flood_eraser_button.place(x=1376.0, y=base_y + 429)
+    flood_eraser_button.place(x=1376.0, y=base_y + (11*button_offset)-y_offset_edit)
 
     # Thin eraser (image_9)
     image_path_9 =("Icons/image_9.png")
     img_thinEraser = Image.open(image_path_9)
-    img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // 11, img_thinEraser.height // 11), Image.LANCZOS)
+    img_thinEraser_resized = img_thinEraser.resize((img_thinEraser.width // resize, img_thinEraser.height // resize), Image.LANCZOS)
     image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
     window.edit_images.append(image_image_9)
     thin_eraser_button = Button(
@@ -2570,13 +2570,14 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    thin_eraser_button.place(x=1376.0, y=base_y + 468)
+    thin_eraser_button.place(x=1376.0, y=base_y + (12*button_offset)-y_offset_edit)
 
 
 
  #big eraser
-    image_image_4 = PhotoImage(file=("Icons/image_4.png"))
-    image_image_4 = image_image_4.subsample(11, 11) 
+    image_image_4 = Image.open("Icons/image_4.png")
+    image_image_4_Resized = image_image_4.resize((image_image_4.width // resize, image_image_4.height // resize), Image.LANCZOS)
+    image_image_4 = ImageTk.PhotoImage(image_image_4_Resized)
     window.edit_images.append(image_image_4)
     big_eraser_button = Button(
         window,
@@ -2587,7 +2588,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    big_eraser_button.place(x=1377.0, y=base_y + 468+39)
+    big_eraser_button.place(x=1377.0, y=base_y + (13*button_offset)-y_offset_edit)
 
 
 
@@ -2596,7 +2597,7 @@ def create_editFrame(window, backToEdit = False):
     window.redo_button = redo_button
 
     total_width = 1295 - 34
-    total_height = 783 - 203
+    total_height = 783 - 203 -100
     img_width = total_width // 2
     img_height = total_height
 
@@ -2671,7 +2672,7 @@ def create_editFrame(window, backToEdit = False):
     right_frame.grid_rowconfigure(0, weight=1)
     right_frame.grid_columnconfigure(0, weight=1)
 
-    yposFrames= 207
+    yposFrames= 207-y_offset_edit
     # Position the frames
     left_frame.place(x=30, y=yposFrames, width=img_width + 20, height=img_height + 20)
     right_frame.place(x=690, y=yposFrames, width=img_width + 20, height=img_height + 20)
@@ -2717,6 +2718,15 @@ def create_editFrame(window, backToEdit = False):
     update_progress_bar(window)
 
     return canvas
+
+
+def calculate_drawing_thickness(window):
+    original_width = window.debug_image.shape[1]
+    print("ORIGIONAL WIDTH")
+    print(original_width)
+    contour_thickness = original_width *0.0022
+    window.contour_thickness = math.floor(contour_thickness)
+    print(window.contour_thickness)
 
 def display_images(window):
     """Display images while maintaining original aspect ratio with zoom support"""
@@ -2773,7 +2783,7 @@ def display_images(window):
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             
             contour_img = window.current_image.copy()
-            cv2.drawContours(contour_img, contours, -1, (0, 0, 255), 3)
+            cv2.drawContours(contour_img, contours, -1, (0, 0, 255), window.contour_thickness)
 
             window.all_plate_info[window.current_image_index]["IMGcontours"] = contour_img    
             window.current_info["IMGcontours"] = contour_img
@@ -2976,43 +2986,7 @@ def setup_zoom_controls(window):
     window.zoom_min = 0.5
     window.zoom_max = 4.0
     
-    # Create zoom frame
-    zoom_frame = Frame(window, bg=DARK)
-    zoom_frame.place(x=1376, y=300)
     
-
-    
- # Zoom in button
-    zoomin = ("Icons/zoomin.png")
-    img_zoomin = Image.open(zoomin)
-    img_zoomin_resized = img_zoomin.resize((img_zoomin.width // 11, img_zoomin.height // 11), Image.LANCZOS)
-    image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
-    window.edit_images.append(image_zoomin_2)
-    button_zoomin = Button(
-        window,
-        image=image_zoomin_2,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: adjust_zoom(window, 1.2),
-        bg=DARK
-    )
-    button_zoomin.place(x=1377.0, y=base_y + 78)
-
-    # Zoom out button
-    zoomout = ("Icons/zoomout.png")
-    img_zoomout = Image.open(zoomout)
-    img_zoomout_resized = img_zoomout.resize((img_zoomout.width // 11, img_zoomout.height // 11), Image.LANCZOS)
-    image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
-    window.edit_images.append(image_zoomout_2)
-    button_zoomout = Button(
-        window,
-        image=image_zoomout_2,
-        borderwidth=0,
-        highlightthickness=0,
-        command=lambda: adjust_zoom(window, 0.8),
-        bg=DARK
-    )
-    button_zoomout.place(x=1377.0, y=base_y + 117)
 
 def adjust_zoom(window, factor):
     
@@ -3136,7 +3110,7 @@ def display_final_image(window, override =False):
 
     canvas.create_text(
         720,  
-        750.0,
+        450.0,
         text="Loading Image Please wait",
         fill=DARK,
         font=(FONT, 12, "bold"),
@@ -3170,7 +3144,7 @@ def display_final_image(window, override =False):
 
 
     #resizing the image to fit
-    max_width, max_height = 1200, 700
+    max_width, max_height = 1000, 550
     h, w = marked_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
@@ -3189,7 +3163,7 @@ def display_final_image(window, override =False):
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
     x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2
+    y_position = (974 - new_size[1]) // 2 -70
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo
 
@@ -3215,7 +3189,6 @@ def go_to_edit_frame(window):
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
-
 
 def open_grid_override(window):
     for widget in window.winfo_children():
@@ -3247,7 +3220,7 @@ def open_grid_override(window):
     rgb_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2RGB)
    
     #resizing as the dataset images are HUGE
-    max_width, max_height = 1200, 700
+    max_width, max_height = 1000, 550
     h, w = rgb_image.shape[:2]
     scale = min(max_width / w, max_height / h)
     new_size = (int(w * scale), int(h * scale))
@@ -3256,7 +3229,7 @@ def open_grid_override(window):
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
     x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2
+    y_position = (974 - new_size[1]) // 2 -70
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo
    
@@ -3289,13 +3262,13 @@ def open_grid_override(window):
         for x, y in window.blob_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=window.contour_thickness)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=window.contour_thickness)
         for x, y in window.clicked_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=4)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=4)
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=window.contour_thickness)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=window.contour_thickness)
     draw_points()
 
     #allows the user to remove points that they made OR points detected from find blobs
@@ -3592,14 +3565,12 @@ def initialize_window_attributes(window):
 
 # #creating the frame with title and icon
 window = Tk()
-window.geometry("1440x1000")
+window.geometry("1440x900")
 window.configure(bg=LIGHT)
 window.title("SpotPlotter")
-BASE_PATH = Path(__file__).parent
-icon_path = BASE_PATH / "Icons" / "ICON.ico"
 
 
-window.iconbitmap(icon_path)
+window.iconbitmap("Icons/ICON.ico")
 initialize_window_attributes(window)
 title_frame_widgets = create_titleFrame(window)
 

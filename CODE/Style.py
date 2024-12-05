@@ -37,7 +37,7 @@ TITLEHEIGHT = 130
 OUTPUT_PATH = Path(__file__).parent
 ASSETS_PATH = OUTPUT_PATH /  "Icons"
 buttonPosX = 1200
-buttonPosY = 885
+
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
