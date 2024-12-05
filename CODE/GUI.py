@@ -34,7 +34,7 @@ from outputs import *
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
-COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
 CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
@@ -44,14 +44,14 @@ FONT = "Microsoft New Tai Lue"
 
 
 TITLEHEIGHT = 130
-buttonPosX = 1171
+buttonPosX = 1440 -200-20
 buttonPosY = 728 +20
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
 base_y = 212.0
 heading_y = 20
-
+y_offset_edit  = 30
 
 
 # d8888b. db       .d8b.  d888888b d88888b    .o88b. d8888b. d88888b  .d8b.  d888888b  .d88b.  d8888b. 
@@ -330,6 +330,75 @@ def go_to_assignment_screen(window):
     create_strain_designer(window)
 
 
+def create_plate_designer(window, mode="A"):
+    # Clear window
+    for widget in window.winfo_children():
+        widget.destroy()
+    
+    # Initialize plate layout attributes with defaults
+    window.plate_layout = {
+        'rows': tk.IntVar(value=8),
+        'columns': tk.IntVar(value=12),
+        'strains': tk.IntVar(value=1 if mode == "B" else 3),
+        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
+        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
+        'gap_between_strains': tk.BooleanVar(value=False),
+        'removed_positions': set(),
+        'strain_positions': {}
+    }
+    
+    # Store the current mode
+    window.current_mode = mode
+    
+    # Create canvas for layout
+    canvas = Canvas(
+        window,
+        bg=LIGHT,
+        height=1024,
+        width=1440,
+        bd=0,
+        highlightthickness=0,
+        relief="ridge"
+    )
+    canvas.place(x=0, y=0)
+    
+    # Add background images and frames
+    image_image_1 = PhotoImage(file=("Icons/image_1.png"))
+    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
+    round_rectangle(canvas, 17.0, 168.-y_offset_edit, 1100.0, 730.0, fill=DARK, outline="")
+    round_rectangle(canvas, 1120.0, 168.0-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
+    
+    # Create frames for plate and controls
+    plate_frame = Frame(window, bg=DARK)
+    plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
+    
+    control_frame = Frame(window, bg=DARK)
+    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
+    
+    # Create mode switcher and controls
+    create_mode_switcher(control_frame, window)
+    create_controls(control_frame, window, mode)
+    create_plate_display(plate_frame, window)
+    
+    # Add navigation buttons
+    create_rounded_button(
+        canvas=canvas,
+        text="Next",
+        command=lambda: go_to_assignment_screen(window),
+        x=buttonPosX,
+        y=buttonPosY
+    )
+    
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_titleFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )    
+
+
 
 # .d8888. d888888b d8888b.  .d8b.  d888888b d8b   db .d8888. 
 # 88'  YP `~~88~~' 88  `8D d8' `8b   `88'   888o  88 88'  YP 
@@ -375,15 +444,15 @@ def create_strain_designer(window):
     image_1 = window.canvas.create_image(719.0, 57.0, image=image_image_1)
 
     # Main dark rectangles
-    round_rectangle(window.canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(window.canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
+    round_rectangle(window.canvas, 17.0, 168.0-y_offset_edit, 1100.0, 730.0, fill=DARK, outline="")
+    round_rectangle(window.canvas, 1120.0, 168-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
 
     # Create frames
     window.plate_frame = tk.Frame(window, bg=DARK)
-    window.plate_frame.place(x=27, y=178, width=1070, height=638)
+    window.plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=512)
 
     window.control_frame = tk.Frame(window, bg=DARK)
-    window.control_frame.place(x=1130, y=178, width=282, height=638)
+    window.control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=512)
 
     # Create subframes
     window.strains_frame = tk.Frame(window.control_frame, bg=DARK)
@@ -393,7 +462,29 @@ def create_strain_designer(window):
     window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
     setup_frames(window)
 
+    create_rounded_button(
+        canvas=window.canvas,
+        text="Previous Plate",
+        command=lambda:prev_plate(window),
+        x=191.5+17,
+        y=buttonPosY
+    )
 
+    create_rounded_button(
+        canvas=window.canvas,
+        text="Next Plate",
+        command=lambda:next_plate(window),
+        x=191.5+17+250+250,
+        y=buttonPosY
+    )
+
+    create_rounded_button(
+        canvas=window.canvas,
+        text="Preview All",
+        command=lambda:preview_all_plates(window),
+        x=191.5+17+250,
+        y=buttonPosY
+    )
 
     create_rounded_button(
         canvas=window.canvas,
@@ -402,8 +493,6 @@ def create_strain_designer(window):
         x=buttonPosX,
         y=buttonPosY
     )
-
-
 
 def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height):
     if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
@@ -606,8 +695,6 @@ def draw_positions_and_spots(window, margin_left, margin_top,
 
 
 
-
-
 def create_strain_controls(window):
     if window.current_mode == 'A':
         # "Add a strain" header
@@ -655,7 +742,7 @@ def create_strain_controls(window):
 def add_strain(window):
     strain = window.strain_entry.get().strip()
     if strain and strain not in window.strains:
-        if len(window.strains) >= 6:
+        if len(window.strains) >= 7:
             messagebox.showwarning("Warning", "Maximum number of strains reached")
             return
         
@@ -947,9 +1034,6 @@ def next_plate(window):
     else:
         print("Cannot go to next plate")
 
-
-
-
 def create_plate_controls(window):
     # Main controls container at the top
     controls_container = tk.Frame(window.control_frame, bg=DARK)
@@ -1063,65 +1147,65 @@ def create_plate_controls(window):
         bold=False  # Unbolded text
     )
 
-def create_navigation_controls(window):
-    # Navigation controls at the bottom
-    nav_container = tk.Frame(window.control_frame, bg=DARK)
-    nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
+# def create_navigation_controls(window):
+#     # Navigation controls at the bottom
+#     nav_container = tk.Frame(window.control_frame, bg=DARK)
+#     nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
     
-    # Navigation buttons frame
-    nav_frame = tk.Frame(nav_container, bg=DARK)
-    nav_frame.pack(fill=tk.X, pady=(0, 5))
+#     # Navigation buttons frame
+#     nav_frame = tk.Frame(nav_container, bg=DARK)
+#     nav_frame.pack(fill=tk.X, pady=(0, 5))
     
-    # Create a canvas for navigation buttons
-    navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
-    navigation_button_canvas.pack(fill=tk.X)
+#     # Create a canvas for navigation buttons
+#     navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
+#     navigation_button_canvas.pack(fill=tk.X)
     
-    # Previous Plate button
-    create_rounded_button(
-        navigation_button_canvas, 
-        "Previous", 
-        lambda: prev_plate(window), 
-        0, 0, 
-        width=120, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
+#     # Previous Plate button
+#     create_rounded_button(
+#         navigation_button_canvas, 
+#         "Previous", 
+#         lambda: prev_plate(window), 
+#         0, 0, 
+#         width=120, 
+#         height=35, 
+#         cornerradius=6,
+#         fill = LIGHT, accent = DARK,
+#         bold = False
+#     )
     
-    # Next Plate button
-    create_rounded_button(
-        navigation_button_canvas, 
-        "Next ", 
-        lambda: next_plate(window), 
-        140, 0, 
-        width=120, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
+#     # Next Plate button
+#     create_rounded_button(
+#         navigation_button_canvas, 
+#         "Next ", 
+#         lambda: next_plate(window), 
+#         140, 0, 
+#         width=120, 
+#         height=35, 
+#         cornerradius=6,
+#         fill = LIGHT, accent = DARK,
+#         bold = False
+#     )
     
-    # Action buttons frame
-    action_frame = tk.Frame(nav_container, bg=DARK)
-    action_frame.pack(fill=tk.X)
+#     # Action buttons frame
+#     action_frame = tk.Frame(nav_container, bg=DARK)
+#     action_frame.pack(fill=tk.X)
     
-    # Create a canvas for action buttons
-    action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
-    action_button_canvas.pack(fill=tk.X)
+#     # Create a canvas for action buttons
+#     action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
+#     action_button_canvas.pack(fill=tk.X)
     
-    # Preview All Plates button
-    create_rounded_button(
-        action_button_canvas, 
-        "Preview All Plates", 
-        lambda: preview_all_plates(window), 
-        0, 0, 
-        width=260, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold = False
-    )
+#     # Preview All Plates button
+#     create_rounded_button(
+#         action_button_canvas, 
+#         "Preview All Plates", 
+#         lambda: preview_all_plates(window), 
+#         0, 0, 
+#         width=260, 
+#         height=35, 
+#         cornerradius=6,
+#         fill = LIGHT, accent = DARK,
+#         bold = False
+#     )
 
 def toggle_additive_entry(window):
     if window.additive_var.get():
@@ -1133,23 +1217,23 @@ def toggle_additive_entry(window):
 def setup_frames(window):
     # Main frames
     window.plate_frame = tk.Frame(window, bg=DARK)
-    window.plate_frame.place(x=27, y=178, width=1070, height=638)
+    window.plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
     
     window.control_frame = tk.Frame(window, bg=DARK)
-    window.control_frame.place(x=1130, y=178, width=282, height=638)
+    window.control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
     
     # Create three subframes within the control frame
     window.plate_controls_frame = tk.Frame(window.control_frame, bg=DARK)
     window.plate_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
     
     
-    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
-    window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+    # window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
+    # window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
     
     # Populate the frames
     create_plate_controls(window)
     create_strain_controls(window)  # You'll need to define this function
-    create_navigation_controls(window)
+    # create_navigation_controls(window)
     
     
 
@@ -1165,75 +1249,6 @@ def setup_frames(window):
     
     # Force initial update with current plate index
     window.plate_canvas.after(100, lambda: update_plate_display(window))
-
-
-def create_plate_designer(window, mode="A"):
-    # Clear window
-    for widget in window.winfo_children():
-        widget.destroy()
-    
-    # Initialize plate layout attributes with defaults
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=1 if mode == "B" else 3),
-        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
-        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-    
-    # Store the current mode
-    window.current_mode = mode
-    
-    # Create canvas for layout
-    canvas = Canvas(
-        window,
-        bg=LIGHT,
-        height=1024,
-        width=1440,
-        bd=0,
-        highlightthickness=0,
-        relief="ridge"
-    )
-    canvas.place(x=0, y=0)
-    
-    # Add background images and frames
-    image_image_1 = PhotoImage(file=("Icons/image_1.png"))
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
-    image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    round_rectangle(canvas, 17.0, 168.0, 1100.0, 826.0, fill=DARK, outline="")
-    round_rectangle(canvas, 1120.0, 168.0, 1422.0, 826.0, fill=DARK, outline="")
-    
-    # Create frames for plate and controls
-    plate_frame = Frame(window, bg=DARK)
-    plate_frame.place(x=27, y=178, width=1070, height=638)
-    
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
-    
-    # Create mode switcher and controls
-    create_mode_switcher(control_frame, window)
-    create_controls(control_frame, window, mode)
-    create_plate_display(plate_frame, window)
-    
-    # Add navigation buttons
-    create_rounded_button(
-        canvas=canvas,
-        text="Next",
-        command=lambda: go_to_assignment_screen(window),
-        x=buttonPosX,
-        y=buttonPosY
-    )
-    
-    create_rounded_button(
-        canvas=canvas,
-        text="Back",
-        command=lambda: create_titleFrame(window),
-        x=17.0,
-        y=buttonPosY
-    )    
 
 
 
@@ -2351,7 +2366,7 @@ def create_editFrame(window, backToEdit = False):
         x=buttonPosX,
         y=buttonPosY,
         button_tag = "editNext" )
-    y_offset_edit  = 30
+    
 
     round_rectangle(canvas,
        1362.0,
@@ -3256,19 +3271,20 @@ def open_grid_override(window):
     print(window.blob_points)
     window.clicked_points = []
 
+    cross_thickness = max(1,window.contour_thickness-2 )
     #allows the user to add points
     def draw_points():
         canvas.delete("point")
         for x, y in window.blob_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=window.contour_thickness)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=window.contour_thickness)
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=cross_thickness)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=cross_thickness)
         for x, y in window.clicked_points:
             scaled_x = x * scale + x_position
             scaled_y = y * scale + y_position
-            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=window.contour_thickness)
-            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=window.contour_thickness)
+            canvas.create_line(scaled_x-5, scaled_y-5, scaled_x+5, scaled_y+5, fill=ACCENT, tags="point", width=cross_thickness)
+            canvas.create_line(scaled_x-5, scaled_y+5, scaled_x+5, scaled_y-5, fill=ACCENT, tags="point", width=cross_thickness)
     draw_points()
 
     #allows the user to remove points that they made OR points detected from find blobs

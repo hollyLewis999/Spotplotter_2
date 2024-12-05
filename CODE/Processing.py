@@ -124,42 +124,42 @@ def stretch_and_gray(original_image, show_images=False):
     return stretched, blurred, gray_image, idealContrast
     
  
-def binarize(gray_image, original_image, contrast = 20,excludeSmallDots = 15, block_size=301, show_images=False):
-    
-
+def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
     c = max(-50, min(int(-contrast), -1))-5
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)   
-    
-    ############################################################################
-    #CHANGE BACK LATER ONLY FOR TESTING GROUND TRUTH
-    ############################################################################
-    # gray_image = cv2.cvtColor(original_image, cv2.COLOR_BGR2GRAY)
-    # binary_image = cv2.threshold(gray_image, 175, 255, cv2.THRESH_BINARY)[1]
-    ############################################################################
-
+                                       cv2.THRESH_BINARY, block_size, c)  
+   
     contour_img = original_image.copy()
     final_binary = np.zeros_like(binary_image)
-    contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
+    # Use RETR_LIST to find all contours without hierarchical relationships
+    contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+   
     height, width = binary_image.shape
-    #scale the exclude small dots 
+    image_area = height * width
+    
+    # Scale the exclude small dots
     excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
-
-    areas = [cv2.contourArea(cntr) for cntr in contours]
-    median_area = np.median(areas) if areas else 0
-    excludeSmallDots
-
-    #check if the area is big enough before drawing
-    #toDO check if this is needed its redrawing els wear
-    for cntr in contours:
+    
+    # Filter and draw inner contours
+    for i, cntr in enumerate(contours):
         area = cv2.contourArea(cntr)
-        if area > excludeSmallDots:
-            cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
-            cv2.drawContours(final_binary, [cntr], 0, 255, -1)
-            # print("drawing")
+        
+        # Skip very small contours
+        if area <= excludeSmallDots:
+            continue
+        
+        # Skip contours that are too large
+        if area > 0.5 * image_area:
+            continue
+        
+        # Draw the contour
+        cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
+        cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+    
+    return binary_image, contour_img, final_binary, block_size
 
-    return binary_image, contour_img, final_binary,block_size
+
 
 
 

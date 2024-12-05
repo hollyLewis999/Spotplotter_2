@@ -89,52 +89,6 @@ def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cor
     canvas.tag_bind(button_tag, "<Button-1>", lambda event: command())
 
 
-
-# def create_rounded_button(canvas, text, command, x, y, width=200, height=70, cornerradius=12, padding=2, button_tag=None, fill = DARK, accent = LIGHT):
-#     # Calculate radius
-#     rad = 2 * cornerradius
-
-#     # Ensure each button has a unique tag if not provided
-#     if button_tag is None:
-#         button_tag = f"button_{x}_{y}"  # Unique tag based on position
-
-#     # Draw the rounded rectangle shape at (x, y) position and give it a tag
-#     canvas.create_polygon(
-#         (x + padding, y + height - cornerradius - padding,
-#          x + padding, y + cornerradius + padding,
-#          x + padding + cornerradius, y + padding,
-#          x + width - padding - cornerradius, y + padding,
-#          x + width - padding, y + cornerradius + padding,
-#          x + width - padding, y + height - cornerradius - padding,
-#          x + width - padding - cornerradius, y + height - padding,
-#          x + padding + cornerradius, y + height - padding),
-#         fill=fill, outline=fill, tags=button_tag
-#     )
-
-#     # Draw rounded corners using arcs and add the same tag
-#     canvas.create_arc(
-#         (x + padding, y + padding + rad, x + padding + rad, y + padding),
-#         start=90, extent=90, fill=fill, outline=fill, tags=button_tag
-#     )
-#     canvas.create_arc(
-#         (x + width - padding - rad, y + padding, x + width - padding, y + padding + rad),
-#         start=0, extent=90, fill=fill, outline=fill, tags=button_tag
-#     )
-#     canvas.create_arc(
-#         (x + width - padding, y + height - rad - padding, x + width - padding - rad, y + height - padding),
-#         start=270, extent=90, fill=fill, outline=fill, tags=button_tag
-#     )
-#     canvas.create_arc(
-#         (x + padding, y + height - padding - rad, x + padding + rad, y + height - padding),
-#         start=180, extent=90, fill=fill, outline=fill, tags=button_tag
-#     )
-
-#     # Add text in the middle of the button and tag it
-#     canvas.create_text(x + width / 2, y + height / 2, text=text, fill=accent, font=(FONT, 12, "bold"), tags=button_tag)
-
-#     # Bind the click event to the entire button with the unique tag
-#     canvas.tag_bind(button_tag, "<Button-1>", lambda event: command()) 
-
 def create_circular_slider(master, min_val, max_val, position, width=270, command=None, initial_value=None):
     """
     Create a circular slider with variable length
