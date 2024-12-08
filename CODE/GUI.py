@@ -17,6 +17,7 @@ from functools import partial
 from pathlib import Path
 from tkinter import BOTTOM,BooleanVar,Button,Canvas,CENTER,Checkbutton,DoubleVar,Entry,Frame,HORIZONTAL,Label,LEFT,Message,PhotoImage,RIGHT,ROUND,Scale,Scrollbar,Text,Toplevel,Tk,Y,X,filedialog,font,messagebox
 from tkinter import ttk
+from concurrent.futures import ThreadPoolExecutor
 
 import cv2
 import numpy as np
@@ -693,8 +694,6 @@ def draw_positions_and_spots(window, margin_left, margin_top,
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
 
-
-
 def create_strain_controls(window):
     if window.current_mode == 'A':
         # "Add a strain" header
@@ -813,9 +812,6 @@ def update_strain_menu(window):
         menu.configure(font=(FONT, 10), bg=LIGHT, fg=DARK)
         menu.grid(row=3, column=2, padx=20, pady=10)
 
-
-
-
 def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
     # Create preview image
@@ -852,7 +848,69 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         }
     }
     
+def assign_strain_to_group(window, strain):
+    if window.current_mode =='A':
+        if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+            messagebox.showwarning("Warning", "Please create a plate first")
+            return
+        window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print(window.column_assignments)
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        print("_______________________________________________________________")
+        # Create menu of available positions
+        available_positions = []
+        for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
+            position_key = f"{start_col}-{end_col}"
+            available_positions.append((strain_idx, start_col, end_col))
 
+        if available_positions:
+            strain_location_menu = tk.Menu(window, tearoff=0)
+            for strain_idx, start_col, end_col in available_positions:
+                label = f"Position {window.position_labels[strain_idx]}"
+                strain_location_menu.add_command(
+                    label=label,
+                    command=lambda s=start_col, e=end_col, idx=strain_idx: 
+                        assign_strain_to_columns(window, strain, s, e, idx)
+                )
+
+            try:
+                strain_location_menu.tk_popup(window.winfo_pointerx(), window.winfo_pointery())
+            finally:
+                strain_location_menu.grab_release()
+
+
+
+def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        return
+        
+    plate = window.plates[CURRENTPLATEINDEX]
+    position_key = f"{start_col}-{end_col}"
+    
+    # Check if columns are already assigned
+    for existing_key in list(window.column_assignments.keys()):
+        existing_start, existing_end = map(int, existing_key.split('-'))
+        if (start_col <= existing_end and end_col >= existing_start):
+            return
+            
+    window.column_assignments[position_key] = {
+        'strain': strain,
+        'position': window.position_labels[position_idx],
+        'position_idx': position_idx
+    }
+    
+    # Assign spots to strain
+    for row in range(window.layout_data['rows']):
+        for col in range(start_col, end_col + 1):
+            pos_key = f"{row}-{col}"
+            if pos_key not in window.layout_data['removed_positions']:
+                plate['assignments'][pos_key] = strain
+                
+    update_plate_display(window)
 
 # d8888b. db       .d8b.  d888888b d88888b     d8b   db  .d8b.  db    db d888888b  d888b   .d8b.  d888888b d888888b  .d88b.  d8b   db 
 # 88  `8D 88      d8' `8b `~~88~~' 88'         888o  88 d8' `8b 88    88   `88'   88' Y8b d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88 
@@ -1492,18 +1550,6 @@ def draw_plate_preview(window, canvas, plate):
 
             )
        
-        # # Draw strain label if assigned - moved higher up
-        # if assigned_strain:
-        #     canvas.create_text(
-        #         current_x + position_width/2,
-        #         margin - 5,  # Moved higher, above the spot area
-        #         text=assigned_strain,
-        #         font=(FONT, 9),
-        #         fill=DARK,
-        #         anchor='s'  # Changed to 's' (south) to align bottom of text with this point
-        #     )
-       
-        # Draw spots
         for col_offset in range(end_col - start_col + 1):
             col = start_col + col_offset
             x_pos = current_x + col_offset * cell_width + cell_width/2
@@ -1514,7 +1560,10 @@ def draw_plate_preview(window, canvas, plate):
                     y_pos = margin + row * cell_height + cell_height/2
                    
                     # Determine spot color based on strain assignment
-                    spot_color = GRAY1
+                    if window.current_mode =='A':
+                        spot_color = GRAY1
+                    else:
+                        spot_color = "#073b3a"
                     if pos_key in plate['assignments']:
                         strain = plate['assignments'][pos_key]
                         strain_index = window.strains.index(strain)
@@ -1654,7 +1703,7 @@ def upload_metadata_handler(window):
             print(f"\nPlate {idx}:")
             print("  Strains:", ", ".join(plate.get('strains', [])))
             print("  Columns:", plate.get('column_indexes', []))
-            print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
+            # print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
             print("  Quantifications Available:", bool(plate.get('quantifications', [])))
             
         print("-" * 50)
@@ -1859,7 +1908,7 @@ def next_image(window):
         update_progress_bar(window)
 
     else:
-        save_window_state(window, 'FORREPORTA2.pkl')
+        save_window_state(window, 'FORREPORTMODEbRrepeats3.pkl')
 
         display_results(window)
         
@@ -2082,38 +2131,38 @@ def create_slidersFrame(window):
     # Main dark rectangle for image area
     round_rectangle(canvas,
         17.0,
-        168.0,
+        168.0-y_offset_edit,
         1100.0,
-        826.0,
+        730.0,
         fill=DARK,
         outline="")
 
     # Control panel rectangle
     round_rectangle(canvas,
         1120.0,
-        168.0,
+        168.0-y_offset_edit,
         1422.0,
-        826.0,
+        730.0,
         fill=DARK,
         outline="")
 
     # Create frame for image canvas
     main_frame = Frame(window, bg=DARK)
-    main_frame.place(x=27, y=178, width=1063, height=638)
+    main_frame.place(x=27, y=178-y_offset_edit, width=1063, height=562)
 
     # Create single canvas for image display
     window.image_canvas = Canvas(
         main_frame,
         width=1050,
-        height=608,
+        height=562,
         bg=DARK,
         highlightthickness=0
     )
-    window.image_canvas.place(x=0, y=15)
+    window.image_canvas.place(x=0, y=10)
 
     # Control panel
     control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178, width=282, height=638)
+    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=542)
 
     # Sliders setup
     y_offset = 20
@@ -2154,26 +2203,14 @@ def create_slidersFrame(window):
         command=lambda v: on_block_size_change(window, v, False),
         initial_value=window.block_size if hasattr(window, 'block_size') else 301
     )
-    button_canvas = Canvas(
-        control_frame, 
-        width=302,  # Adjust size as needed
-        height=200, 
-        bg=DARK, 
-        bd=0, 
-        highlightthickness=0, 
-        relief="ridge"
-    )
-    button_canvas.place(x=0, y=550)  # Position inside the control_frame
-
+# Position inside the control_frame
+        # Add navigation buttons
     create_rounded_button(
-        canvas=button_canvas,  # Use the new button_canvas
+        canvas=canvas,
         text="Next",
         command=lambda: go_to_edit_frame(window),
-        x=41,  # Adjust x relative to the button_canvas
-        y=0,  # Adjust y relative to the button_canvas
-        button_tag="slidersNext",
-        fill=LIGHT,
-        accent=DARK
+        x=buttonPosX,
+        y=buttonPosY
     )
 
 
@@ -2267,7 +2304,7 @@ def display_image(window):
         
         # Calculate available space
         canvas_width = 1050  # Fixed canvas width
-        canvas_height = 608  # Fixed canvas height
+        canvas_height = 562  # Fixed canvas height
         
         # Calculate scaling factors
         width_scale = canvas_width / original_width
@@ -3586,9 +3623,9 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 
 
-window.iconbitmap("Icons/ICON.ico")
-initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+# window.iconbitmap("Icons/ICON.ico")
+# initialize_window_attributes(window)
+# title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -3597,9 +3634,11 @@ window.mainloop()
 
 
 
-# restore_window_state(window, 'FORREPORTA2.pkl')
-# processResults(window)
+restore_window_state(window, 'FORREPORTMODEBRrepeats3.pkl')
+processResults(window)
 
+
+#FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
 
 
 

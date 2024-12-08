@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from scipy import stats as scipy_stats
+from scipy import stats as stats
 from pathlib import Path
 import pandas as pd
 import seaborn as sns
@@ -455,7 +455,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         marker = series.get('marker', default_markers[idx % len(default_markers)])
         
         # Use new statistics calculation
-        stats = calculate_statistics(dilution_series, y_norm, color, series['label'])
+        stats = calculate_statistics(dilution_series, y_norm, color, series['label'], additive)
         
         if stats is not None:
             individual_statistics.append(stats)
@@ -510,7 +510,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         
         if valid_x:
             # Calculate statistics for averaged data using new function
-            stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive)
+            stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive, additive)
             
             if stats is not None:
                 average_statistics.append(stats)
@@ -590,7 +590,7 @@ def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 
 
-def calculate_statistics(x, y, color, label):
+def calculate_statistics(x, y, color, label, additive):
     valid_x = []
     valid_y = []
     excluded_points = []
@@ -627,6 +627,7 @@ def calculate_statistics(x, y, color, label):
             'x_cut': x_cut,
             'x_at_y50': x_at_y50,
             'label': label,
+            'additive':additive,
             'color': color,  # Add the color to the statistics dictionary
             'full_line_formula': formula # Include full line formula
         }
@@ -723,6 +724,9 @@ def create_knockdown_plot(df):
     
     df_filtered = df.dropna(subset=['Knockdown']).copy()
     df_filtered = df_filtered.sort_values('Knockdown', ascending=False)
+
+    knockdown_mean = df_filtered['Knockdown'].mean()
+    df_filtered = df_filtered[df_filtered['Knockdown'] <= 5 * knockdown_mean]
     
     for i, row in df_filtered.iterrows():
         idx = df_filtered.index.get_loc(i)
@@ -1127,19 +1131,28 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
             print(f"Error creating image with caption: {e}")
             return []
     def create_info_text(plate_info):
-        # if (plate_info['layout']['x_dilution'] == -1 ):
-        info_text = f"""
-        <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
-        <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
-        <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
-        <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
-        <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
-        <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
-        <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
-        <b>Threshold:</b> {plate_info['threshold']}<br/>
-        <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
-        <b>Block Size:</b> {plate_info['blocksize']}<br/>
-        """
+        if (plate_info['layout']['x_dilution'] == -1  and plate_info['layout']['y_dilution'] == -1):
+            info_text = f"""
+            <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+            <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+            <b>Threshold:</b> {plate_info['threshold']}<br/>
+            <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+            <b>Block Size:</b> {plate_info['blocksize']}<br/>
+            """
+        else:
+            info_text = f"""
+            <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+            <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+            <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
+            <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
+            <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
+            <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
+            <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
+            <b>Threshold:</b> {plate_info['threshold']}<br/>
+            <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+            <b>Block Size:</b> {plate_info['blocksize']}<br/>
+            """
+
         return Paragraph(info_text, body_style)
 
     # Row 1: Preview and Info
@@ -1464,8 +1477,42 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
             story.append(Spacer(1, 20))
             
             # Split stats into groups of 4 and create multiple tables if needed
-            for i in range(0, len(stats), 3):
-                stats_subset = stats[i:i+3]
+            def group_stats_by_additive(stats):
+                # Separate Control entries and other entries
+                control_groups = []
+                other_groups = []
+                
+                # Group stats by additive
+                additive_groups = {}
+                for stat in stats:
+                    additive = stat['additive']
+                    if additive not in additive_groups:
+                        additive_groups[additive] = []
+                    additive_groups[additive].append(stat)
+                
+                # Process Control groups first
+                if 'Control' in additive_groups:
+                    control_stats = additive_groups['Control']
+                    for i in range(0, len(control_stats), 4):
+                        control_groups.append(control_stats[i:i+4])
+                
+                # Process other additives
+                for additive, group_stats in additive_groups.items():
+                    if additive != 'Control':
+                        for i in range(0, len(group_stats), 4):
+                            other_groups.append(group_stats[i:i+4])
+                
+                # Combine groups with Control first
+                return control_groups + other_groups
+
+            # Updated table creation loop
+            grouped_stats = group_stats_by_additive(stats)
+            i = 0
+            for stats_subset in grouped_stats:
+                if (i > 0 and i%2 ==0):
+                    story.append(PageBreak())
+                    i=0
+                i = i+1    
                 table = create_stats_table(stats_subset)
                 story.append(table)
                 story.append(Spacer(1, 10))

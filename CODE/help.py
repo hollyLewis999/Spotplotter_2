@@ -349,4 +349,151 @@ def create_help_popup_sliders(window):
     canvas.pack(side="left", fill="both", expand=True)
     scrollbar.pack(side="right", fill="y")
 
+import tkinter as tk
+from tkinter import font as tkfont
 
+def create_help_popup(parent):
+    # Create popup window
+    help_window = tk.Toplevel(parent)
+    help_window.title("Strain Assigner: Step-by-Step Guide")
+    help_window.geometry("600x700")
+    help_window.resizable(False, False)
+
+    # Configure colors
+    bg_color = "#2C3E50"  # Dark blue-gray
+    text_color = "#ECF0F1"  # Light gray
+    header_color = "#3498DB"  # Bright blue
+
+    # Main frame with scrollbar
+    main_frame = tk.Frame(help_window, bg=bg_color)
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Canvas and scrollbar
+    canvas = tk.Canvas(main_frame, bg=bg_color)
+    scrollbar = tk.Scrollbar(main_frame, orient=tk.VERTICAL, command=canvas.yview)
+    scrollable_frame = tk.Frame(canvas, bg=bg_color)
+
+    scrollable_frame.bind(
+        "<Configure>",
+        lambda e: canvas.configure(
+            scrollregion=canvas.bbox("all")
+        )
+    )
+
+    canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+    canvas.configure(yscrollcommand=scrollbar.set)
+
+    # Pack canvas and scrollbar
+    canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+    scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+    # Custom fonts
+    title_font = tkfont.Font(family="Helvetica", size=16, weight="bold")
+    header_font = tkfont.Font(family="Helvetica", size=14, weight="bold")
+    body_font = tkfont.Font(family="Helvetica", size=12)
+
+    # Title
+    title_label = tk.Label(
+        scrollable_frame, 
+        text="Strain Assigner: Step-by-Step Guide", 
+        font=title_font, 
+        bg=bg_color, 
+        fg=text_color,
+        pady=10
+    )
+    title_label.pack(fill=tk.X)
+
+    # Intro text
+    intro_label = tk.Label(
+        scrollable_frame, 
+        text="This screen helps you prepare your experimental plate metadata. Follow these steps carefully to set up your strain information and plate layout.",
+        font=body_font, 
+        bg=bg_color, 
+        fg=text_color,
+        wraplength=550,
+        justify=tk.LEFT,
+        pady=10
+    )
+    intro_label.pack(fill=tk.X, padx=20)
+
+    # Helper function to create section
+    def create_section(title, steps):
+        # Section header
+        header = tk.Label(
+            scrollable_frame, 
+            text=title, 
+            font=header_font, 
+            bg=bg_color, 
+            fg=header_color,
+            anchor='w',
+            pady=10
+        )
+        header.pack(fill=tk.X, padx=20)
+
+        # Steps
+        for step in steps:
+            step_label = tk.Label(
+                scrollable_frame, 
+                text=step, 
+                font=body_font, 
+                bg=bg_color, 
+                fg=text_color,
+                wraplength=550,
+                justify=tk.LEFT,
+                anchor='w'
+            )
+            step_label.pack(fill=tk.X, padx=40)
+
+    # Step 1: Add Strains
+    create_section("Step 1: Add Your Strains", [
+        "1. Click in the text field under \"Add a Strain\"",
+        "2. Type the name of each unique strain in your experiment",
+        "3. Press the \"+\" button to add the strain",
+        "4. Each strain will be assigned a unique color automatically"
+    ])
+
+    # Step 2: Add a Plate
+    create_section("Step 2: Add a Plate", [
+        "1. Enter the exact filename for each plate (including extension)",
+        "   Example: \"Plate1_experiment.jpg\"",
+        "2. Add an Additive (Optional)",
+        "   - Check the additive box if your experiment includes additional compounds",
+        "   - Enter the additive name if applicable"
+    ])
+
+    # Step 3: Assign Strains
+    create_section("Step 3: Assign Strains to Positions", [
+        "For each plate:",
+        "1. Click \"Assign\" next to a strain name",
+        "2. Select the correct position on the plate grid",
+        "3. Repeat for all strains",
+        "4. Verify assignments visually on the plate grid",
+        "5. Use \"Next Plate\" and \"Previous Plate\" buttons to move between plates"
+    ])
+
+    # Step 4: Preview and Verify
+    create_section("Step 4: Preview and Verify", [
+        "1. Click \"Preview All Plates\"",
+        "2. Review your metadata carefully",
+        "3. If you spot an error, use navigation buttons to return to the specific plate and make corrections",
+        "4. Once you are finished, click \"Next\" to save the metadata for future use"
+    ])
+
+    # Close button
+    close_button = tk.Button(
+        scrollable_frame, 
+        text="Close", 
+        command=help_window.destroy,
+        font=body_font,
+        bg=header_color,
+        fg=text_color,
+        relief=tk.FLAT
+    )
+    close_button.pack(pady=20)
+
+    return help_window
+
+# Example usage:
+root = tk.Tk()
+help_popup = create_help_popup(root)
+root.mainloop()
