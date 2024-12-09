@@ -26,6 +26,7 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 from scipy.spatial import distance
 
+
 from Processing import *
 from Style import *
 from outputs import *
@@ -55,13 +56,95 @@ heading_y = 20
 y_offset_edit  = 30
 
 
+
+
 # d8888b. db       .d8b.  d888888b d88888b    .o88b. d8888b. d88888b  .d8b.  d888888b  .d88b.  d8888b. 
 # 88  `8D 88      d8' `8b `~~88~~' 88'       d8P  Y8 88  `8D 88'     d8' `8b `~~88~~' .8P  Y8. 88  `8D 
 # 88oodD' 88      88ooo88    88    88ooooo   8P      88oobY' 88ooooo 88ooo88    88    88    88 88oobY' 
 # 88~~~   88      88~~~88    88    88~~~~~   8b      88`8b   88~~~~~ 88~~~88    88    88    88 88`8b   
 # 88      88booo. 88   88    88    88.       Y8b  d8 88 `88. 88.     88   88    88    `8b  d8' 88 `88. 
 # 88      Y88888P YP   YP    YP    Y88888P    `Y88P' 88   YD Y88888P YP   YP    YP     `Y88P'  88   YD 
-                                                                                                     
+
+def open_help_popup(parent, image_path, title="Help"):
+    """
+    Create a scrollable popup window with an image
+    
+    :param parent: Parent window
+    :param image_path: Path to the image file
+    :param title: Title of the popup window
+    """
+    # Create popup window
+    help_window = Toplevel(parent)
+    help_window.title(title)
+    help_window.geometry("900x800")  # Adjust size as needed
+    help_window.resizable(True, True)
+    help_window.iconbitmap("Icons/ICON.ico")  # Allow vertical resizing
+
+    # Create a frame to hold the canvas and scrollbar
+    main_frame = Frame(help_window)
+    main_frame.pack(fill='both', expand=True, padx=10, pady=10)
+
+    # Create a canvas with scrollbar
+    canvas = Canvas(main_frame)
+    scrollbar = Scrollbar(main_frame, orient='vertical', command=canvas.yview)
+    scrollable_frame = Frame(canvas)
+
+    # Configure the canvas
+    canvas.configure(yscrollcommand=scrollbar.set)
+    canvas.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
+
+    # Pack the scrollbar and canvas
+    canvas.pack(side='left', fill='both', expand=True)
+    scrollbar.pack(side='right', fill='y')
+
+    # Create a window in the canvas
+    canvas.create_window((0, 0), window=scrollable_frame, anchor='nw')
+
+    # Open and resize the image
+    original_image = Image.open(image_path)
+    
+    # Resize image to fit the window width, maintaining aspect ratio
+    window_width = 900  # Slightly less than popup width to account for padding
+    width_ratio = window_width / original_image.width
+    new_height = int(original_image.height * width_ratio)
+    
+    resized_image = original_image.resize((window_width, new_height), Image.LANCZOS)
+    
+    # Convert to PhotoImage
+    tk_image = ImageTk.PhotoImage(resized_image)
+
+    # Create a label with the image
+    image_label = Label(scrollable_frame, image=tk_image)
+    image_label.image = tk_image  # Keep a reference to prevent garbage collection
+    image_label.pack(fill='both', expand=True)
+
+
+def open_help_manual(window, page_number):
+    """
+    Open help popup for a specific page
+    
+    :param window: Parent window
+    :param page_number: Page number to display
+    """
+    # Map page numbers to corresponding image paths
+    help_images = {
+        1: "help_images/AllHelpScreens_page-0001.jpg",  # Replace with your actual help image paths
+        2: "help_images/AllHelpScreens_page-0002.jpg",
+        3: "help_images/AllHelpScreens_page-0003.jpg",
+        4: "help_images/AllHelpScreens_page-0004.jpg",
+        5: "help_images/AllHelpScreens_page-0005.jpg",
+        6: "help_images/AllHelpScreens_page-0006.jpg"
+    }
+    
+    # Get the image path for the specified page
+    image_path = help_images.get(page_number)
+    
+    if image_path:
+        open_help_popup(window, image_path, f"Help - Page {page_number}")
+    else:
+        print(f"No help image found for page {page_number}")
+
+
                                                                                                      
 def create_controls(control_frame, window, mode):
     y_offset = 100
@@ -390,6 +473,17 @@ def create_plate_designer(window, mode="A"):
         x=buttonPosX,
         y=buttonPosY
     )
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 1),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
     
     create_rounded_button(
         canvas=canvas,
@@ -479,6 +573,17 @@ def create_strain_designer(window):
         y=buttonPosY
     )
 
+    create_rounded_button(
+        canvas=window.canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 2),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
     create_rounded_button(
         canvas=window.canvas,
         text="Preview All",
@@ -1151,7 +1256,7 @@ def create_plate_controls(window):
         add_plate_canvas, 
         "+", 
         lambda: add_plate(window), 
-        0, 2, 
+        0, 5, 
         width=35, 
         height=35, 
         cornerradius=6,
@@ -1768,7 +1873,8 @@ def create_titleFrame(window):
         x=buttonPosX,
         y=buttonPosY )
 
-        
+
+
 
     create_rounded_button(
     canvas=canvas,
@@ -2022,15 +2128,27 @@ def create_cropFrame(window):
         image=image_image_1
     )
 
+
     canvas.create_text(
         720,
         TITLEHEIGHT,
-        text="Please crop image to exclude plate lable. Line up vertical sides with outer edges of the plate",
+        text="Please crop image. Line up vertical sides with outer edges of the plate. Click ? for more infomation.",
         fill=DARK,
         font=(FONT, 12, 
         "bold")
     )
 
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 3),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
     #resize image
     display_image, scale_factor = resize_for_display_crop(window.original_image)
     window.scale_factor = scale_factor
@@ -2127,6 +2245,26 @@ def create_slidersFrame(window):
         button_tag = "slidersNext",
         fill = LIGHT,
         accent = DARK  )
+    
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_cropFrame(window),
+        x=17.0,
+        y=buttonPosY
+    ) 
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 4),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
+
 
     # Main dark rectangle for image area
     round_rectangle(canvas,
@@ -2154,7 +2292,7 @@ def create_slidersFrame(window):
     window.image_canvas = Canvas(
         main_frame,
         width=1050,
-        height=562,
+        height=552,
         bg=DARK,
         highlightthickness=0
     )
@@ -2212,6 +2350,13 @@ def create_slidersFrame(window):
         x=buttonPosX,
         y=buttonPosY
     )
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_cropFrame(window),
+        x=17.0,
+        y=buttonPosY
+    ) 
 
 
     # Progress bar
@@ -2304,7 +2449,7 @@ def display_image(window):
         
         # Calculate available space
         canvas_width = 1050  # Fixed canvas width
-        canvas_height = 562  # Fixed canvas height
+        canvas_height = 552  # Fixed canvas height
         
         # Calculate scaling factors
         width_scale = canvas_width / original_width
@@ -2404,6 +2549,25 @@ def create_editFrame(window, backToEdit = False):
         y=buttonPosY,
         button_tag = "editNext" )
     
+
+    create_rounded_button(
+        canvas=canvas,
+        text="Back",
+        command=lambda: create_slidersFrame(window),
+        x=17.0,
+        y=buttonPosY
+    )   
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window,5),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
 
     round_rectangle(canvas,
        1362.0,
@@ -3136,9 +3300,9 @@ def display_final_image(window, override =False):
 
     create_rounded_button(
         canvas=canvas,
-        text="Redo Edit",
+        text="Back",
         command=lambda: create_editFrame(window),
-        x=720-225,
+        x=17,
         y=buttonPosY,
         button_tag = "back_button_edit" )
 
@@ -3147,7 +3311,7 @@ def display_final_image(window, override =False):
         canvas=canvas,
         text="Override Grid",
         command=lambda: open_grid_override(window),
-        x=720+25,
+        x=1440/2-100,
         y=buttonPosY,
         button_tag = "override_button" )
 
@@ -3159,7 +3323,17 @@ def display_final_image(window, override =False):
         y=buttonPosY,
         button_tag = "DisplayNext" )
 
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 6),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
 
+    )
     canvas.create_text(
         720,  
         450.0,
@@ -3304,8 +3478,7 @@ def open_grid_override(window):
     window.center_points = list(zip(x_coords, y_coords))
 
     window.blob_points = list(zip(x_coords, y_coords))
-    print("window.blob_points")
-    print(window.blob_points)
+
     window.clicked_points = []
 
     cross_thickness = max(1,window.contour_thickness-2 )
@@ -3406,6 +3579,17 @@ def open_grid_override(window):
         y=buttonPosY,
         button_tag = "Recalculate" )
 
+    create_rounded_button(
+        canvas=canvas,
+        text="?",
+        command=lambda: open_help_manual(window, 6),
+        x=20,
+        y=20,
+        width=50,
+        height=50,
+        font_size=15
+
+    )
 
     window.mainloop()
 
@@ -3483,6 +3667,84 @@ def process_tool_usage(window):
         # Save the result back to the plate info
         plate_info['IMGToolUsage'] = tool_usage
 
+def get_project_name(window):
+    # Create root window (will be hidden)
+    root = tk.Tk()
+    root.withdraw()
+   
+    # Create a top-level window for the dialog
+    dialog_window = tk.Toplevel(root)
+    dialog_window.title("Project Name")
+    dialog_window.configure(bg=LIGHT)
+   
+    # Set window size
+    window_width = 300
+    window_height = 200
+   
+    # Get screen width and height
+    screen_width = dialog_window.winfo_screenwidth()
+    screen_height = dialog_window.winfo_screenheight()
+   
+    # Calculate position x and y coordinates
+    x = (screen_width // 2) - (window_width // 2)
+    y = (screen_height // 2) - (window_height // 2)
+   
+    # Set the window position
+    dialog_window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+
+    dialog_window.resizable(False, False)
+   
+    # Label
+    label = tk.Label(dialog_window,
+                     text="Enter a name for your project:",
+                     font=(FONT, 12, 'bold'),
+                     bg=LIGHT,
+                     fg=DARK)
+    label.pack(pady=(20,10))
+   
+    # Entry widget
+    entry = tk.Entry(dialog_window,
+                     font=(FONT, 12),
+                     bg=LIGHT,
+                     fg=DARK,
+                     insertbackground=DARK,
+                     width=30)
+    entry.pack(pady=10)
+   
+    # Variable to store result
+    project_name = tk.StringVar()
+   
+    # OK Button
+    def on_ok():
+        project_name.set(entry.get())
+        dialog_window.destroy()
+   
+   
+    # Create Canvas for buttons
+    canvas = tk.Canvas(dialog_window, 
+                       width=300, 
+                       height=100, 
+                       bg=LIGHT, 
+                       highlightthickness=0)
+    canvas.pack(pady=10)
+   
+    # Buttons on Canvas
+    create_rounded_button(canvas=canvas, 
+                           text="OK", 
+                           command=on_ok, 
+                           x=100, 
+                           y=20, 
+                           width=100,
+                           height=40)
+   
+    # Make the window modal
+    dialog_window.grab_set()
+    root.wait_window(dialog_window)
+   
+    # Return the project name
+    return project_name.get() or None
+
+
 def processResults(window):
     # Open a directory selection dialog
     output_directory = filedialog.askdirectory(title="Choose Output Directory")
@@ -3491,12 +3753,12 @@ def processResults(window):
         print("Export canceled by the user.")
         return
     
-    # Ask user for project/folder name
-    project_name = simpledialog.askstring("Project Name", "Enter a name for your project:")
-    
-    if not project_name:
-        print("Project name is required.")
-        return
+    # Usage
+    project_name = get_project_name(window)
+    if project_name:
+        print(f"Project name entered: {project_name}")
+    else:
+        print("No project name entered")
     
     # Create project folder
     project_folder = os.path.join(output_directory, project_name)
@@ -3623,9 +3885,9 @@ window.configure(bg=LIGHT)
 window.title("SpotPlotter")
 
 
-# window.iconbitmap("Icons/ICON.ico")
-# initialize_window_attributes(window)
-# title_frame_widgets = create_titleFrame(window)
+window.iconbitmap("Icons/ICON.ico")
+initialize_window_attributes(window)
+title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -3634,8 +3896,8 @@ window.mainloop()
 
 
 
-restore_window_state(window, 'FORREPORTMODEBRrepeats3.pkl')
-processResults(window)
+# restore_window_state(window, 'FORREPORTMODEARrepeats2.pkl')
+# processResults(window)
 
 
 #FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
