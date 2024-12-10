@@ -44,9 +44,10 @@ GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 
-
 TITLEHEIGHT = 130
-buttonPosX = 1440 -200-20
+buttonPosX = 1440 -200 -17
+buttonPosXleft = 17
+
 buttonPosY = 728 +20
 backToEdit2 = False
 PROGRESSX = 1180
@@ -489,7 +490,7 @@ def create_plate_designer(window, mode="A"):
         canvas=canvas,
         text="Back",
         command=lambda: create_titleFrame(window),
-        x=17.0,
+        x=buttonPosXleft,
         y=buttonPosY
     )    
 
@@ -2049,10 +2050,8 @@ def crop(event, window, canvas):
         # Create the rectangle
         canvas.create_rectangle(
             window.x_start, window.y_start, window.x_end, window.y_end,
-            outline=LIGHT,
-            width=2,
-            fill=LIGHT,
-            stipple="gray50", #only had this option for low opacity
+            outline=DARK,
+            width=5,
             tags="crop_rectangle"
         )
 
@@ -2250,7 +2249,7 @@ def create_slidersFrame(window):
         canvas=canvas,
         text="Back",
         command=lambda: create_cropFrame(window),
-        x=17.0,
+        x=buttonPosXleft,
         y=buttonPosY
     ) 
     create_rounded_button(
@@ -2354,7 +2353,7 @@ def create_slidersFrame(window):
         canvas=canvas,
         text="Back",
         command=lambda: create_cropFrame(window),
-        x=17.0,
+        x=buttonPosXleft,
         y=buttonPosY
     ) 
 
@@ -2554,7 +2553,7 @@ def create_editFrame(window, backToEdit = False):
         canvas=canvas,
         text="Back",
         command=lambda: create_slidersFrame(window),
-        x=17.0,
+        x=buttonPosXleft,
         y=buttonPosY
     )   
     create_rounded_button(
@@ -2613,6 +2612,8 @@ def create_editFrame(window, backToEdit = False):
         image=image_toggle,
         borderwidth=0,
         highlightthickness=0,
+        highlightbackground=DARK,
+        activebackground=DARK,
         command=lambda: toggle_image(window),
         relief="flat",
         bg=DARK
@@ -2637,8 +2638,11 @@ def create_editFrame(window, backToEdit = False):
     button_zoomin = Button(
         window,
         image=image_zoomin_2,
-        borderwidth=0,
         highlightthickness=0,
+        borderwidth=0,
+        highlightcolor=DARK,  # Match the background color
+        highlightbackground=DARK,
+        activebackground=DARK,
         command=lambda: adjust_zoom(window, 1.2),
         bg=DARK
     )
@@ -2654,7 +2658,8 @@ def create_editFrame(window, backToEdit = False):
         window,
         image=image_zoomout_2,
         borderwidth=0,
-        highlightthickness=0,
+        highlightthickness=-1,
+        activebackground=DARK,
         command=lambda: adjust_zoom(window, 0.8),
         bg=DARK
     )
@@ -2680,6 +2685,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_8,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: undo(window),
         relief="flat",
         bg=DARK
@@ -2697,6 +2703,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_7,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: redo(window),
         relief="flat",
         bg=DARK
@@ -2723,6 +2730,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_2,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: set_mode(window, "thin_brush"),
         bg=DARK
     )
@@ -2743,7 +2751,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    big_pen_button.place(x=1377.0, y=base_y + (9*button_offset)-y_offset_edit)
+    big_pen_button.place(x=1376.0, y=base_y + (9*button_offset)-y_offset_edit)
 
     # "Delete" text
     canvas.create_text(
@@ -2765,6 +2773,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_6,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: set_mode(window, "flood"),
         relief="flat",
         bg=DARK
@@ -2782,6 +2791,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_9,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: set_mode(window, "small_brush"),
         relief="flat",
         bg=DARK
@@ -2800,6 +2810,7 @@ def create_editFrame(window, backToEdit = False):
         image=image_image_4,
         borderwidth=0,
         highlightthickness=0,
+        activebackground=DARK,
         command=lambda: set_mode(window, "large_brush"),
         relief="flat",
         bg = DARK
@@ -3090,6 +3101,7 @@ def stop_draw(window, event):
     current_state = window.binarized_image.copy()
     if len(window.history) == 0 or not np.array_equal(current_state, window.history[-1]):
         add_to_history(window)
+        
     update_undo_redo_buttons(window)
 
 def flood_erase(window, x, y):
@@ -3130,17 +3142,10 @@ def undo(window):
     if len(window.history) > 1:
         current_state = window.binarized_image.copy()
         window.redo_stack.append(current_state)
-        window.binarized_image = window.history.pop().copy()
+        window.binarized_image = window.history[-2].copy()  # Go to the second-to-last state
+        window.history.pop()  # Remove the last state
         window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
         display_images(window)
-    elif len(window.history) == 1:
-        # If there's only one item in history, it's the original image
-        current_state = window.binarized_image.copy()
-        if not np.array_equal(current_state, window.history[0]):
-            window.redo_stack.append(current_state)
-            window.binarized_image = window.history[0].copy()
-            window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
-            display_images(window)
     update_undo_redo_buttons(window)
 
 def redo(window):
@@ -3273,6 +3278,7 @@ def display_results(window):
     )
 
 def display_final_image(window, override =False):
+    
     add_to_history(window) #incase the user goes back
     for widget in window.winfo_children():
         widget.destroy()
@@ -3302,7 +3308,7 @@ def display_final_image(window, override =False):
         canvas=canvas,
         text="Back",
         command=lambda: create_editFrame(window),
-        x=17,
+        x=buttonPosXleft,
         y=buttonPosY,
         button_tag = "back_button_edit" )
 
