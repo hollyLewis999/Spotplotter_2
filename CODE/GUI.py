@@ -747,7 +747,7 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     num_strains = window.layout_data['strains']
 
     # Draw plate header
-    additive_display = f"( Additive: {plate['additive']})" if plate.get('additive') is not None else ''
+    additive_display = f" (Additive: {plate['additive']})" if plate.get('additive') is not None else ''
     
     # Draw plate header with corrected syntax
     window.plate_canvas.create_text(
@@ -960,13 +960,6 @@ def assign_strain_to_group(window, strain):
             messagebox.showwarning("Warning", "Please create a plate first")
             return
         window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print(window.column_assignments)
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
-        print("_______________________________________________________________")
         # Create menu of available positions
         available_positions = []
         for strain_idx, (start_col, end_col) in window.plate_layout['strain_positions'].items():
@@ -998,10 +991,10 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
     position_key = f"{start_col}-{end_col}"
     
     # Check if columns are already assigned
-    for existing_key in list(window.column_assignments.keys()):
-        existing_start, existing_end = map(int, existing_key.split('-'))
-        if (start_col <= existing_end and end_col >= existing_start):
-            return
+    # for existing_key in list(window.column_assignments.keys()):
+    #     existing_start, existing_end = map(int, existing_key.split('-'))
+    #     if (start_col <= existing_end and end_col >= existing_start):
+    #         return
             
     window.column_assignments[position_key] = {
         'strain': strain,
@@ -1836,8 +1829,10 @@ def upload_metadata_handler(window):
 #    YP    Y888888P    YP    Y88888P Y88888P 
 
 def create_titleFrame(window):
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -1845,7 +1840,7 @@ def create_titleFrame(window):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True) 
    
     ###LOGO IMAGE
 
@@ -1918,7 +1913,16 @@ def validate_and_proceed(window):
 def process_image(window):
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
     window.contrast_value = idealContrast
+    width = window.current_image.shape[1]
 
+    colomns = window.all_plate_info[window.current_image_index]['layout']['columns']
+    print (width)
+    print(colomns)
+    blocksize = width/colomns/2#blocksize is a half of he spot size
+    print (blocksize)
+    window.block_size = int(blocksize)
+    if window.block_size %2 ==0:
+        window.block_size =  window.block_size +1
     window.gray_image = gray_image
     binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
 
@@ -1934,40 +1938,39 @@ def process_image(window):
 
 def upload_images(window):
     """
-    Allow the user to upload image files, but only those that match filenames in window.all_plate_info.
+    Allow the user to upload image files in the order they appear in the metadata.
     Warn the user if there are filenames in the metadata that were not uploaded.
     """
     import os
     from tkinter import filedialog, messagebox
-
+    
     # Allow user to select image files
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tif")])
-
+    
     # Ensure file_paths are selected and window.all_plate_info is initialized
     if file_paths and hasattr(window, 'all_plate_info'):
         window.image_paths = []
         unmatched_filenames = []  # Collect filenames that don't match the metadata
-        uploaded_filenames = {os.path.basename(path).lower() for path in file_paths}  # Extract uploaded filenames
+        uploaded_filenames = {os.path.basename(path).lower(): path for path in file_paths}
+       
+        # Get the list of expected filenames from metadata in their original order
+        expected_filenames = [info['filename'].lower() for info in window.all_plate_info]
         
-        # Get the list of expected filenames from metadata
-        valid_filenames = {info['filename'].lower() for info in window.all_plate_info}
-
-        # Find filenames in metadata that were not uploaded
-        missing_filenames = valid_filenames - uploaded_filenames
-
-        # Check the selected files for matches
-        for path in file_paths:
-            filename = os.path.basename(path).lower()
-            if filename in valid_filenames:
-                window.image_paths.append(path)
-
-        if missing_filenames:
+        # Collect matched paths in the order of metadata
+        for filename in expected_filenames:
+            if filename in uploaded_filenames:
+                window.image_paths.append(uploaded_filenames[filename])
+            else:
+                unmatched_filenames.append(filename)
+        
+        # Warn about missing files
+        if unmatched_filenames:
             messagebox.showwarning(
                 "Missing Files",
                 f"The following expected files were not uploaded:\n"
-                f"{', '.join(missing_filenames)}"
+                f"{', '.join(unmatched_filenames)}"
             )
-
+        
         # Load the first matching image if there are matches
         if window.image_paths:
             window.current_image_index = 0
@@ -1982,7 +1985,6 @@ def upload_images(window):
             "Warning",
             "No files selected or metadata not initialized."
         )
-
 
 def load_current_image(window):
     #within correct bounds
@@ -2015,7 +2017,7 @@ def next_image(window):
         update_progress_bar(window)
 
     else:
-        save_window_state(window, 'FORREPORTMODEbRrepeats3.pkl')
+        # save_window_state(window, 'FORREPORTMODEbRrepeats3.pkl')
 
         display_results(window)
         
@@ -2101,13 +2103,16 @@ def apply_crop(window):
         messagebox.showwarning("Warning", "Please select an area to crop.")
 
         
-
 def create_cropFrame(window):
+    # Destroy existing widgets
     for widget in window.winfo_children():
         widget.destroy()
 
+    # Create frame and canvas
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -2115,28 +2120,31 @@ def create_cropFrame(window):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
     window.edit_images = []
 
-    image_image_1 = PhotoImage(
-    file=("Icons/image_1.png"))
+    # Initialize missing attributes
+    window.excludeSmallDots = getattr(window, 'excludeSmallDots', True)
+    window.contrast_value = getattr(window, 'contrast_value', 1.0)
+    window.block_size = getattr(window, 'block_size', 11)
+    window.gray_image = getattr(window, 'gray_image', None)
+    window.current_image = getattr(window, 'current_image', None)
+
+    # Load and place the image at the top
+    image_image_1 = PhotoImage(file="Icons/image_1.png")
     window.edit_images.append(image_image_1)
-    image_1 = canvas.create_image(
-        719.0,
-        57.0,
-        image=image_image_1
-    )
+    canvas.create_image(719.0, 57.0, image=image_image_1)
 
-
+    # Add instructional text
     canvas.create_text(
         720,
         TITLEHEIGHT,
-        text="Please crop image. Line up vertical sides with outer edges of the plate. Click ? for more infomation.",
+        text="Please crop image. Line up vertical sides with outer edges of the plate. Click ? for more information.",
         fill=DARK,
-        font=(FONT, 12, 
-        "bold")
+        font=(FONT, 12, "bold")
     )
 
+    # Add help button
     create_rounded_button(
         canvas=canvas,
         text="?",
@@ -2146,52 +2154,157 @@ def create_cropFrame(window):
         width=50,
         height=50,
         font_size=15
-
     )
-    #resize image
+
+    # Resize image
     display_image, scale_factor = resize_for_display_crop(window.original_image)
     window.scale_factor = scale_factor
 
-    #convert OpenCV to PhotoImage for Tkinkter to use
+    # Convert OpenCV image to PhotoImage
     image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
     image = Image.fromarray(image)
     photo = ImageTk.PhotoImage(image=image)
 
-    #place image on canvas
+    # Place image on canvas
     canvas.create_image(720, 487, image=photo, anchor="center")
     canvas.image = photo
 
-    #keep dimensions
+    # Store dimensions
     window.display_width = photo.width()
     window.display_height = photo.height()
 
-
+    # Add crop button
     create_rounded_button(
         canvas=canvas,
         text="Crop",
         command=lambda: apply_crop(window),
         x=buttonPosX,
         y=buttonPosY,
-        button_tag = "cropNext")
+        button_tag="cropNext"
+    )
 
-
-    #default cropping variables
+    # Default cropping variables
     window.cropping = False
     window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
 
-    #bind mouse events
+    # Bind mouse events
     canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
-    #progress bar things - same as other screens
+    # Progress bar setup
     window.progress_frame = Frame(window, bg=LIGHT)
     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar = ttk.Progressbar(
+        window.progress_frame,
+        style="styled.Horizontal.TProgressbar",
+        orient="horizontal",
+        length=150,
+        mode="determinate",
+        maximum=100,
+        value=0
+    )
     window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label = Label(
+        window.progress_frame,
+        text="",
+        bg=LIGHT,
+        font=(FONT, 12, 'bold')
+    )
     window.progress_label.pack(side="left")
     update_progress_bar(window)
+
+#def create_cropFrame(window):
+#     for widget in window.winfo_children():
+#         widget.destroy()
+#     frame = Frame(window, bg=LIGHT)
+#     frame.pack(expand=True, fill="both")
+#     canvas = Canvas(
+#         frame,
+#         bg=LIGHT,
+#         height=1024,
+#         width=1440,
+#         bd=0,
+#         highlightthickness=0,
+#         relief="ridge"
+#     )
+#     canvas.pack(expand=True)
+#     window.edit_images = []
+
+#     image_image_1 = PhotoImage(
+#     file=("Icons/image_1.png"))
+#     window.edit_images.append(image_image_1)
+#     image_1 = canvas.create_image(
+#         719.0,
+#         57.0,
+#         image=image_image_1
+#     )
+
+
+#     canvas.create_text(
+#         720,
+#         TITLEHEIGHT,
+#         text="Please crop image. Line up vertical sides with outer edges of the plate. Click ? for more infomation.",
+#         fill=DARK,
+#         font=(FONT, 12, 
+#         "bold")
+#     )
+
+#     create_rounded_button(
+#         canvas=canvas,
+#         text="?",
+#         command=lambda: open_help_manual(window, 3),
+#         x=20,
+#         y=20,
+#         width=50,
+#         height=50,
+#         font_size=15
+
+#     )
+#     #resize image
+#     display_image, scale_factor = resize_for_display_crop(window.original_image)
+#     window.scale_factor = scale_factor
+
+#     #convert OpenCV to PhotoImage for Tkinkter to use
+#     image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
+#     image = Image.fromarray(image)
+#     photo = ImageTk.PhotoImage(image=image)
+
+#     #place image on canvas
+#     canvas.create_image(720, 487, image=photo, anchor="center")
+#     canvas.image = photo
+
+#     #keep dimensions
+#     window.display_width = photo.width()
+#     window.display_height = photo.height()
+
+
+#     create_rounded_button(
+#         canvas=canvas,
+#         text="Crop",
+#         command=lambda: apply_crop(window),
+#         x=buttonPosX,
+#         y=buttonPosY,
+#         button_tag = "cropNext")
+
+
+#     #default cropping variables
+#     window.cropping = False
+#     window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
+
+#     #bind mouse events
+#     canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
+#     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
+#     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
+
+#     #progress bar things - same as other screens
+#     window.progress_frame = Frame(window, bg=LIGHT)
+#     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+#     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
+#     window.progress_bar.pack(side="left", padx=(0, 10))
+#     window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+#     window.progress_label.pack(side="left")
+#     update_progress_bar(window)
 
 
 
@@ -2216,8 +2329,10 @@ def update_progress_bar(window):
 def create_slidersFrame(window):
     calculate_drawing_thickness(window)
     # Create main canvas
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both") 
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -2225,7 +2340,7 @@ def create_slidersFrame(window):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
     image_image_1 = PhotoImage(
         file=("Icons/image_1.png"))
     window.edit_images.append(image_image_1)
@@ -2340,7 +2455,7 @@ def create_slidersFrame(window):
         command=lambda v: on_block_size_change(window, v, False),
         initial_value=window.block_size if hasattr(window, 'block_size') else 301
     )
-# Position inside the control_frame
+    # Position inside the control_frame
         # Add navigation buttons
     create_rounded_button(
         canvas=canvas,
@@ -2517,9 +2632,10 @@ def create_editFrame(window, backToEdit = False):
             window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
             print("IMGbinaryAutomatic updated")
 
-
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -2527,7 +2643,7 @@ def create_editFrame(window, backToEdit = False):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
 
     image_image_1 = PhotoImage(
         file=("Icons/image_1.png"))
@@ -2946,7 +3062,6 @@ def create_editFrame(window, backToEdit = False):
 
     return canvas
 
-
 def calculate_drawing_thickness(window):
     original_width = window.debug_image.shape[1]
     print("ORIGIONAL WIDTH")
@@ -3231,9 +3346,10 @@ def display_results(window):
 
     for widget in window.winfo_children():
         widget.destroy()
-
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both") 
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -3241,7 +3357,7 @@ def display_results(window):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
     #logo
 
     image_path_10 = "Icons/image_10.png"
@@ -3425,7 +3541,10 @@ def go_to_edit_frame(window):
 def open_grid_override(window):
     for widget in window.winfo_children():
         widget.destroy()
-   
+
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both") 
+
     canvas = Canvas(
         window,
         bg=LIGHT,
@@ -3435,7 +3554,7 @@ def open_grid_override(window):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
 
     image_image_1 = PhotoImage(
     file=("Icons/image_1.png"))
@@ -3893,7 +4012,11 @@ window.title("SpotPlotter")
 
 window.iconbitmap("Icons/ICON.ico")
 initialize_window_attributes(window)
-title_frame_widgets = create_titleFrame(window)
+content_frame = Frame(window, bg=LIGHT)
+content_frame.pack(expand=True, fill="both")
+
+title_frame_widgets = create_titleFrame(content_frame)
+# title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()

@@ -31,6 +31,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
 def resize_for_display(image, max_width=1280, max_height=720):
+
+    # Purpose: Resize images for display while maintaining aspect ratio
+    # Scales down images exceeding specified maximum dimensions
+    # Uses area interpolation for high-quality resizing
+    # Preserves image quality during visualization
+
     h, w = image.shape[:2]
     if h > max_height or w > max_width:
         scale = min(max_height/h, max_width/w)
@@ -47,6 +53,8 @@ def resize_for_display(image, max_width=1280, max_height=720):
 
 
 def calculate_brightness(img_array):
+
+    #Purpose: Calculate image brightness using weighted color channels
     #get the different channels, this colour is in BGR not RGB
     blue_channel = img_array[:, :, 0]
     green_channel = img_array[:, :, 1]
@@ -302,26 +310,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
         # print(f"Modal difference between cluster means: {modal_diff}")
 
-        # if (len(clusters) >5):
-        # if True:    
-        #     #combine clusters that are too close to be together
-        #     combined_clusters = []
-        #     combined_indices = []  #indicies
-        #     i = 0
-        #     while i < len(clusters):
-        #         current_combined = clusters[i]
-        #         combined_group = [i]
-        #         while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-        #             current_combined.extend(clusters[i+1])
-        #             combined_group.append(i+1)
-        #             i += 1
-        #         combined_clusters.append(current_combined)
-        #         if len(combined_group) > 1:
-        #             combined_indices.append(combined_group)
-        #         i += 1
-
-        #     final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-
         if True:    
             #combine clusters that are too close to be together
             combined_clusters = []
@@ -420,15 +408,19 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     #distance between clusters to try get  cell size
     x_diffs = np.diff(x_clusters)
     y_diffs = np.diff(y_clusters)
+    print(f"y_diffs {y_diffs}")
+    print(f"y_diffs {y_diffs}")
     #take out the ones that are most likley differences within the same cluster or between non neighbouring clusters
-    lowerBound = width/30
-    upperBound = width/10
+    lowerBound = width/(columns*2)
+    upperBound = width/(columns*0.5)
     filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
     filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
 
     #no valid differences
     if not filtered_x_diffs and not filtered_y_diffs: 
-        raise ValueError("No valid differences found within bounds")
+        #raise ValueError("No valid differences found within bounds")
+        filtered_x_diffs = [x for x in x_diffs ]
+        filtered_y_diffs = [y for y in y_diffs]
 
 
 
@@ -622,6 +614,8 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
                 counts[row, col] += total_area
                 marked_image[component] = [255, 255, 255]
     
+    print("COUNTS")
+    print(counts)
     # Scale counts
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
     
