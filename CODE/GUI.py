@@ -2407,6 +2407,8 @@ def create_slidersFrame(window):
     # Create frame for image canvas
     main_frame = Frame(window, bg=DARK)
     main_frame.place(x=27+ x_offset, y=178-y_offset_edit, width=1063, height=562)
+  
+
     print ("X OFFSET " + str(x_offset))
     # Create single canvas for image display
     window.image_canvas = Canvas(
@@ -2735,7 +2737,7 @@ def create_editFrame(window, backToEdit = False):
     image_toggle = ImageTk.PhotoImage(img_toggle_resized)
     window.edit_images.append(image_toggle)
     toggle_button = Button(
-        window,
+        canvas,
         image=image_toggle,
         borderwidth=0,
         highlightthickness=0,
@@ -2745,7 +2747,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    toggle_button.place(x=1376.0 + x_offset, y=base_y-y_offset_edit)
+    toggle_button.place(x=1376.0 , y=base_y-y_offset_edit)
 
     # Zoom section
     canvas.create_text(
@@ -2763,7 +2765,7 @@ def create_editFrame(window, backToEdit = False):
     image_zoomin_2 = ImageTk.PhotoImage(img_zoomin_resized)
     window.edit_images.append(image_zoomin_2)
     button_zoomin = Button(
-        window,
+        canvas,
         image=image_zoomin_2,
         highlightthickness=0,
         borderwidth=0,
@@ -2773,7 +2775,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 1.2),
         bg=DARK
     )
-    button_zoomin.place(x=1377.0 + x_offset, y=base_y + (2*button_offset) -y_offset_edit)
+    button_zoomin.place(x=1377.0 , y=base_y + (2*button_offset) -y_offset_edit)
 
     # Zoom out button
     zoomout = ("Icons/zoomout.png")
@@ -2782,7 +2784,7 @@ def create_editFrame(window, backToEdit = False):
     image_zoomout_2 = ImageTk.PhotoImage(img_zoomout_resized)
     window.edit_images.append(image_zoomout_2)
     button_zoomout = Button(
-        window,
+        canvas,
         image=image_zoomout_2,
         borderwidth=0,
         highlightthickness=-1,
@@ -2790,7 +2792,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 0.8),
         bg=DARK
     )
-    button_zoomout.place(x=1377.0 + x_offset, y=base_y + (3*button_offset)-y_offset_edit)
+    button_zoomout.place(x=1377.0 , y=base_y + (3*button_offset)-y_offset_edit)
 
     # History section (Undo and Redo)
     canvas.create_text(
@@ -2808,7 +2810,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_8 = ImageTk.PhotoImage(img_undo_resized)
     window.edit_images.append(image_image_8)
     undo_button = Button(
-        window,
+        canvas,
         image=image_image_8,
         borderwidth=0,
         highlightthickness=0,
@@ -2817,7 +2819,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    undo_button.place(x=1376.0+ x_offset, y=base_y + (5*button_offset) -y_offset_edit)
+    undo_button.place(x=1376.0, y=base_y + (5*button_offset) -y_offset_edit)
 
     # Redo button (image_7)
     image_path_7 = ("Icons/image_7.png")
@@ -2826,7 +2828,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_7 = ImageTk.PhotoImage(img_redo_resized)
     window.edit_images.append(image_image_7)
     redo_button = Button(
-        window,
+        canvas,
         image=image_image_7,
         borderwidth=0,
         highlightthickness=0,
@@ -2835,7 +2837,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    redo_button.place(x=1376.0+ x_offset, y=base_y + (6*button_offset)-y_offset_edit)
+    redo_button.place(x=1376.0, y=base_y + (6*button_offset)-y_offset_edit)
 
     # "Add" text 
     canvas.create_text(
@@ -2853,7 +2855,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_2 = ImageTk.PhotoImage(img_thinPen_resized)
     window.edit_images.append(image_image_2)
     button_thin_pen = Button(
-        window,
+        canvas,
         image=image_image_2,
         borderwidth=0,
         highlightthickness=0,
@@ -2861,7 +2863,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: set_mode(window, "thin_brush"),
         bg=DARK
     )
-    button_thin_pen.place(x=1377.0+ x_offset, y=base_y + (8*button_offset)-y_offset_edit)
+    button_thin_pen.place(x=1377.0, y=base_y + (8*button_offset)-y_offset_edit)
 
     # Big pen (image_5)
     image_path_5 = ("Icons/image_5.png")
@@ -2870,7 +2872,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_5 = ImageTk.PhotoImage(img_thickPen_resized)
     window.edit_images.append(image_image_5)
     big_pen_button = Button(
-        window,
+        canvas,
         image=image_image_5,
         borderwidth=0,
         highlightthickness=0,
@@ -2878,7 +2880,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    big_pen_button.place(x=1376.0+ x_offset, y=base_y + (9*button_offset)-y_offset_edit)
+    big_pen_button.place(x=1376.0, y=base_y + (9*button_offset)-y_offset_edit)
 
     # "Delete" text
     canvas.create_text(
@@ -2896,7 +2898,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_6 = ImageTk.PhotoImage(img_flood_resized)
     window.edit_images.append(image_image_6)
     flood_eraser_button = Button(
-        window,
+        canvas,
         image=image_image_6,
         borderwidth=0,
         highlightthickness=0,
@@ -2905,7 +2907,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    flood_eraser_button.place(x=1376.0+ x_offset, y=base_y + (11*button_offset)-y_offset_edit)
+    flood_eraser_button.place(x=1376.0, y=base_y + (11*button_offset)-y_offset_edit)
 
     # Thin eraser (image_9)
     image_path_9 =("Icons/image_9.png")
@@ -2914,7 +2916,7 @@ def create_editFrame(window, backToEdit = False):
     image_image_9 = ImageTk.PhotoImage(img_thinEraser_resized)
     window.edit_images.append(image_image_9)
     thin_eraser_button = Button(
-        window,
+        canvas,
         image=image_image_9,
         borderwidth=0,
         highlightthickness=0,
@@ -2923,17 +2925,17 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    thin_eraser_button.place(x=1376.0+ x_offset, y=base_y + (12*button_offset)-y_offset_edit)
+    thin_eraser_button.place(x=1376.0, y=base_y + (12*button_offset)-y_offset_edit)
 
 
 
- #big eraser
+    #big eraser
     image_image_4 = Image.open("Icons/image_4.png")
     image_image_4_Resized = image_image_4.resize((image_image_4.width // resize, image_image_4.height // resize), Image.LANCZOS)
     image_image_4 = ImageTk.PhotoImage(image_image_4_Resized)
     window.edit_images.append(image_image_4)
     big_eraser_button = Button(
-        window,
+        canvas,
         image=image_image_4,
         borderwidth=0,
         highlightthickness=0,
@@ -2942,7 +2944,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    big_eraser_button.place(x=1377.0+ x_offset, y=base_y + (13*button_offset)-y_offset_edit)
+    big_eraser_button.place(x=1377.0, y=base_y + (13*button_offset)-y_offset_edit)
 
 
 
@@ -2954,11 +2956,12 @@ def create_editFrame(window, backToEdit = False):
     total_height = 783 - 203 -100
     img_width = total_width // 2
     img_height = total_height
-
+    toggle_button.place(x=1376.0 , y=base_y-y_offset_edit)
     # Create frames to hold canvas and scrollbars
     left_frame = Frame(window, bg=DARK)
     right_frame = Frame(window, bg=DARK)
-    
+    left_frame.pack(expand=True, fill="both")
+    right_frame.pack(expand=True, fill="both")
     # Create canvases with scrollbars
     window.left_canvas = Canvas(
         left_frame,
@@ -2967,6 +2970,7 @@ def create_editFrame(window, backToEdit = False):
         bg=DARK,
         highlightthickness=0
     )
+    window.left_canvas.pack(expand=True) 
     left_scroll_y = Scrollbar(left_frame, orient="vertical", command=window.left_canvas.yview)
     left_scroll_x = Scrollbar(left_frame, orient="horizontal", command=window.left_canvas.xview)
 
@@ -2978,6 +2982,9 @@ def create_editFrame(window, backToEdit = False):
         bg=DARK,
         highlightthickness=0
     )
+
+    
+    window.right_canvas.pack(expand=True) 
     right_scroll_y = Scrollbar(right_frame, orient="vertical", command=window.right_canvas.yview)
     right_scroll_x = Scrollbar(right_frame, orient="horizontal", command=window.right_canvas.xview)
 
@@ -3089,9 +3096,10 @@ def display_images(window):
         original_height = window.debug_image.shape[0]
         
         # Calculate available space
-        max_width = int((window.winfo_width()//2 - 60) * window.zoom_level)
-        max_height = int((window.winfo_height() - 200) * window.zoom_level)
+        max_width = int((1440//2 - 60) * window.zoom_level)
+        max_height = int((900 - 200) * window.zoom_level)
         
+
         # Calculate scaling factors for both dimensions
         width_scale = max_width / original_width
         height_scale = max_height / original_height
