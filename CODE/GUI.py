@@ -144,8 +144,6 @@ def open_help_manual(window, page_number):
         open_help_popup(window, image_path, f"Help - Page {page_number}")
     else:
         print(f"No help image found for page {page_number}")
-
-
                                                                                                      
 def create_controls(control_frame, window, mode):
     y_offset = 100
@@ -198,8 +196,6 @@ def create_controls(control_frame, window, mode):
             "write",
             lambda *args: update_plate_display_layout_designer(window)
         )
-
-
 
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
@@ -284,7 +280,6 @@ def create_mode_switcher(control_frame, window):
 
     # Initialize button states
     update_toggle_button()
-
 
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
@@ -385,8 +380,6 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, r
                         font=(FONT, 8)
                     )        
 
-
-
 def go_to_assignment_screen(window):
     valid_positions = {}
     for strain, (start_col, end_col) in window.plate_layout['strain_positions'].items():
@@ -435,9 +428,12 @@ def create_plate_designer(window, mode="A"):
     # Store the current mode
     window.current_mode = mode
     
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
+
     # Create canvas for layout
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -445,7 +441,7 @@ def create_plate_designer(window, mode="A"):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
     
     # Add background images and frames
     image_image_1 = PhotoImage(file=("Icons/image_1.png"))
@@ -455,10 +451,10 @@ def create_plate_designer(window, mode="A"):
     round_rectangle(canvas, 1120.0, 168.0-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
     
     # Create frames for plate and controls
-    plate_frame = Frame(window, bg=DARK)
+    plate_frame = Frame(canvas, bg=DARK)
     plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
     
-    control_frame = Frame(window, bg=DARK)
+    control_frame = Frame(canvas, bg=DARK)
     control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
     
     # Create mode switcher and controls
@@ -521,8 +517,12 @@ def create_strain_designer(window):
     window.column_assignments = {}
     window.atc_var = tk.StringVar(value="") 
     # Create main canvas
-    window.canvas = tk.Canvas(
-        window,
+
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
+
+    window.canvas = Canvas(
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -530,7 +530,7 @@ def create_strain_designer(window):
         highlightthickness=0,
         relief="ridge"
     )
-    window.canvas.place(x=0, y=0)
+    window.canvas.pack(expand=True)
 
     # Load the image using PhotoImage (or Pillow for more formats)
     image_image_1 = PhotoImage(file="Icons/image_1.png")
@@ -544,17 +544,17 @@ def create_strain_designer(window):
     round_rectangle(window.canvas, 1120.0, 168-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
 
     # Create frames
-    window.plate_frame = tk.Frame(window, bg=DARK)
+    window.plate_frame = Frame(window.canvas, bg=DARK)
     window.plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=512)
 
-    window.control_frame = tk.Frame(window, bg=DARK)
+    window.control_frame = Frame(window.canvas, bg=DARK)
     window.control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=512)
 
     # Create subframes
-    window.strains_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.strains_frame = Frame(window.control_frame, bg=DARK)
     window.strains_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-    window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
+    window.bottom_frame = Frame(window.control_frame, bg=DARK)
     window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
     setup_frames(window)
 
@@ -1373,10 +1373,10 @@ def toggle_additive_entry(window):
 
 def setup_frames(window):
     # Main frames
-    window.plate_frame = tk.Frame(window, bg=DARK)
+    window.plate_frame = tk.Frame(window.canvas, bg=DARK)
     window.plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
     
-    window.control_frame = tk.Frame(window, bg=DARK)
+    window.control_frame = tk.Frame(window.canvas, bg=DARK)
     window.control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
     
     # Create three subframes within the control frame
@@ -2195,118 +2195,18 @@ def create_cropFrame(window):
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
     # Progress bar setup
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(
-        window.progress_frame,
-        style="styled.Horizontal.TProgressbar",
-        orient="horizontal",
-        length=150,
-        mode="determinate",
-        maximum=100,
-        value=0
-    )
+    #progress bar was created with help from Chat GBT
+    window.progress_frame = Frame(canvas, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(
-        window.progress_frame,
-        text="",
-        bg=LIGHT,
-        font=(FONT, 12, 'bold')
-    )
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
     window.progress_label.pack(side="left")
+
     update_progress_bar(window)
 
-#def create_cropFrame(window):
-#     for widget in window.winfo_children():
-#         widget.destroy()
-#     frame = Frame(window, bg=LIGHT)
-#     frame.pack(expand=True, fill="both")
-#     canvas = Canvas(
-#         frame,
-#         bg=LIGHT,
-#         height=1024,
-#         width=1440,
-#         bd=0,
-#         highlightthickness=0,
-#         relief="ridge"
-#     )
-#     canvas.pack(expand=True)
-#     window.edit_images = []
 
-#     image_image_1 = PhotoImage(
-#     file=("Icons/image_1.png"))
-#     window.edit_images.append(image_image_1)
-#     image_1 = canvas.create_image(
-#         719.0,
-#         57.0,
-#         image=image_image_1
-#     )
-
-
-#     canvas.create_text(
-#         720,
-#         TITLEHEIGHT,
-#         text="Please crop image. Line up vertical sides with outer edges of the plate. Click ? for more infomation.",
-#         fill=DARK,
-#         font=(FONT, 12, 
-#         "bold")
-#     )
-
-#     create_rounded_button(
-#         canvas=canvas,
-#         text="?",
-#         command=lambda: open_help_manual(window, 3),
-#         x=20,
-#         y=20,
-#         width=50,
-#         height=50,
-#         font_size=15
-
-#     )
-#     #resize image
-#     display_image, scale_factor = resize_for_display_crop(window.original_image)
-#     window.scale_factor = scale_factor
-
-#     #convert OpenCV to PhotoImage for Tkinkter to use
-#     image = cv2.cvtColor(display_image, cv2.COLOR_BGR2RGB)
-#     image = Image.fromarray(image)
-#     photo = ImageTk.PhotoImage(image=image)
-
-#     #place image on canvas
-#     canvas.create_image(720, 487, image=photo, anchor="center")
-#     canvas.image = photo
-
-#     #keep dimensions
-#     window.display_width = photo.width()
-#     window.display_height = photo.height()
-
-
-#     create_rounded_button(
-#         canvas=canvas,
-#         text="Crop",
-#         command=lambda: apply_crop(window),
-#         x=buttonPosX,
-#         y=buttonPosY,
-#         button_tag = "cropNext")
-
-
-#     #default cropping variables
-#     window.cropping = False
-#     window.x_start, window.y_start, window.x_end, window.y_end = 0, 0, 0, 0
-
-#     #bind mouse events
-#     canvas.bind("<ButtonPress-1>", lambda event: start_crop(event, window))
-#     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
-#     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
-
-#     #progress bar things - same as other screens
-#     window.progress_frame = Frame(window, bg=LIGHT)
-#     window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-#     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",length=150, mode="determinate", maximum=100, value=0)
-#     window.progress_bar.pack(side="left", padx=(0, 10))
-#     window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-#     window.progress_label.pack(side="left")
-#     update_progress_bar(window)
 
 
 
@@ -2405,24 +2305,22 @@ def create_slidersFrame(window):
         outline="")
 
     # Create frame for image canvas
-    main_frame = Frame(window, bg=DARK)
-    main_frame.place(x=27+ x_offset, y=178-y_offset_edit, width=1063, height=562)
+    main_frame = Frame(canvas, bg=DARK)
+    main_frame.place(x=27, y=178-y_offset_edit, width=1063, height=562)
   
-
-    print ("X OFFSET " + str(x_offset))
     # Create single canvas for image display
     window.image_canvas = Canvas(
-        main_frame,
+        canvas,
         width=1050,
         height=552,
         bg=DARK,
         highlightthickness=0
     )
-    window.image_canvas.place(x=0, y=10)
+    window.image_canvas.place(x=17, y=178-y_offset_edit)
 
     # Control panel
-    control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130+x_offset, y=178-y_offset_edit, width=282, height=542)
+    control_frame = Frame(canvas, bg=DARK)
+    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=542)
 
     # Sliders setup
     y_offset = 20
@@ -2482,8 +2380,8 @@ def create_slidersFrame(window):
 
 
     # Progress bar
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
+    window.progress_frame = Frame(canvas, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
     window.progress_bar = ttk.Progressbar(
         window.progress_frame, 
         style="styled.Horizontal.TProgressbar", 
@@ -2630,8 +2528,6 @@ def display_image(window):
 
 def create_editFrame(window, backToEdit = False):
     
-    
-    x_offset  =max((window.winfo_width()-1440)/2,0)
     for widget in window.winfo_children():
         widget.destroy()
     font_size = 12
@@ -2713,15 +2609,6 @@ def create_editFrame(window, backToEdit = False):
         fill=DARK,
         outline="")
 
-
-
-
-
-
-
-
-    # Vertical positioning base
-    
 
     # Toggle section
     canvas.create_text(
@@ -2958,8 +2845,8 @@ def create_editFrame(window, backToEdit = False):
     img_height = total_height
     toggle_button.place(x=1376.0 , y=base_y-y_offset_edit)
     # Create frames to hold canvas and scrollbars
-    left_frame = Frame(window, bg=DARK)
-    right_frame = Frame(window, bg=DARK)
+    left_frame = Frame(canvas, bg=DARK)
+    right_frame = Frame(canvas, bg=DARK)
     left_frame.pack(expand=True, fill="both")
     right_frame.pack(expand=True, fill="both")
     # Create canvases with scrollbars
@@ -3035,8 +2922,8 @@ def create_editFrame(window, backToEdit = False):
 
     yposFrames= 207-y_offset_edit
     # Position the frames
-    left_frame.place(x=30 + x_offset, y=yposFrames, width=img_width + 20, height=img_height + 20)
-    right_frame.place(x=690 + x_offset, y=yposFrames, width=img_width + 20, height=img_height + 20)
+    left_frame.place(x=30  , y=yposFrames, width=img_width + 20, height=img_height + 20)
+    right_frame.place(x=690  , y=yposFrames, width=img_width + 20, height=img_height + 20)
 
     # Initialize zoom level
     window.zoom_level = 1.0
@@ -3044,7 +2931,15 @@ def create_editFrame(window, backToEdit = False):
     # Set up zoom controls and bindings
     setup_zoom_controls(window)
 
-
+    window.progress_frame = Frame(canvas, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
     # Display images
     display_images(window)
     
@@ -3065,18 +2960,6 @@ def create_editFrame(window, backToEdit = False):
     redo_button.config(command=lambda: redo(window))
 
 
-
-
-    #progress bar (same code for all screens), created with help from chatGBT
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
-    #making the position a global variable so if i move it i dont have to change it for all screens
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
 
     return canvas
 
@@ -3441,6 +3324,15 @@ def display_final_image(window, override =False):
         image=image_image_1
     )
 
+    round_rectangle(canvas,
+        17.0,
+        168.0 -y_offset_edit,
+        1422.0,
+        730,
+        fill=DARK,
+        outline="")
+
+
 
     create_rounded_button(
         canvas=canvas,
@@ -3482,10 +3374,20 @@ def display_final_image(window, override =False):
         720,  
         450.0,
         text="Loading Image Please wait",
-        fill=DARK,
+        fill=LIGHT,
         font=(FONT, 12, "bold"),
         anchor="center" 
     )
+    window.progress_frame = Frame(canvas, bg=LIGHT)
+    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+                                        length=150, mode="determinate", maximum=100, value=0)
+    window.progress_bar.pack(side="left", padx=(0, 10))
+    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    window.progress_label.pack(side="left")
+    
+    update_progress_bar(window)
+
     window.update()
     #frame where result will be displayed
     frame = Frame(window, bg=LIGHT)
@@ -3526,14 +3428,14 @@ def display_final_image(window, override =False):
     window.all_plate_info [window.current_image_index]["blocksize"] = window.block_size
     window.all_plate_info [window.current_image_index]["IMGgrid"] = marked_image
     window.all_plate_info [window.current_image_index]["IMGbinary"] = window.binarized_image
-    
+
     
     #Has to be PIL image for tkinkter, resizing and displaying
     resized_image = cv2.resize(marked_image, new_size, interpolation=cv2.INTER_AREA)
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
     x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2 -70
+    y_position = (730 + 168.0 -y_offset_edit - new_size[1]) // 2
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo
 
@@ -3541,16 +3443,7 @@ def display_final_image(window, override =False):
 
 
 
-    #progress bar was created with help from Chat GBT
-    window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    
-    update_progress_bar(window)
+  
 
 def go_to_edit_frame(window):
     # if not window.history:
