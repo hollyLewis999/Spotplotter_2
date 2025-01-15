@@ -1911,6 +1911,8 @@ def validate_and_proceed(window):
 
 
 def process_image(window):
+    for widget in window.winfo_children():
+        widget.destroy()
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
     window.contrast_value = idealContrast
     width = window.current_image.shape[1]
@@ -2194,7 +2196,7 @@ def create_cropFrame(window):
 
     # Progress bar setup
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
     window.progress_bar = ttk.Progressbar(
         window.progress_frame,
         style="styled.Horizontal.TProgressbar",
@@ -2327,6 +2329,9 @@ def update_progress_bar(window):
         window.progress_label.config(text=f"{window.current_image_index + 1}/{len(window.image_paths)}")
         
 def create_slidersFrame(window):
+    for widget in window.winfo_children():
+        widget.destroy()
+    x_offset  =max((window.winfo_width()-1440)/2,0)
     calculate_drawing_thickness(window)
     # Create main canvas
     frame = Frame(window, bg=LIGHT)
@@ -2381,6 +2386,7 @@ def create_slidersFrame(window):
 
 
     # Main dark rectangle for image area
+    
     round_rectangle(canvas,
         17.0,
         168.0-y_offset_edit,
@@ -2400,8 +2406,8 @@ def create_slidersFrame(window):
 
     # Create frame for image canvas
     main_frame = Frame(window, bg=DARK)
-    main_frame.place(x=27, y=178-y_offset_edit, width=1063, height=562)
-
+    main_frame.place(x=27+ x_offset, y=178-y_offset_edit, width=1063, height=562)
+    print ("X OFFSET " + str(x_offset))
     # Create single canvas for image display
     window.image_canvas = Canvas(
         main_frame,
@@ -2414,7 +2420,7 @@ def create_slidersFrame(window):
 
     # Control panel
     control_frame = Frame(window, bg=DARK)
-    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=542)
+    control_frame.place(x=1130+x_offset, y=178-y_offset_edit, width=282, height=542)
 
     # Sliders setup
     y_offset = 20
@@ -2422,12 +2428,12 @@ def create_slidersFrame(window):
 
     # Threshold Slider
     threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
-    threshold_label.place(x=16, y=y_offset)
+    threshold_label.place(x=16 , y=y_offset)
     create_circular_slider(
         control_frame, 
         min_val=0, 
         max_val=60,
-        position=(16, y_offset + 30),
+        position=(16 , y_offset + 30),
         command=lambda v: on_contrast_change(window, v, False),
         initial_value=window.contrast_value
     )
@@ -2475,7 +2481,7 @@ def create_slidersFrame(window):
 
     # Progress bar
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
     window.progress_bar = ttk.Progressbar(
         window.progress_frame, 
         style="styled.Horizontal.TProgressbar", 
@@ -2621,6 +2627,11 @@ def display_image(window):
 
 
 def create_editFrame(window, backToEdit = False):
+    
+    
+    x_offset  =max((window.winfo_width()-1440)/2,0)
+    for widget in window.winfo_children():
+        widget.destroy()
     font_size = 12
     resize = 14
     button_offset = 30
@@ -2734,7 +2745,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    toggle_button.place(x=1376.0, y=base_y-y_offset_edit)
+    toggle_button.place(x=1376.0 + x_offset, y=base_y-y_offset_edit)
 
     # Zoom section
     canvas.create_text(
@@ -2762,7 +2773,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 1.2),
         bg=DARK
     )
-    button_zoomin.place(x=1377.0, y=base_y + (2*button_offset) -y_offset_edit)
+    button_zoomin.place(x=1377.0 + x_offset, y=base_y + (2*button_offset) -y_offset_edit)
 
     # Zoom out button
     zoomout = ("Icons/zoomout.png")
@@ -2779,7 +2790,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 0.8),
         bg=DARK
     )
-    button_zoomout.place(x=1377.0, y=base_y + (3*button_offset)-y_offset_edit)
+    button_zoomout.place(x=1377.0 + x_offset, y=base_y + (3*button_offset)-y_offset_edit)
 
     # History section (Undo and Redo)
     canvas.create_text(
@@ -2806,7 +2817,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    undo_button.place(x=1376.0, y=base_y + (5*button_offset) -y_offset_edit)
+    undo_button.place(x=1376.0+ x_offset, y=base_y + (5*button_offset) -y_offset_edit)
 
     # Redo button (image_7)
     image_path_7 = ("Icons/image_7.png")
@@ -2824,7 +2835,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    redo_button.place(x=1376.0, y=base_y + (6*button_offset)-y_offset_edit)
+    redo_button.place(x=1376.0+ x_offset, y=base_y + (6*button_offset)-y_offset_edit)
 
     # "Add" text 
     canvas.create_text(
@@ -2850,7 +2861,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: set_mode(window, "thin_brush"),
         bg=DARK
     )
-    button_thin_pen.place(x=1377.0, y=base_y + (8*button_offset)-y_offset_edit)
+    button_thin_pen.place(x=1377.0+ x_offset, y=base_y + (8*button_offset)-y_offset_edit)
 
     # Big pen (image_5)
     image_path_5 = ("Icons/image_5.png")
@@ -2867,7 +2878,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    big_pen_button.place(x=1376.0, y=base_y + (9*button_offset)-y_offset_edit)
+    big_pen_button.place(x=1376.0+ x_offset, y=base_y + (9*button_offset)-y_offset_edit)
 
     # "Delete" text
     canvas.create_text(
@@ -2894,7 +2905,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    flood_eraser_button.place(x=1376.0, y=base_y + (11*button_offset)-y_offset_edit)
+    flood_eraser_button.place(x=1376.0+ x_offset, y=base_y + (11*button_offset)-y_offset_edit)
 
     # Thin eraser (image_9)
     image_path_9 =("Icons/image_9.png")
@@ -2912,7 +2923,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg=DARK
     )
-    thin_eraser_button.place(x=1376.0, y=base_y + (12*button_offset)-y_offset_edit)
+    thin_eraser_button.place(x=1376.0+ x_offset, y=base_y + (12*button_offset)-y_offset_edit)
 
 
 
@@ -2931,7 +2942,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    big_eraser_button.place(x=1377.0, y=base_y + (13*button_offset)-y_offset_edit)
+    big_eraser_button.place(x=1377.0+ x_offset, y=base_y + (13*button_offset)-y_offset_edit)
 
 
 
@@ -3017,8 +3028,8 @@ def create_editFrame(window, backToEdit = False):
 
     yposFrames= 207-y_offset_edit
     # Position the frames
-    left_frame.place(x=30, y=yposFrames, width=img_width + 20, height=img_height + 20)
-    right_frame.place(x=690, y=yposFrames, width=img_width + 20, height=img_height + 20)
+    left_frame.place(x=30 + x_offset, y=yposFrames, width=img_width + 20, height=img_height + 20)
+    right_frame.place(x=690 + x_offset, y=yposFrames, width=img_width + 20, height=img_height + 20)
 
     # Initialize zoom level
     window.zoom_level = 1.0
@@ -3051,7 +3062,7 @@ def create_editFrame(window, backToEdit = False):
 
     #progress bar (same code for all screens), created with help from chatGBT
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
     #making the position a global variable so if i move it i dont have to change it for all screens
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
                                         length=150, mode="determinate", maximum=100, value=0)
@@ -3343,9 +3354,10 @@ def adjust_zoom(window, factor):
 
 
 def display_results(window):
-
     for widget in window.winfo_children():
         widget.destroy()
+    x_offset  =max((window.winfo_width()-1440)/2,0)
+  
     frame = Frame(window, bg=LIGHT)
     frame.pack(expand=True, fill="both") 
     canvas = Canvas(
@@ -3394,13 +3406,15 @@ def display_results(window):
     )
 
 def display_final_image(window, override =False):
-    
+    x_offset  =max((window.winfo_width()-1440)/2,0)
     add_to_history(window) #incase the user goes back
     for widget in window.winfo_children():
         widget.destroy()
 
+    frame = Frame(window, bg=LIGHT)
+    frame.pack(expand=True, fill="both")
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -3408,7 +3422,7 @@ def display_final_image(window, override =False):
         highlightthickness=0,
         relief="ridge"
     )
-    canvas.place(x=0, y=0)
+    canvas.pack(expand=True)
 
     image_image_1 = PhotoImage(
     file=("Icons/image_1.png"))
@@ -3521,7 +3535,7 @@ def display_final_image(window, override =False):
 
     #progress bar was created with help from Chat GBT
     window.progress_frame = Frame(window, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    window.progress_frame.place(x=PROGRESSX + x_offset, y=PROGRESSY, width=200, height=50)
     window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
                                         length=150, mode="determinate", maximum=100, value=0)
     window.progress_bar.pack(side="left", padx=(0, 10))
@@ -3531,9 +3545,12 @@ def display_final_image(window, override =False):
     update_progress_bar(window)
 
 def go_to_edit_frame(window):
-    if not window.history:
-        window.history = [window.binarized_image.copy()]
-        window.redo_stack = []
+    # if not window.history:
+    #     window.history = [window.binarized_image.copy()]
+    #     window.redo_stack = []
+
+    window.history = [window.binarized_image.copy()]
+    window.redo_stack = []    
     
     update_undo_redo_buttons(window)
     create_editFrame(window)
@@ -3543,10 +3560,10 @@ def open_grid_override(window):
         widget.destroy()
 
     frame = Frame(window, bg=LIGHT)
-    frame.pack(expand=True, fill="both") 
+    frame.pack(expand=True, fill="both")
 
     canvas = Canvas(
-        window,
+        frame,
         bg=LIGHT,
         height=1024,
         width=1440,
@@ -4001,6 +4018,10 @@ def initialize_window_attributes(window):
     window.progress_bar = None
     window.progress_label = None
     window.current_image = None 
+
+
+    #need to change this so that it updates 
+
 
 
 # #creating the frame with title and icon
