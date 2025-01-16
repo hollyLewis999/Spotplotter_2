@@ -199,87 +199,103 @@ def create_controls(control_frame, window, mode):
 
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
-        # Update the current mode in the window
         window.current_mode = new_mode
-        # Update the toggle button states
         update_toggle_button()
-        # Call the relevant function based on the mode
         create_plate_designer(window, mode=new_mode)
 
     def update_toggle_button():
-        # Update the appearance of the buttons based on the current mode
-        if window.current_mode == "A":
-            dilutions_button.config(bg=LIGHT, fg=DARK)
-            arrayed_button.config(bg=DARK, fg=LIGHT)
-        else:
-            dilutions_button.config(bg=DARK, fg=LIGHT)
-            arrayed_button.config(bg=LIGHT, fg=DARK)
+        # Clear existing buttons
+        toggle_canvas.delete("dilutions_btn")
+        toggle_canvas.delete("arrayed_btn")
+        
+        # Recreate buttons with updated colors
+        create_rounded_button(
+            canvas=toggle_canvas,
+            text="Dilutions",
+            command=lambda: switch_mode("A"),
+            x=10,
+            y=5,
+            width=115,
+            height=50,
+            cornerradius=15,
+            button_tag="dilutions_btn",
+            fill=LIGHT if window.current_mode == "A" else DARK,
+            accent=DARK if window.current_mode == "A" else LIGHT,
+            font_size=12,
+            bold=True
+        )
+        
+        create_rounded_button(
+            canvas=toggle_canvas,
+            text="Arrayed",
+            command=lambda: switch_mode("B"),
+            x=125,
+            y=5,
+            width=115,
+            height=50,
+            cornerradius=15,
+            button_tag="arrayed_btn",
+            fill=LIGHT if window.current_mode == "B" else DARK,
+            accent=DARK if window.current_mode == "B" else LIGHT,
+            font_size=12,
+            bold=True
+        )
 
-    # Draw a rounded rectangle as the toggle's background with outline
     def draw_rounded_rectangle(canvas, x1, y1, x2, y2, radius, fill, outline):
-        canvas.create_arc(x1, y1, x1 + 2 * radius, y1 + 2 * radius, start=90, extent=90, fill=fill, outline=outline)
-        canvas.create_arc(x2 - 2 * radius, y1, x2, y1 + 2 * radius, start=0, extent=90, fill=fill, outline=outline)
-        canvas.create_arc(x1, y2 - 2 * radius, x1 + 2 * radius, y2, start=180, extent=90, fill=fill, outline=outline)
-        canvas.create_arc(x2 - 2 * radius, y2 - 2 * radius, x2, y2, start=270, extent=90, fill=fill, outline=outline)
-        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, fill=fill, outline=outline)
-        canvas.create_rectangle(x1, y1 + radius, x2, y2 - radius, fill=fill, outline=outline)
+        canvas.create_arc(x1, y1, x1 + 2 * radius, y1 + 2 * radius, 
+                         start=90, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x2 - 2 * radius, y1, x2, y1 + 2 * radius, 
+                         start=0, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x1, y2 - 2 * radius, x1 + 2 * radius, y2, 
+                         start=180, extent=90, fill=fill, outline=outline)
+        canvas.create_arc(x2 - 2 * radius, y2 - 2 * radius, x2, y2, 
+                         start=270, extent=90, fill=fill, outline=outline)
+        canvas.create_rectangle(x1 + radius, y1, x2 - radius, y2, 
+                              fill=fill, outline=outline)
+        canvas.create_rectangle(x1, y1 + radius, x2, y2 - radius, 
+                              fill=fill, outline=outline)
 
     # Container for toggle buttons
     toggle_frame = Frame(control_frame, bg=DARK)
     toggle_frame.place(x=10, y=10, width=250, height=60)
 
     # Canvas for background and outline
-    toggle_canvas = Canvas(toggle_frame, width=250, height=60, bg=DARK, highlightthickness=0)
+    toggle_canvas = Canvas(toggle_frame, width=250, height=60, 
+                         bg=DARK, highlightthickness=0)
     toggle_canvas.place(x=0, y=0)
-    draw_rounded_rectangle(
-        toggle_canvas,
-        x1=0,
-        y1=0,
-        x2=250,
-        y2=60,
-        radius=20,
-        fill=LIGHT,
-        outline=LIGHT,
-    )
 
-    # Dilutions button
-    dilutions_button = Button(
-        toggle_frame,
+    # Initial button creation
+    create_rounded_button(
+        canvas=toggle_canvas,
         text="Dilutions",
-        font=(FONT, 12, "bold"),
-        bg=LIGHT if window.current_mode == "A" else DARK,
-        fg=DARK if window.current_mode == "A" else LIGHT,
-        activebackground=LIGHT,
-        activeforeground=DARK,
-        relief="flat",
-        bd=0,
-        highlightthickness=0,
         command=lambda: switch_mode("A"),
-        width=12,
-        height=2,
+        x=10,
+        y=5,
+        width=115,
+        height=50,
+        cornerradius=15,
+        button_tag="dilutions_btn",
+        fill=LIGHT if window.current_mode == "A" else DARK,
+        accent=DARK if window.current_mode == "A" else LIGHT,
+        font_size=12,
+        bold=True
     )
-    dilutions_button.place(x=10, y=5, width=115, height=50)
 
-    # Arrayed button
-    arrayed_button = Button(
-        toggle_frame,
+    create_rounded_button(
+        canvas=toggle_canvas,
         text="Arrayed",
-        font=(FONT, 12, "bold"),
-        bg=LIGHT if window.current_mode == "B" else DARK,
-        fg=DARK if window.current_mode == "B" else LIGHT,
-        activebackground=LIGHT,
-        activeforeground=DARK,
-        relief="flat",
-        bd=0,
-        highlightthickness=0,
         command=lambda: switch_mode("B"),
-        width=12,
-        height=2,
+        x=125,
+        y=5,
+        width=115,
+        height=50,
+        cornerradius=15,
+        button_tag="arrayed_btn",
+        fill=LIGHT if window.current_mode == "B" else DARK,
+        accent=DARK if window.current_mode == "B" else LIGHT,
+        font_size=12,
+        bold=True
     )
-    arrayed_button.place(x=125, y=5, width=115, height=50)
-
-    # Initialize button states
-    update_toggle_button()
 
 def create_plate_display(plate_frame, window):
     window.plate_canvas = tk.Canvas(
@@ -481,7 +497,7 @@ def create_plate_designer(window, mode="A"):
         font_size=15
 
     )
-    
+    #create_titleFrame(window)
     create_rounded_button(
         canvas=canvas,
         text="Back",
@@ -1829,6 +1845,8 @@ def upload_metadata_handler(window):
 #    YP    Y888888P    YP    Y88888P Y88888P 
 
 def create_titleFrame(window):
+    for widget in window.winfo_children():
+        widget.destroy()
     frame = Frame(window, bg=LIGHT)
     frame.pack(expand=True, fill="both")
     canvas = Canvas(
@@ -2016,7 +2034,7 @@ def next_image(window):
         window.current_image_index += 1
         load_current_image(window)
         create_cropFrame(window)
-        update_progress_bar(window)
+        # update_progress_bar(window)
 
     else:
         # save_window_state(window, 'FORREPORTMODEbRrepeats3.pkl')
@@ -2126,7 +2144,7 @@ def create_cropFrame(window):
     window.edit_images = []
 
     # Initialize missing attributes
-    window.excludeSmallDots = getattr(window, 'excludeSmallDots', True)
+    window.excludeSmallDots = getattr(window, 'excludeSmallDots', 15)
     window.contrast_value = getattr(window, 'contrast_value', 1.0)
     window.block_size = getattr(window, 'block_size', 11)
     window.gray_image = getattr(window, 'gray_image', None)
@@ -2196,15 +2214,15 @@ def create_cropFrame(window):
 
     # Progress bar setup
     #progress bar was created with help from Chat GBT
-    window.progress_frame = Frame(canvas, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
+    # window.progress_frame = Frame(canvas, bg=LIGHT)
+    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+    #                                     length=150, mode="determinate", maximum=100, value=0)
+    # window.progress_bar.pack(side="left", padx=(0, 10))
+    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    # window.progress_label.pack(side="left")
 
-    update_progress_bar(window)
+    # update_progress_bar(window)
 
 
 
@@ -2379,22 +2397,22 @@ def create_slidersFrame(window):
     ) 
 
 
-    # Progress bar
-    window.progress_frame = Frame(canvas, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(
-        window.progress_frame, 
-        style="styled.Horizontal.TProgressbar", 
-        orient="horizontal",
-        length=150, 
-        mode="determinate", 
-        maximum=100, 
-        value=0
-    )
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
-    update_progress_bar(window)
+    # # Progress bar
+    # window.progress_frame = Frame(canvas, bg=LIGHT)
+    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    # window.progress_bar = ttk.Progressbar(
+    #     window.progress_frame, 
+    #     style="styled.Horizontal.TProgressbar", 
+    #     orient="horizontal",
+    #     length=150, 
+    #     mode="determinate", 
+    #     maximum=100, 
+    #     value=0
+    # )
+    # window.progress_bar.pack(side="left", padx=(0, 10))
+    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    # window.progress_label.pack(side="left")
+    # update_progress_bar(window)
 
     display_image(window)
     return canvas
@@ -2662,7 +2680,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 1.2),
         bg=DARK
     )
-    button_zoomin.place(x=1377.0 , y=base_y + (2*button_offset) -y_offset_edit)
+    button_zoomin.place(x=1376.0 , y=base_y + (2*button_offset) -y_offset_edit)
 
     # Zoom out button
     zoomout = ("Icons/zoomout.png")
@@ -2679,7 +2697,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: adjust_zoom(window, 0.8),
         bg=DARK
     )
-    button_zoomout.place(x=1377.0 , y=base_y + (3*button_offset)-y_offset_edit)
+    button_zoomout.place(x=1376.0 , y=base_y + (3*button_offset)-y_offset_edit)
 
     # History section (Undo and Redo)
     canvas.create_text(
@@ -2750,7 +2768,7 @@ def create_editFrame(window, backToEdit = False):
         command=lambda: set_mode(window, "thin_brush"),
         bg=DARK
     )
-    button_thin_pen.place(x=1377.0, y=base_y + (8*button_offset)-y_offset_edit)
+    button_thin_pen.place(x=1376.0, y=base_y + (8*button_offset)-y_offset_edit)
 
     # Big pen (image_5)
     image_path_5 = ("Icons/image_5.png")
@@ -2831,7 +2849,7 @@ def create_editFrame(window, backToEdit = False):
         relief="flat",
         bg = DARK
     )
-    big_eraser_button.place(x=1377.0, y=base_y + (13*button_offset)-y_offset_edit)
+    big_eraser_button.place(x=1375.0, y=base_y + (13*button_offset)-y_offset_edit)
 
 
 
@@ -2931,15 +2949,15 @@ def create_editFrame(window, backToEdit = False):
     # Set up zoom controls and bindings
     setup_zoom_controls(window)
 
-    window.progress_frame = Frame(canvas, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
+    # window.progress_frame = Frame(canvas, bg=LIGHT)
+    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+    #                                     length=150, mode="determinate", maximum=100, value=0)
+    # window.progress_bar.pack(side="left", padx=(0, 10))
+    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    # window.progress_label.pack(side="left")
     
-    update_progress_bar(window)
+    # update_progress_bar(window)
     # Display images
     display_images(window)
     
@@ -3378,15 +3396,15 @@ def display_final_image(window, override =False):
         font=(FONT, 12, "bold"),
         anchor="center" 
     )
-    window.progress_frame = Frame(canvas, bg=LIGHT)
-    window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-                                        length=150, mode="determinate", maximum=100, value=0)
-    window.progress_bar.pack(side="left", padx=(0, 10))
-    window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    window.progress_label.pack(side="left")
+    # window.progress_frame = Frame(canvas, bg=LIGHT)
+    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
+    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
+    #                                     length=150, mode="determinate", maximum=100, value=0)
+    # window.progress_bar.pack(side="left", padx=(0, 10))
+    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
+    # window.progress_label.pack(side="left")
     
-    update_progress_bar(window)
+    # update_progress_bar(window)
 
     window.update()
     #frame where result will be displayed
