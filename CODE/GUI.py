@@ -2692,6 +2692,7 @@ def create_editFrame(window, backToEdit = False):
         canvas,
         image=image_zoomout_2,
         borderwidth=0,
+        relief="flat",
         highlightthickness=-1,
         activebackground=DARK,
         command=lambda: adjust_zoom(window, 0.8),
@@ -3303,7 +3304,7 @@ def display_results(window):
     window.update()
 
     #generates the PDF, the excel and the images 
-    processResults(window)
+    process_results(window)
     #this will only display once the results are generated
     create_rounded_button(
         canvas=canvas,
@@ -3728,108 +3729,46 @@ def process_tool_usage(window):
         # Save the result back to the plate info
         plate_info['IMGToolUsage'] = tool_usage
 
-def get_project_name(window):
-    # Create root window (will be hidden)
-    root = tk.Tk()
-    root.withdraw()
-   
-    # Create a top-level window for the dialog
-    dialog_window = tk.Toplevel(root)
-    dialog_window.title("Project Name")
-    dialog_window.configure(bg=LIGHT)
-   
-    # Set window size
-    window_width = 300
-    window_height = 200
-   
-    # Get screen width and height
-    screen_width = dialog_window.winfo_screenwidth()
-    screen_height = dialog_window.winfo_screenheight()
-   
-    # Calculate position x and y coordinates
-    x = (screen_width // 2) - (window_width // 2)
-    y = (screen_height // 2) - (window_height // 2)
-   
-    # Set the window position
-    dialog_window.geometry(f'{window_width}x{window_height}+{x}+{y}')
+from tkinter import filedialog
+import os
 
-    dialog_window.resizable(False, False)
-   
-    # Label
-    label = tk.Label(dialog_window,
-                     text="Enter a name for your project:",
-                     font=(FONT, 12, 'bold'),
-                     bg=LIGHT,
-                     fg=DARK)
-    label.pack(pady=(20,10))
-   
-    # Entry widget
-    entry = tk.Entry(dialog_window,
-                     font=(FONT, 12),
-                     bg=LIGHT,
-                     fg=DARK,
-                     insertbackground=DARK,
-                     width=30)
-    entry.pack(pady=10)
-   
-    # Variable to store result
-    project_name = tk.StringVar()
-   
-    # OK Button
-    def on_ok():
-        project_name.set(entry.get())
-        dialog_window.destroy()
-   
-   
-    # Create Canvas for buttons
-    canvas = tk.Canvas(dialog_window, 
-                       width=300, 
-                       height=100, 
-                       bg=LIGHT, 
-                       highlightthickness=0)
-    canvas.pack(pady=10)
-   
-    # Buttons on Canvas
-    create_rounded_button(canvas=canvas, 
-                           text="OK", 
-                           command=on_ok, 
-                           x=100, 
-                           y=20, 
-                           width=100,
-                           height=40)
-   
-    # Make the window modal
-    dialog_window.grab_set()
-    root.wait_window(dialog_window)
-   
-    # Return the project name
-    return project_name.get() or None
+def get_save_folder(default_name="project"):
+    """
+    Opens a Save As dialog to allow the user to select a location and enter a folder name.
+    Returns the path to the folder to be created.
+    """
+    # Open Save As dialog to select location and name
+    file_path = filedialog.asksaveasfilename(
+        title="Save Project As",
+        initialfile=default_name,
+        filetypes=[("All Files", "*.*")],  # No file extension required
+    )
+    
+    if not file_path:
+        # If the user cancels, return None
+        print("Save canceled by the user.")
+        return None
+    
+    # Return the folder path (strip any extension added by the user)
+    return os.path.splitext(file_path)[0]
 
-
-def processResults(window):
-    # Open a directory selection dialog
-    output_directory = filedialog.askdirectory(title="Choose Output Directory")
+def process_results(window):
+    # Get the save folder path
+    save_folder = get_save_folder("project")
+    if not save_folder:
+        return  # Exit if no path is selected
     
-    if not output_directory:
-        print("Export canceled by the user.")
-        return
+    # Create the folder (if it doesn't exist)
+    os.makedirs(save_folder, exist_ok=True)
     
-    # Usage
-    project_name = get_project_name(window)
-    if project_name:
-        print(f"Project name entered: {project_name}")
-    else:
-        print("No project name entered")
+    # Define paths for the files inside the folder
+    pdf_path = os.path.join(save_folder, "report.pdf")
+    excel_path = os.path.join(save_folder, "data.xlsx")
     
-    # Create project folder
-    project_folder = os.path.join(output_directory, project_name)
-    os.makedirs(project_folder, exist_ok=True)
-    
-    # Define full file paths
-    pdf_path = os.path.join(project_folder, f"{project_name}_report.pdf")
-    excel_path = os.path.join(project_folder, f"{project_name}_data.xlsx")
+    # Process and export files
     process_tool_usage(window)
     print(window.all_plate_info[0]["mode"])
+    
     if window.all_plate_info[0]["mode"] == 'A':
         process_split_order_quantifications(window)
         strain_data, dilution_series = generate_data_series(window)
@@ -3853,7 +3792,7 @@ def processResults(window):
                 plt.close(fig)
     else:
         df, mean_fig, knockdown_fig, individual_fig = analyze_plate_data(window.all_plate_info)
-        # print(window.all_plate_info)
+        
         # Generate PDF and Excel with project name
         generate_pdf_report_MODEB(
             window.all_plate_info,
@@ -3865,8 +3804,7 @@ def processResults(window):
         )
         df = export_plate_data_to_excel(window.all_plate_info, excel_path)
     
-    print(f"Files saved in: {project_folder}")
-
+    print(f"Files saved in: {save_folder}")
 
 
 # .d8888. d888888b  .d8b.  d888888b d88888b 
