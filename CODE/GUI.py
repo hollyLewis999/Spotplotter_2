@@ -3293,8 +3293,8 @@ def display_results(window):
 
     canvas.create_text(
         720,  
-        750.0,
-        text="Results Downloading......",
+        buttonPosY,
+        text="Results downloading......",
         fill=DARK,
         font=(FONT, 12, "bold"),
         anchor="center" 
@@ -3311,7 +3311,7 @@ def display_results(window):
         text="Finish",
         command=lambda: window.quit(),#will exit the program
         x=720 - (200 // 2),  
-        y=buttonPosY-100,
+        y=buttonPosY-50,
         button_tag="Finish"
     )
 
@@ -3392,7 +3392,7 @@ def display_final_image(window, override =False):
     canvas.create_text(
         720,  
         450.0,
-        text="Loading Image Please wait",
+        text="Loading image please wait",
         fill=LIGHT,
         font=(FONT, 12, "bold"),
         anchor="center" 
