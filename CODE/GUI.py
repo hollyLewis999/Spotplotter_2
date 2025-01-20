@@ -3459,7 +3459,7 @@ def display_final_image(window, override =False):
     canvas.image = photo
 
 
-
+ 
 
 
   
@@ -3502,6 +3502,19 @@ def open_grid_override(window):
         image=image_image_1
     )
 
+    round_rectangle(canvas,
+    17.0,
+    168.0 -y_offset_edit,
+    1422.0,
+    730,
+    fill=DARK,
+    outline="")
+
+
+
+
+    
+
     binary_image = window.binarized_image.copy()
     window.binary_image = binary_image
 
@@ -3517,10 +3530,11 @@ def open_grid_override(window):
     img = Image.fromarray(resized_image)
     photo = ImageTk.PhotoImage(img)
     x_position = (1440 - new_size[0]) // 2
-    y_position = (974 - new_size[1]) // 2 -70
+    y_position = (730 + 168.0 -y_offset_edit - new_size[1]) // 2
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo
-   
+
+
     #use scale factor for pen tools so it maps correcly on the image
     window.grid_override_scale = scale
     window.grid_override_offset = (x_position, y_position)
