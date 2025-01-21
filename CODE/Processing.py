@@ -70,11 +70,12 @@ def calculate_brightness(img_array):
 
     
 def get_inner_image(image):
+    #Purpose: Get just the inner part of the image for histogram analysis
     height, width = image.shape[:2]
-    start_y = int(height * 0.2) #take off more from the bottom becuse of plate edge
-    end_y = int(height * 0.8)
-    start_x = int(width * 0.2)
-    end_x = int(width * 0.8)
+    start_y = int(height * 0.1) #take off more from the bottom becuse of plate edge
+    end_y = int(height * 0.9)
+    start_x = int(width * 0.1)
+    end_x = int(width * 0.9)
     return image[start_y:end_y, start_x:end_x]
 
 def get_99_percent_range(brightness):
@@ -87,6 +88,7 @@ def get_99_percent_range(brightness):
     return int(lower), int(upper)
 
 def analyze_tonal_range(image):
+    #get the total range that 99% of pixels fall into
     inner_image = get_inner_image(image)
     brightness = calculate_brightness(inner_image)
     lower, upper = get_99_percent_range(brightness)
@@ -94,7 +96,7 @@ def analyze_tonal_range(image):
     return lower, upper
 
 def stretch_and_gray(original_image, show_images=False):
-
+    #streach the contrast differnet and make the image into greyscale
     lower_bound, upper_bound = analyze_tonal_range(original_image)
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     #setting contrast as a function of the streach
@@ -133,6 +135,7 @@ def stretch_and_gray(original_image, show_images=False):
     
  
 def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
+    #make it into a binart image using adaptive thresholding  
     c = max(-50, min(int(-contrast), -1))-5
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)  
