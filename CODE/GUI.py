@@ -147,7 +147,7 @@ def open_help_manual(window, page_number):
                                                                                                      
 def create_controls(control_frame, window, mode):
     y_offset = 100
-    spacing = 80
+    spacing = 70
     label_width = 100  # Width for right-aligned labels
     
     # Function to create styled input row
@@ -181,14 +181,23 @@ def create_controls(control_frame, window, mode):
         create_input_row("Y-Dilution:", window.plate_layout['y_dilution'], y_offset + spacing * 4)
         
         # Create checkbox for gap between strains
-        checkbox = RoundedCheckbox(
+        checkbox1 = RoundedCheckbox(
             control_frame,
             text="Gap Between Strains",
             variable=window.plate_layout['gap_between_strains'],
             command=lambda: update_plate_display_layout_designer(window)
         )
-        checkbox.place(x=20, y=y_offset + spacing * 5)
-        checkbox.label.place(x=50, y=y_offset + spacing * 5)
+        checkbox1.place(x=20, y=y_offset + spacing * 4.8)
+        checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
+
+        checkbox2 = RoundedCheckbox(
+            control_frame,
+            text="Square Grid Cells",
+            variable=window.plate_layout['square_grid'],
+            command=lambda: update_plate_display_layout_designer(window)
+        )
+        checkbox2.place(x=20, y=y_offset + spacing * 5.6)
+        checkbox2.label.place(x=50, y=y_offset + spacing * 5.6)
     
     # Bind all variables to update function
     for var_name in ['rows', 'columns', 'strains', 'x_dilution', 'y_dilution']:
@@ -324,10 +333,9 @@ def update_plate_display_layout_designer(window):
         window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
         return
         
-    margin = 50
+    margin =margin_sides= 50
     grid_width = width - 2 * margin
     grid_height = height - 2 * margin
-    
     cols_per_strain = cols // strains
     total_cols = cols
     
@@ -335,9 +343,16 @@ def update_plate_display_layout_designer(window):
         total_gaps = strains - 1
         total_cols = cols + total_gaps
 
+    # Adjust cell dimensions based on the square grid setting
     cell_width = grid_width / total_cols
     cell_height = grid_height / rows
-    
+
+    if window.plate_layout['square_grid'].get():
+        # Enforce square cells considering gaps
+        total_width_with_gaps = total_cols  # Includes gaps as extra columns
+        cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
+        cell_width = cell_height = cell_size
+        margin_sides = (width - (cell_width * total_cols))/2
     # Update strain positions
     current_col = 0
     window.plate_layout['strain_positions'] = {}
@@ -348,18 +363,17 @@ def update_plate_display_layout_designer(window):
         window.plate_layout['strain_positions'][strain] = (start_col, end_col)
         current_col = end_col + 1
         if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
-            current_col += 1
-    
-    
-    draw_spots(window, strains, margin, cell_width, cell_height, x_dil,y_dil, rows)
+            current_col += 1  # Add one gap column
 
-def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, rows):
+    draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
+
+def draw_spots(window, strains,margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
     for strain in range(strains):
         start_col, end_col = window.plate_layout['strain_positions'][strain]
         for col_offset in range(end_col - start_col + 1):
             actual_col = start_col + col_offset
             x_value = x_dil ** col_offset
-            x_pos = margin + actual_col * cell_width + cell_width/2
+            x_pos = margin_sides + actual_col * cell_width + cell_width/2
             
             if window.current_mode =='A':
                 window.plate_canvas.create_text(
@@ -373,7 +387,7 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, r
             for row in range(rows):
                 pos_key = f"{row}-{actual_col}"
                 if pos_key not in window.plate_layout['removed_positions']:
-                    x = margin + actual_col * cell_width + cell_width/2
+                    x = margin_sides + actual_col * cell_width + cell_width/2
                     y = margin + row * cell_height + cell_height/2
                     color = COLORS[strain % len(COLORS)]
                     
@@ -389,7 +403,7 @@ def draw_spots(window, strains, margin, cell_width, cell_height, x_dil, y_dil, r
                 y_pos = margin + row * cell_height + cell_height / 2
                 if window.current_mode == 'A' and strain == 0:  # Only add y-labels once
                     window.plate_canvas.create_text(
-                        margin - 20,  # Positioning to the left of the spots
+                        margin_sides - 20,  # Positioning to the left of the spots
                         y_pos,
                         text=y_value,
                         fill=LIGHT,
@@ -437,6 +451,7 @@ def create_plate_designer(window, mode="A"):
         'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
         'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
         'gap_between_strains': tk.BooleanVar(value=False),
+        'square_grid': tk.BooleanVar(value=True),
         'removed_positions': set(),
         'strain_positions': {}
     }
@@ -463,15 +478,15 @@ def create_plate_designer(window, mode="A"):
     image_image_1 = PhotoImage(file=("Icons/image_1.png"))
     canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
     image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
-    round_rectangle(canvas, 17.0, 168.-y_offset_edit, 1100.0, 730.0, fill=DARK, outline="")
+    round_rectangle(canvas, 17.0, 168.0-y_offset_edit, 1100.0, 730.0, fill=DARK, outline="")
     round_rectangle(canvas, 1120.0, 168.0-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
     
     # Create frames for plate and controls
     plate_frame = Frame(canvas, bg=DARK)
-    plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
+    plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=542+y_offset_edit)
     
     control_frame = Frame(canvas, bg=DARK)
-    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
+    control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=542+y_offset_edit)
     
     # Create mode switcher and controls
     create_mode_switcher(control_frame, window)
@@ -966,6 +981,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
             'x_dilution': window.layout_data['x_dilution'],
             'y_dilution': window.layout_data['y_dilution'],
             'gap_between_strains': window.layout_data['gap_between_strains'],
+            'square_grid':window.layout_data['square_grid'],
             'IMGPreview': preview_image  # Store the base64 encoded image
         }
     }
@@ -1452,7 +1468,6 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
 
     if window.current_mode =='A':
 
-        
         # Try to load fonts (fallback to default if not available)
         try:
             # Try to load Helvetica Bold

@@ -315,7 +315,6 @@ class RoundedEntry(tk.Frame):
         """Delegate insert() to the internal entry widget"""
         return self.entry.insert(index, string)
 
-
 class RoundedCheckbox(tk.Canvas):
     def __init__(self, parent, text="", command=None, variable=None, **kwargs):
         super().__init__(
@@ -326,7 +325,8 @@ class RoundedCheckbox(tk.Canvas):
             bg=DARK,
             **kwargs
         )
-        self.variable = variable
+        # Initialize variable if none provided
+        self.variable = variable if variable is not None else tk.BooleanVar()
         self.command = command
         
         # Create the rounded rectangle for the checkbox
@@ -338,12 +338,12 @@ class RoundedCheckbox(tk.Canvas):
             width=2
         )
         
-        # Create the checkmark (hidden initially)
+        # Create the checkmark (state based on variable)
         self.checkmark = self.create_line(
             6, 12, 10, 16, 18, 8,
             fill=DARK,
             width=3,
-            state="hidden"
+            state="normal" if self.variable.get() else "hidden"
         )
         
         # Bind click event
@@ -358,6 +358,12 @@ class RoundedCheckbox(tk.Canvas):
             font=(FONT, 12)
         )
         
+        # Add trace to variable to update state when changed externally
+        self.variable.trace_add('write', self._on_var_change)
+        
+        # Initial state update
+        self.update_state()
+    
     def create_rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
         points = [
             x1+radius, y1,
@@ -376,18 +382,16 @@ class RoundedCheckbox(tk.Canvas):
         return self.create_polygon(points, smooth=True, **kwargs)
     
     def toggle(self, event=None):
-        if self.variable:
-            self.variable.set(not self.variable.get())
-            self.update_state()
-            if self.command:
-                self.command()
+        current_value = self.variable.get()
+        self.variable.set(not current_value)
+        if self.command:
+            self.command()
     
     def update_state(self):
-        if self.variable and self.variable.get():
-            self.itemconfigure(self.checkmark, state="normal")
-        else:
-            self.itemconfigure(self.checkmark, state="hidden")
-
-
+        current_state = "normal" if self.variable.get() else "hidden"
+        self.itemconfigure(self.checkmark, state=current_state)
+    
+    def _on_var_change(self, *args):
+        self.update_state()
 
 
