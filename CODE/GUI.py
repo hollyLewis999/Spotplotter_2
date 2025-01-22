@@ -3475,7 +3475,11 @@ def display_final_image(window, override =False):
         rows = window.all_plate_info[window.current_image_index]['layout']['rows']
         square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
         result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows , square_grid=square_grid)
-        window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
+        if result_grid is None:
+            messagebox.showwarning("Could not detect a grid", "Please override grid and add center points to where expected spots would be.")
+            marked_image = window.binarized_image
+        else:    
+            window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
 
     #make sure its the correct type
     if isinstance(marked_image, Image.Image):
@@ -3731,13 +3735,15 @@ def recalculate_grid(window):
     #convert to numpy array so its the same type as the senterpoints
     window.clicked_pointsx = [point[0] for point in all_points]
     window.clicked_pointsy = [point[1] for point in all_points]
+    print("WINDOW>GEY SHAPE" + str(window.gray_image.shape))
     height, width = window.gray_image.shape
+    square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
     #new grid using user clicked AND previously detected
     columns = window.all_plate_info[window.current_image_index]['layout']['columns']
     rows = window.all_plate_info[window.current_image_index]['layout']['rows']
-    grid_start_x, grid_start_y, cell_size = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows)
-
-    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_size,columns, rows)
+    grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows, square_grid=square_grid)
+    print(cell_width, cell_height)
+    counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_width, cell_height,columns, rows)
 
     window.all_plate_info[window.current_image_index]['unorderedquantifications'] = counts
 

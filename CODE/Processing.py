@@ -231,11 +231,13 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     grid_calculated = False
 
 
-    #keep trying to get the grid -TODO need to add a stop condition here
-    while not grid_calculated:
+    tries = 0
+    max_tries = 2
+    grid_calculated = False
+
+    while not grid_calculated and tries < max_tries:
         try:
-                                                                    
-            grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, square_grid = False, debug=False)
+            grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, square_grid=square_grid, debug=False)
             grid_calculated = True
         except ValueError as e:
             print(f"Error in grid calculation: {e}")
@@ -243,12 +245,16 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
             #try looser parameters
             min_area = min_area/1.2
             max_area = max_area*1.2
-            x_coords, y_coords, marked_image = findBlobs(binary_image,min_area, max_area)
+            x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
             
-            if len(x_coords) < 2 or len(y_coords) < 2: #this will trigger looser parameters
-                raise ValueError("Unable to detect sufficient blobs for grid calculation")
+            if len(x_coords) < 2 or len(y_coords) < 2:
+                print("Unable to detect sufficient blobs for grid calculation")
+                tries += 1
+                continue
+            tries += 1
 
-
+    if not grid_calculated:
+        return None, None
 
     counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
     return counts, marked_image
@@ -360,6 +366,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         raise ValueError("Both x and y differences are invalid")
     
     if square_grid:
+        print("YES SQUARE GRID")
+        print(square_grid)
         # Original behavior for square cells
         if median_x_diff is None:
             cell_size = median_y_diff
@@ -370,6 +378,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         cell_width = cell_size
         cell_height = cell_size
     else:
+        print("NO SQUARE GRID")
+        print(square_grid)
         # Handle rectangular cells
         if median_x_diff is None:
             cell_width = width / columns  # fallback to even distribution
