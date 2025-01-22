@@ -46,6 +46,7 @@ GREENCOLOURS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"] #https://coolors.co/
 REDCOLOURS = ["#D24C4A", "#D3784A", "#DFA24F", "#EBCB53"] #https://coolors.co/d24c4a-d3784a-dfa24f-ebcb53
 BLUECOLOURS = ["#0C546B", "#0F7D87", "#46A2A2", "#7CC7BC"] #https://coolors.co/0c546b-0f7d87-46a2a2-7cc7bc
 PURPLESCOLOURS =["#591C5F", "#81377E", "#A9599C", "#D07BB9"] #https://coolors.co/591c5f-81377e-a9599c-d07bb9
+PINKCOLOURS =["#FB6F92", "#FF8FAB", "#FFB3C6", "#FFC2D1"]
     
 FONT = "Microsoft New Tai Lue"
 plt.rcParams['font.family'] = FONT
@@ -435,6 +436,8 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             color_map[additive] = GREENCOLOURS
         elif len(color_map) % 4 == 2:
             color_map[additive] = PURPLESCOLOURS
+        elif len(color_map) % 4 == 3:
+            color_map[additive] = PINKCOLOURS    
     
     individual_statistics = []
     average_statistics = []
@@ -1515,9 +1518,8 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 # Normal logic for more than 3 groups
                 i = 0
                 for stats_subset in grouped_stats:
-                    if i > 0 and i % 2 == 0:
+                    if i ==2 or i== 6:
                         story.append(PageBreak())
-                        i = 0
                     table = create_stats_table(stats_subset)
                     story.append(table)
                     story.append(Spacer(1, 10))

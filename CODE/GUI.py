@@ -36,7 +36,7 @@ from outputs import *
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7CC7BC", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
-COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
+COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C", "#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
 CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
 GRAY2 = "#E0E0E0"
@@ -2088,7 +2088,7 @@ def next_image(window):
         # update_progress_bar(window)
 
     else:
-        save_window_state(window, 'PhiaUVData.pkl')
+        save_window_state(window, 'PhiaUVData2.pkl')
 
         display_results(window)
         
@@ -3967,7 +3967,7 @@ initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-title_frame_widgets = create_titleFrame(content_frame)
+# title_frame_widgets = create_titleFrame(content_frame)
 # title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
@@ -3977,8 +3977,8 @@ window.mainloop()
 
 
 
-# restore_window_state(window, 'FORREPORTMODEARrepeats2.pkl')
-# processResults(window)
+restore_window_state(window, 'PhiaUVData.pkl')
+process_results(window)
 
 
 #FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
