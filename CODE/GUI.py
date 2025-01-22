@@ -3738,6 +3738,8 @@ def recalculate_grid(window):
     print("WINDOW>GEY SHAPE" + str(window.gray_image.shape))
     height, width = window.gray_image.shape
     square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
+    print("square_grid")
+    print(square_grid)
     #new grid using user clicked AND previously detected
     columns = window.all_plate_info[window.current_image_index]['layout']['columns']
     rows = window.all_plate_info[window.current_image_index]['layout']['rows']
