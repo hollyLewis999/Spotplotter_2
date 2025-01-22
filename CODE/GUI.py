@@ -428,6 +428,7 @@ def go_to_assignment_screen(window):
         'x_dilution': window.plate_layout['x_dilution'].get(),
         'y_dilution': window.plate_layout['y_dilution'].get(),
         'gap_between_strains': window.plate_layout['gap_between_strains'].get(),
+        'square_grid': window.plate_layout['square_grid'].get(),
         'removed_positions': list(window.plate_layout['removed_positions']),
         'strain_positions': window.plate_layout['strain_positions'],
         'valid_positions': valid_positions
@@ -616,6 +617,20 @@ def create_strain_designer(window):
         font_size=15
 
     )
+    create_rounded_button(
+        window.canvas,
+        "Apply Previous Layout",
+        lambda: copy_from_previous_plate(window),
+        1171,
+         buttonPosY-65,
+        width=200,
+        height=35,
+        cornerradius=6,
+        fill=LIGHT,
+        accent=DARK,
+        bold=False
+    )
+
     create_rounded_button(
         canvas=window.canvas,
         text="Preview All",
@@ -835,18 +850,18 @@ def create_strain_controls(window):
     if window.current_mode == 'A':
         # "Add a strain" header
         strain_header = tk.Label(
-            window.control_frame, 
-            text="Add a Strain", 
-            font=(FONT, 14, 'bold'), 
-            fg=LIGHT, 
+            window.control_frame,
+            text="Add a Strain",
+            font=(FONT, 14, 'bold'),
+            fg=LIGHT,
             bg=DARK
         )
         strain_header.pack(pady=(10, 5))
-        
-        # Strain name entry frame (same style as plate controls)
+       
+        # Strain name entry frame
         strain_frame = tk.Frame(window.control_frame, bg=DARK)
         strain_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-        
+       
         # Strain entry field with RoundedEntry
         window.strain_entry = RoundedEntry(
             strain_frame,
@@ -854,11 +869,11 @@ def create_strain_controls(window):
             height=35
         )
         window.strain_entry.pack(side=tk.LEFT, expand=True, padx=(0, 5))
-        
+       
         # Canvas for the add strain button
         add_strain_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=35, height=35)
-        add_strain_canvas.pack(side=tk.RIGHT, padx=(5, 0))  # Padding to the right
-        
+        add_strain_canvas.pack(side=tk.RIGHT, padx=(5, 0))
+       
         create_rounded_button(
             add_strain_canvas,
             "+",
@@ -870,69 +885,104 @@ def create_strain_controls(window):
             fill=LIGHT,
             accent=DARK
         )
+       
+        # Create a frame to hold the canvas and scrollbar
+        container_frame = tk.Frame(window.control_frame, bg=DARK)
+        container_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 20))
         
-        # Blank space for added strains (same style as plate buttons)
-        window.strain_list_frame = tk.Frame(window.control_frame, bg=DARK)
-        window.strain_list_frame.pack(fill=tk.X, padx=10, pady=(5, 20))
+        # Create canvas for scrollable content
+        canvas = tk.Canvas(container_frame, bg=DARK, highlightthickness=0)
+        scrollbar = tk.Scrollbar(container_frame, orient="vertical", command=canvas.yview)
+        
+        # Create the frame that will contain the strains
+        window.strain_list_frame = tk.Frame(canvas, bg=DARK)
+        
+        # Configure the canvas
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Pack the scrollbar and canvas
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        # Create a window inside the canvas to hold the strain list frame
+        canvas.create_window((0, 0), window=window.strain_list_frame, anchor="nw", width=canvas.winfo_width())
+        
+        # Configure canvas scrolling
+        def configure_scroll_region(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        
+        def configure_window_size(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+            
+        # Store the window reference for later use
+        canvas_window = canvas.create_window((0, 0), window=window.strain_list_frame, anchor="nw")
+        
+        # Bind events for scrolling
+        window.strain_list_frame.bind("<Configure>", configure_scroll_region)
+        canvas.bind("<Configure>", configure_window_size)
+        
+        # Bind mouse wheel for scrolling
+        def on_mousewheel(event):
+            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        
+        canvas.bind_all("<MouseWheel>", on_mousewheel)
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
     if strain and strain not in window.strains:
-        if len(window.strains) >= 7:
+        if len(window.strains) >= 14:
             messagebox.showwarning("Warning", "Maximum number of strains reached")
             return
-        
+       
         window.strains.append(strain)
         window.strain_entry.delete(0, tk.END)
-        
-        # Create strain frame within strain_list_frame (same layout style as plate controls)
+       
+        # Create strain frame
         strain_frame = tk.Frame(window.strain_list_frame, bg=DARK)
         strain_frame.pack(fill=tk.X, pady=2)
-
+        
         # Create circular color indicator
         color_indicator = tk.Label(
             strain_frame,
             bg=window.strain_colors[len(window.strains) - 1],
             width=2,
             height=1,
-            relief="solid",  # Adding a border for better circular appearance
+            relief="solid",
             borderwidth=1
         )
-        color_indicator.config(width=2, height=1)  # Set equal width and height for a circular appearance
-        color_indicator.grid(row=0, column=0, padx=(0, 5), sticky='w')  # Positioned on the left side
-        
+        color_indicator.pack(side=tk.LEFT, padx=(0, 5))
+       
         # Strain label
         strain_label = tk.Label(
             strain_frame,
             text=strain,
-            font=(FONT, 8),  # Smaller font size
+            font=(FONT, 8),
             fg=LIGHT,
             bg=DARK
         )
-        strain_label.grid(row=0, column=1, sticky='w')  # Placed to the right of the color indicator
-        
-        # Create a Canvas for the "Assign" button (necessary for rounded button)
+        strain_label.pack(side=tk.LEFT, expand=True, anchor='w')
+       
+        # Create a Canvas for the "Assign" button
         assign_canvas = tk.Canvas(strain_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.grid(row=0, column=2, padx=(5, 0), sticky='e')  # Positioned on the far right
-        
-        # Create the smaller rounded "Assign" button
+        assign_canvas.pack(side=tk.RIGHT, padx=(5, 0))
+       
+        # Create the rounded "Assign" button
         create_rounded_button(
             assign_canvas,
             "Assign",
             lambda s=strain: assign_strain_to_group(window, s),
             0, 0,
-            width=60,  # Smaller width
-            height=25,  # Smaller height
+            width=60,
+            height=25,
             cornerradius=6,
             fill=LIGHT,
             accent=DARK,
-            font_size=8,  # Smaller font size
-            bold=False  # Unbolded text
+            font_size=8,
+            bold=False
         )
-        
+       
         window.strain_buttons.append((strain_label, assign_canvas))
         update_plate_display(window)
-
 def update_strain_menu(window):
     # Remove existing menu if it exists
     for widget in window.control_frame.winfo_children():
@@ -1336,65 +1386,6 @@ def create_plate_controls(window):
         bold=False  # Unbolded text
     )
 
-# def create_navigation_controls(window):
-#     # Navigation controls at the bottom
-#     nav_container = tk.Frame(window.control_frame, bg=DARK)
-#     nav_container.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=5)
-    
-#     # Navigation buttons frame
-#     nav_frame = tk.Frame(nav_container, bg=DARK)
-#     nav_frame.pack(fill=tk.X, pady=(0, 5))
-    
-#     # Create a canvas for navigation buttons
-#     navigation_button_canvas = tk.Canvas(nav_frame, bg=DARK, highlightthickness=0, width=260, height=35)
-#     navigation_button_canvas.pack(fill=tk.X)
-    
-#     # Previous Plate button
-#     create_rounded_button(
-#         navigation_button_canvas, 
-#         "Previous", 
-#         lambda: prev_plate(window), 
-#         0, 0, 
-#         width=120, 
-#         height=35, 
-#         cornerradius=6,
-#         fill = LIGHT, accent = DARK,
-#         bold = False
-#     )
-    
-#     # Next Plate button
-#     create_rounded_button(
-#         navigation_button_canvas, 
-#         "Next ", 
-#         lambda: next_plate(window), 
-#         140, 0, 
-#         width=120, 
-#         height=35, 
-#         cornerradius=6,
-#         fill = LIGHT, accent = DARK,
-#         bold = False
-#     )
-    
-#     # Action buttons frame
-#     action_frame = tk.Frame(nav_container, bg=DARK)
-#     action_frame.pack(fill=tk.X)
-    
-#     # Create a canvas for action buttons
-#     action_button_canvas = tk.Canvas(action_frame, bg=DARK, highlightthickness=0, width=280, height=35)
-#     action_button_canvas.pack(fill=tk.X)
-    
-#     # Preview All Plates button
-#     create_rounded_button(
-#         action_button_canvas, 
-#         "Preview All Plates", 
-#         lambda: preview_all_plates(window), 
-#         0, 0, 
-#         width=260, 
-#         height=35, 
-#         cornerradius=6,
-#         fill = LIGHT, accent = DARK,
-#         bold = False
-#     )
 
 def toggle_additive_entry(window):
     if window.additive_var.get():
@@ -1416,14 +1407,13 @@ def setup_frames(window):
     window.plate_controls_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
     
     
-    # window.bottom_frame = tk.Frame(window.control_frame, bg=DARK)
-    # window.bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
-    
     # Populate the frames
     create_plate_controls(window)
-    create_strain_controls(window)  # You'll need to define this function
+    create_strain_controls(window) 
     # create_navigation_controls(window)
+        # Add copy button directly in the control fram
     
+
     
 
 
@@ -1439,7 +1429,53 @@ def setup_frames(window):
     # Force initial update with current plate index
     window.plate_canvas.after(100, lambda: update_plate_display(window))
 
+def copy_from_previous_plate(window):
+    global CURRENTPLATEINDEX
+    
+    # Check if there is a previous plate to copy from
+    if CURRENTPLATEINDEX <= 0 or len(window.plates) < 2:
+        messagebox.showwarning("Warning", "No previous plate to copy from")
+        return
+        
 
+    # Get previous plate's assignments
+    prev_plate = window.plates[CURRENTPLATEINDEX - 1]
+    current_plate = window.plates[CURRENTPLATEINDEX]
+    
+    # Copy assignments and column assignments
+    current_plate['assignments'] = prev_plate['assignments'].copy()
+    current_plate['column_assignments'] = prev_plate['column_assignments'].copy()
+    
+    # Update the window's column assignments reference
+    window.column_assignments = current_plate['column_assignments']
+    
+    # Update display
+    update_plate_display(window)
+    print("Copied positions from previous plate")
+
+# Add this to the create_strain_controls function
+def add_copy_button_to_controls(window):
+    # Create a frame for the copy button
+    copy_button_frame = tk.Frame(window.control_frame, bg=DARK)
+    copy_button_frame.pack(fill=tk.X, padx=10, pady=(5, 0))
+    
+    # Create canvas for the copy button
+    copy_button_canvas = tk.Canvas(copy_button_frame, bg=DARK, highlightthickness=0, width=260, height=40)
+    copy_button_canvas.pack(fill=tk.X)
+    
+    # Create the copy button
+    create_rounded_button(
+        copy_button_canvas,
+        "Copy From Previous Plate",
+        lambda: copy_from_previous_plate(window),
+        0, 0,
+        width=260,
+        height=35,
+        cornerradius=6,
+        fill=LIGHT,
+        accent=DARK,
+        bold=False
+    )
 
 
 # d8888b. d8888b. d88888b db    db d888888b d88888b db   d8b   db 
@@ -3437,7 +3473,8 @@ def display_final_image(window, override =False):
         gray_image = window.gray_image  
         columns = window.all_plate_info[window.current_image_index]['layout']['columns']
         rows = window.all_plate_info[window.current_image_index]['layout']['rows']
-        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows )
+        square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
+        result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows , square_grid=square_grid)
         window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
 
     #make sure its the correct type

@@ -217,7 +217,7 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
                     y_coords.append(cY)
     return x_coords,y_coords,result_image
 
-def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28, columns = 12, rows=8):
+def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28, columns = 12, rows=8, square_grid = False):
     
     height, width = binary_image.shape
     max_radius = int(width/(columns*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
@@ -234,7 +234,8 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     #keep trying to get the grid -TODO need to add a stop condition here
     while not grid_calculated:
         try:
-            grid_start_x, grid_start_y, cell_size = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, debug=False)
+                                                                    
+            grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, square_grid = False, debug=False)
             grid_calculated = True
         except ValueError as e:
             print(f"Error in grid calculation: {e}")
@@ -249,7 +250,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 
 
 
-    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows)
+    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
     return counts, marked_image
 
 
@@ -261,48 +262,40 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 #  Y888P  88   YD Y888888P Y8888D' 
 # 
 
-def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, debug=False):
+def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
     start_time = time.time()
     def find_clusters(coords, min_count=2):
+        # [Previous find_clusters implementation remains unchanged]
         FONT = "Microsoft New Tai Lue"
         plt.rcParams['font.family'] = FONT
         sns.set_style("whitegrid")
         sorted_coords = np.sort(coords)
         diffs = np.diff(sorted_coords)
-        filtered_diff = diffs[(diffs > 0) & (diffs < 50)] #need to take out the huge and tiny differences
-        median_diff = np.median(filtered_diff) #this is the difference between cluster = cell size
-        #need to fiddle with the median_diffs, using median not mean becuse some differences will be double becuse there is an empty row/coloumn
-        #TODO in future i should change this that if its getting too many clusters it should increase this
-        #TODO also what it sould do it be measuring the distance between clusters and clusters that are too close together should be joined as one cluster
+        filtered_diff = diffs[(diffs > 0) & (diffs < 50)]
+        median_diff = np.median(filtered_diff)
+        
         if (math.isnan(median_diff)):
             threshold = 2
         else:    
-            threshold = max(median_diff *3,12) #otherwise if its perfect it threshold will be zero, this is taking out ones that are unrealistic
-            threshold = min(threshold, 50) #TODO i should make this based on the image width or based on how sparse everyhting is
-        # print(median_diff)
-        # print(diffs)
-        # print(threshold)
+            threshold = max(median_diff * 3, 12)
+            threshold = min(threshold, 50)
+            
         clusters = []
         current_cluster = [sorted_coords[0]]
         
-        #it loops though each co-ordinate and loops to see if it belongs in that cluster based on the threshold
         for i in range(1, len(sorted_coords)):
-            if diffs[i-1] < threshold: #is part of cluster
+            if diffs[i-1] < threshold:
                 current_cluster.append(sorted_coords[i])
-            else: #checks to see if there are enough co-ords in a cluster before adding it (to avoid a bunch of clusters with 1 co-ordnate)
+            else:
                 if len(current_cluster) >= min_count:
                     clusters.append(current_cluster)
-                #goes to next cluster using the first co-ornate that was too big    
                 current_cluster = [sorted_coords[i]]
         
-        #FOR THE LAST CLUSTER (previously wasnt adding becuse the loop skips it) 
-        # checks to see if there are enough co-ords in a cluster before adding it (to avoid a bunch of clusters with 1 co-ordnate)
         if len(current_cluster) >= min_count:
             clusters.append(current_cluster)
 
         cluster_means = [np.mean(cluster) for cluster in clusters]
     
-        #modal difference between cluster means - 
         mean_diffs = np.diff(cluster_means)
         if len(mean_diffs) > 0:
             kde = stats.gaussian_kde(mean_diffs)
@@ -311,12 +304,9 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         else:
             modal_diff = threshold
 
-        # print(f"Modal difference between cluster means: {modal_diff}")
-
         if True:    
-            #combine clusters that are too close to be together
             combined_clusters = []
-            combined_indices = []  #indicies
+            combined_indices = []
             i = 0
             while i < len(clusters):
                 current_combined = clusters[i]
@@ -330,105 +320,32 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
                     combined_indices.append(combined_group)
                 i += 1
             final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-            if False:
-                FONT = "Microsoft New Tai Lue"
-                plt.rcParams['font.family'] = FONT
-                plt.rcParams['font.weight'] = 'bold'
-                plt.rcParams['font.size'] = 12  # Increase font size
-                sns.set_style("whitegrid")
-                # Create the plot
-                plt.figure(figsize=(8, 6))
-                ax = plt.gca()
-                ax.set_facecolor('#F5F5F5')
-                
-                # Create a color array for the scatter plot
-                colors = ['#073B3A' if any(coord in cluster for cluster in combined_clusters) else '#D24C4A' for coord in coords]
-                
-                plt.scatter(coords, [0] * len(coords), c=colors, alpha=0.5)
-                ax.yaxis.set_ticklabels([])
-                for mean in cluster_means:
-                    plt.axvline(x=mean, color='#D3784A', linestyle='--', alpha=0.5)
-               
-                for i, mean in enumerate(final_cluster_means):
-                    plt.axvline(x=mean, color='green', linestyle='-', linewidth=2)
-                    plt.text(mean, 0.1, f'C{i}', rotation=90, verticalalignment='bottom')
-               
-                for group in combined_indices:
-                    min_x = min(cluster_means[i] for i in group)
-                    max_x = max(cluster_means[i] for i in group)
-                    plt.axvspan(min_x, max_x, facecolor='yellow', alpha=0.3)
-                plt.xticks(final_cluster_means, [f'{coord:.2f}' for coord in final_cluster_means], ha='right', rotation = 45)
-                plt.xlabel('Cluster Coordinates', fontweight='bold', labelpad=15)
-                #plt.title('Clusters (Yellow highlight shows combined clusters)',fontweight='bold', pad = 20)
-                plt.title('Detected Clusters',fontweight='bold', pad = 20)
-                # Update legend to show both colors
-                plt.scatter([], [], c='#073B3A', label='Spots in Clusters', alpha=0.5)
-                plt.scatter([], [], c='#D24C4A', label='Spots not in Clusters', alpha=0.5)
-                
-                plt.legend(prop={'weight': 'bold'})
-                
-                plt.tight_layout()
-                plt.show()
-                print(f"Number of original clusters: {len(clusters)}")
-                print(f"Number of combined clusters: {len(combined_clusters)}")
-                print(f"Combined cluster groups: {combined_indices}")
             return final_cluster_means
-        
         else:
-            
-
-            #Debug generated with chatGBT
-            # if debug:
-            #     plt.rcParams['text.usetex'] = False
-            #     plt.rcParams['font.family'] = 'serif'
-            #     plt.rcParams['font.serif'] = ['DejaVu Serif']
-            #     plt.figure(figsize=(10, 5))
-            #     plt.scatter(coords, [0] * len(coords), c='#073B3A', label='Original points')
-            #     print("Length coords: " + str(len(coords)))
-            #     for mean in cluster_means:
-            #         plt.axvline(x=mean, color='green', linestyle='--')
-            #     plt.title(f'Clusters')
-            #     plt.legend()
-            #     plt.show()
-        
-
             return cluster_means
-        # 
 
-
-
-    #print(x_coords)
     x_clusters = find_clusters(x_coords)
     y_clusters = find_clusters(y_coords)
-
-    
-
-
 
     if len(x_clusters) < 2 or len(y_clusters) < 2:
         raise ValueError("Not enough valid clusters found to calculate grid")
     
-    #distance between clusters to try get  cell size
     x_diffs = np.diff(x_clusters)
     y_diffs = np.diff(y_clusters)
-    print(f"y_diffs {y_diffs}")
-    print(f"y_diffs {y_diffs}")
-    #take out the ones that are most likley differences within the same cluster or between non neighbouring clusters
-    lowerBound = width/(columns*2)
-    upperBound = width/(columns*0.5)
-    filtered_x_diffs = [x for x in x_diffs if lowerBound <= x <= upperBound]
-    filtered_y_diffs = [y for y in y_diffs if lowerBound <= y <= upperBound]
+    
+    # Calculate bounds separately for x and y
+    x_lowerBound = width/(columns*2)
+    x_upperBound = width/(columns*0.5)
+    y_lowerBound = height/(rows*2)
+    y_upperBound = height/(rows*0.5)
+    
+    filtered_x_diffs = [x for x in x_diffs if x_lowerBound <= x <= x_upperBound]
+    filtered_y_diffs = [y for y in y_diffs if y_lowerBound <= y <= y_upperBound]
 
-    #no valid differences
-    if not filtered_x_diffs and not filtered_y_diffs: 
-        #raise ValueError("No valid differences found within bounds")
-        filtered_x_diffs = [x for x in x_diffs ]
+    if not filtered_x_diffs and not filtered_y_diffs:
+        filtered_x_diffs = [x for x in x_diffs]
         filtered_y_diffs = [y for y in y_diffs]
 
-
-
-    #mediaun to avoid differences within the same cluster or between non neighbouring clusters
-    #dealing this if there are no x, no y or none of wither
     if filtered_x_diffs:
         median_x_diff = np.median(filtered_x_diffs)
     else:
@@ -441,116 +358,263 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
     if median_x_diff is None and median_y_diff is None:
         raise ValueError("Both x and y differences are invalid")
-    elif median_x_diff is None:
-        cell_size = median_y_diff
-    elif median_y_diff is None:
-        cell_size = median_x_diff
+    
+    if square_grid:
+        # Original behavior for square cells
+        if median_x_diff is None:
+            cell_size = median_y_diff
+        elif median_y_diff is None:
+            cell_size = median_x_diff
+        else:
+            cell_size = max(median_x_diff, median_y_diff)
+        cell_width = cell_size
+        cell_height = cell_size
     else:
-        cell_size = max(median_x_diff, median_y_diff)
-
-
+        # Handle rectangular cells
+        if median_x_diff is None:
+            cell_width = width / columns  # fallback to even distribution
+        else:
+            cell_width = median_x_diff
+            
+        if median_y_diff is None:
+            cell_height = height / rows  # fallback to even distribution
+        else:
+            cell_height = median_y_diff
     
-    grid_start_x = min(x_clusters) - cell_size / 2
-    grid_start_y = min(y_clusters) - cell_size / 2
+    grid_start_x = min(x_clusters) - cell_width / 2
+    grid_start_y = min(y_clusters) - cell_height / 2
     
-    grid_width = cell_size * columns
-    grid_height = cell_size * rows
+    grid_width = cell_width * columns
+    grid_height = cell_height * rows
     
-    #making sure its startin within the bounds
     if grid_start_x + grid_width > width:
         grid_start_x = width - grid_width
     if grid_start_y + grid_height > height:
         grid_start_y = height - grid_height
-    end_time = time.time()  # End timing
+        
+    end_time = time.time()
     print(f"calculate_grid total execution time: {end_time - start_time:.4f} seconds")
     
-    return grid_start_x, grid_start_y, cell_size 
+    if square_grid:
+        return grid_start_x, grid_start_y, cell_width, cell_width # maintains backward compatibility
+    else:
+        return grid_start_x, grid_start_y, cell_width, cell_height
 
-
-
-def process_label(args):
-    """
-    Process a single label (spot) in the image
+# def process_label(args):
+#     """
+#     Process a single label (spot) in the image
     
-    Parameters:
-    - args: Tuple containing:
-        - labeled_image: Labeled image from ndimage.label
-        - label: Current label to process
-        - grid_start_x: Starting x coordinate of the grid
-        - grid_start_y: Starting y coordinate of the grid
-        - cell_size: Size of each grid cell
-        - rows: Number of rows in the grid
-        - columns: Number of columns in the grid
-        - width: Image width
-        - height: Image height
+#     Parameters:
+#     - args: Tuple containing:
+#         - labeled_image: Labeled image from ndimage.label
+#         - label: Current label to process
+#         - grid_start_x: Starting x coordinate of the grid
+#         - grid_start_y: Starting y coordinate of the grid
+#         - cell_size: Size of each grid cell
+#         - rows: Number of rows in the grid
+#         - columns: Number of columns in the grid
+#         - width: Image width
+#         - height: Image height
     
-    Returns:
-    - Tuple of (row, col, total_area) if the spot is successfully counted
-    - None if the spot is not counted
-    """
-    (labeled_image, label, grid_start_x, grid_start_y, cell_size, 
-     rows, columns, width, height) = args
+#     Returns:
+#     - Tuple of (row, col, total_area) if the spot is successfully counted
+#     - None if the spot is not counted
+#     """
+#     (labeled_image, label, grid_start_x, grid_start_y, cell_size, 
+#      rows, columns, width, height) = args
     
-    component = (labeled_image == label)
-    coords = np.column_stack(np.where(component))
+#     component = (labeled_image == label)
+#     coords = np.column_stack(np.where(component))
     
-    # Calculate grid bounds
-    min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
-    max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
-    min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
-    max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+#     # Calculate grid bounds
+#     min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
+#     max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
+#     min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
+#     max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
     
-    main_cell = None
-    max_overlap = 0
-    total_area = np.sum(component)
+#     main_cell = None
+#     max_overlap = 0
+#     total_area = np.sum(component)
     
-    # Find the main cell with maximum overlap
-    for row in range(min_row, max_row + 1):
-        for col in range(min_col, max_col + 1):
-            x1 = int(grid_start_x + col * cell_size)
-            y1 = int(grid_start_y + row * cell_size)
-            x2 = int(x1 + cell_size)
-            y2 = int(y1 + cell_size)
+#     # Find the main cell with maximum overlap
+#     for row in range(min_row, max_row + 1):
+#         for col in range(min_col, max_col + 1):
+#             x1 = int(grid_start_x + col * cell_size)
+#             y1 = int(grid_start_y + row * cell_size)
+#             x2 = int(x1 + cell_size)
+#             y2 = int(y1 + cell_size)
             
-            x1, y1 = max(0, x1), max(0, y1)
-            x2, y2 = min(width, x2), min(height, y2)
+#             x1, y1 = max(0, x1), max(0, y1)
+#             x2, y2 = min(width, x2), min(height, y2)
             
-            cell = component[y1:y2, x1:x2]
-            overlap = np.sum(cell)
+#             cell = component[y1:y2, x1:x2]
+#             overlap = np.sum(cell)
             
-            if overlap > max_overlap:
-                max_overlap = overlap
-                main_cell = (row, col)
+#             if overlap > max_overlap:
+#                 max_overlap = overlap
+#                 main_cell = (row, col)
     
-    # Check if the spot should be counted
-    if main_cell is not None:
-        main_row, main_col = main_cell
-        outside_area = total_area - max_overlap
+#     # Check if the spot should be counted
+#     if main_cell is not None:
+#         main_row, main_col = main_cell
+#         outside_area = total_area - max_overlap
         
-        if outside_area <= 0.4 * total_area:
-            return (main_row, main_col, total_area)
+#         if outside_area <= 0.4 * total_area:
+#             return (main_row, main_col, total_area)
     
-    return None
+#     return None
 
 
 
-def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_size, 
+# def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_size, 
+#                   rows, columns, width, height):
+#     """
+#     Process a single label (spot) in the image
+    
+#     Returns:
+#     - Tuple of (row, col, total_area) if the spot is successfully counted
+#     - None if the spot is not counted
+#     """
+#     component = (labeled_image == label)
+#     coords = np.column_stack(np.where(component))
+    
+#     # Calculate grid bounds
+#     min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
+#     max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
+#     min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
+#     max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+    
+#     main_cell = None
+#     max_overlap = 0
+#     total_area = np.sum(component)
+    
+#     # Find the main cell with maximum overlap
+#     for row in range(min_row, max_row + 1):
+#         for col in range(min_col, max_col + 1):
+#             x1 = int(grid_start_x + col * cell_size)
+#             y1 = int(grid_start_y + row * cell_size)
+#             x2 = int(x1 + cell_size)
+#             y2 = int(y1 + cell_size)
+            
+#             x1, y1 = max(0, x1), max(0, y1)
+#             x2, y2 = min(width, x2), min(height, y2)
+            
+#             cell = component[y1:y2, x1:x2]
+#             overlap = np.sum(cell)
+            
+#             if overlap > max_overlap:
+#                 max_overlap = overlap
+#                 main_cell = (row, col)
+    
+#     # Check if the spot should be counted
+#     if main_cell is not None:
+#         main_row, main_col = main_cell
+#         outside_area = total_area - max_overlap
+        
+#         if outside_area <= 0.4 * total_area:
+#             return (main_row, main_col, total_area, component)
+    
+#     return None
+
+# def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows):
+#     start_time = time.time()
+#     height, width = binary_image.shape
+
+#     # Label the image
+#     labeled_image, num_features = ndimage.label(binary_image) 
+#     counts = np.zeros((rows, columns), dtype=int)
+
+#     # Convert to color image if grayscale
+#     if len(marked_image.shape) == 2:  
+#         marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
+
+#     # Mark non-counted areas dark grey
+#     white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
+#     marked_image[white_areas] = [64, 64, 64]
+    
+#     # Process labels with ThreadPoolExecutor
+#     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() + 1)) as executor:
+#         # Submit all label processing tasks
+#         future_to_label = {
+#             executor.submit(process_label, labeled_image, label, grid_start_x, grid_start_y, 
+#                             cell_size, rows, columns, width, height): label 
+#             for label in range(1, num_features + 1)
+#         }
+        
+#         # Process results as they complete
+#         for future in as_completed(future_to_label):
+#             result = future.result()
+#             if result is not None:
+#                 row, col, total_area, component = result
+#                 counts[row, col] += total_area
+#                 marked_image[component] = [255, 255, 255]
+    
+#     print("COUNTS")
+#     print(counts)
+#     # Scale counts
+#     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
+    
+#     # Draw grid and add counts (same as original function)
+#     font = cv2.FONT_HERSHEY_SIMPLEX
+#     font_scale = width *0.0008
+#     thickness = int(width *0.002)
+#     print("FONT SCALE AND THICKNESS")
+#     print (font_scale)
+#     print (thickness)
+
+#     for row in range(rows):
+#         for col in range(columns):
+#             x1 = int(grid_start_x + col * cell_size)
+#             y1 = int(grid_start_y + row * cell_size)
+#             x2 = int(x1 + cell_size)
+#             y2 = int(y1 + cell_size)
+            
+#             cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
+            
+#             text = str(counts[row, col])
+#             text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+            
+#             text_x = int(x1 + (cell_size - text_size[0]) // 2)
+#             text_y = int(y1 + (cell_size + text_size[1]) // 2)
+            
+#             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
+
+#     end_time = time.time()
+#     print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
+    
+#     return counts, marked_image
+
+
+
+def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, cell_height, 
                   rows, columns, width, height):
     """
     Process a single label (spot) in the image
     
+    Args:
+    - labeled_image: Image with labeled components
+    - label: Current label to process
+    - grid_start_x: Starting x coordinate of the grid
+    - grid_start_y: Starting y coordinate of the grid
+    - cell_width: Width of each grid cell
+    - cell_height: Height of each grid cell
+    - rows: Number of grid rows
+    - columns: Number of grid columns
+    - width: Image width
+    - height: Image height
+    
     Returns:
-    - Tuple of (row, col, total_area) if the spot is successfully counted
+    - Tuple of (row, col, total_area, component) if the spot is successfully counted
     - None if the spot is not counted
     """
     component = (labeled_image == label)
     coords = np.column_stack(np.where(component))
     
-    # Calculate grid bounds
-    min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
-    max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
-    min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
-    max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
+    # Calculate grid bounds using separate cell dimensions
+    min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_height))
+    max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_height))
+    min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_width))
+    max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_width))
     
     main_cell = None
     max_overlap = 0
@@ -559,10 +623,10 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_size,
     # Find the main cell with maximum overlap
     for row in range(min_row, max_row + 1):
         for col in range(min_col, max_col + 1):
-            x1 = int(grid_start_x + col * cell_size)
-            y1 = int(grid_start_y + row * cell_size)
-            x2 = int(x1 + cell_size)
-            y2 = int(y1 + cell_size)
+            x1 = int(grid_start_x + col * cell_width)
+            y1 = int(grid_start_y + row * cell_height)
+            x2 = int(x1 + cell_width)
+            y2 = int(y1 + cell_height)
             
             x1, y1 = max(0, x1), max(0, y1)
             x2, y2 = min(width, x2), min(height, y2)
@@ -584,9 +648,26 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_size,
     
     return None
 
-def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows):
+def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows):
+    print(cell_width)
+    print(cell_height)
+    """
+    Quantify spots in a grid and visualize results
+    
+    Args:
+    - binary_image: Binary image with spots
+    - marked_image: Image to draw results on
+    - grid_start_x: Starting x coordinate of the grid
+    - grid_start_y: Starting y coordinate of the grid
+    - cell_size: Cell size (if square_grid=True) or tuple of (cell_width, cell_height)
+    - columns: Number of grid columns
+    - rows: Number of grid rows
+    - square_grid: If True, cells are square and cell_size is a single value
+                  If False, cell_size should be a tuple of (cell_width, cell_height)
+    """
     start_time = time.time()
     height, width = binary_image.shape
+
 
     # Label the image
     labeled_image, num_features = ndimage.label(binary_image) 
@@ -605,7 +686,7 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
         # Submit all label processing tasks
         future_to_label = {
             executor.submit(process_label, labeled_image, label, grid_start_x, grid_start_y, 
-                            cell_size, rows, columns, width, height): label 
+                          cell_width, cell_height, rows, columns, width, height): label 
             for label in range(1, num_features + 1)
         }
         
@@ -622,28 +703,29 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     # Scale counts
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
     
-    # Draw grid and add counts (same as original function)
+    # Draw grid and add counts
     font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = width *0.0008
-    thickness = int(width *0.002)
+    font_scale = width * 0.0008
+    thickness = int(width * 0.002)
     print("FONT SCALE AND THICKNESS")
-    print (font_scale)
-    print (thickness)
+    print(font_scale)
+    print(thickness)
 
     for row in range(rows):
         for col in range(columns):
-            x1 = int(grid_start_x + col * cell_size)
-            y1 = int(grid_start_y + row * cell_size)
-            x2 = int(x1 + cell_size)
-            y2 = int(y1 + cell_size)
+            x1 = int(grid_start_x + col * cell_width)
+            y1 = int(grid_start_y + row * cell_height)
+            x2 = int(x1 + cell_width)
+            y2 = int(y1 + cell_height)
             
             cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
             
             text = str(counts[row, col])
             text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
             
-            text_x = int(x1 + (cell_size - text_size[0]) // 2)
-            text_y = int(y1 + (cell_size + text_size[1]) // 2)
+            # Center text in potentially rectangular cell
+            text_x = int(x1 + (cell_width - text_size[0]) // 2)
+            text_y = int(y1 + (cell_height + text_size[1]) // 2)
             
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
 
@@ -651,4 +733,3 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_s
     print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
     
     return counts, marked_image
-
