@@ -675,7 +675,7 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
                 break
 
         # Draw position label
-        label_text = assigned_strain if assigned_strain else f"Pos {window.position_labels[position_idx]}"
+        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
         canvas.create_text(
             current_x + position_width/2,
             margin_top,
@@ -814,34 +814,58 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     draw_positions_and_spots(window, margin_left, margin_top, 
                            cell_width, cell_height, num_strains) 
 
-def draw_positions_and_spots(window, margin_left, margin_top, 
+def calculate_font_size(window, text, max_width, initial_font_size=16):
+    """
+    Calculate font size to fit within specific position width
+    """
+    font_size = initial_font_size
+    while font_size > 1:
+        text_width = window.plate_canvas.tk.call(
+            'font', 'measure', 
+            f'{{Helvetica}} {int(font_size)} bold', 
+            text
+        )
+        if float(text_width) <= float(max_width)*0.9:
+            return font_size
+        font_size -= 1
+    return 1
+
+def draw_positions_and_spots(window, margin_left, margin_top,
                            cell_width, cell_height, num_strains):
     plate = window.plates[CURRENTPLATEINDEX]                  
     current_x = margin_left
+    
     for position_idx in range(num_strains):
         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
         position_width = (end_col - start_col + 1) * cell_width
-        
-        # Find assigned strain from the current plate's assignments
+       
+        # Find assigned strain 
         assigned_strain = None
         for pos_key in plate.get('assignments', {}):
             row, col = map(int, pos_key.split('-'))
             if start_col <= col <= end_col:
                 assigned_strain = plate['assignments'][pos_key]
                 break
-        
-        if window.current_mode =='A':
+       
+        if window.current_mode == 'A':
             # Draw position label
             label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+            
+            # Calculate font size specific to this position's width
+            font_size = calculate_font_size(
+                window, 
+                label_text, 
+                position_width
+            )
+            
             window.plate_canvas.create_text(
                 current_x + position_width/2,
                 margin_top,
                 text=label_text,
-                font=(FONT, 16, 'bold'),
+                font=(FONT, int(font_size), 'bold'),
                 fill=LIGHT
             )
-
-        
+       
         current_x += position_width
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
@@ -983,6 +1007,9 @@ def add_strain(window):
        
         window.strain_buttons.append((strain_label, assign_canvas))
         update_plate_display(window)
+
+
+
 def update_strain_menu(window):
     # Remove existing menu if it exists
     for widget in window.control_frame.winfo_children():
@@ -1485,6 +1512,34 @@ def add_copy_button_to_controls(window):
 # 88      88 `88. 88.      `8bd8'    .88.   88.     `8b d8'8b d8' 
 # 88      88   YD Y88888P    YP    Y888888P Y88888P  `8b8' `8d8'  
 
+
+def calculate_font_size_preview(draw, text, max_width, max_font_size=45, min_font_size=10):
+    """
+    Calculate appropriate font size to fit within max_width
+    """
+    font_size = max_font_size
+    while font_size >= min_font_size:
+        try:
+            # Try loading font with current size
+            font = ImageFont.truetype("arial.ttf", font_size)
+            text_width = draw.textlength(text, font=font)
+            
+            # If text width fits, return this font size
+            if text_width <= max_width*0.85:
+                return font_size
+            
+            # Reduce font size
+            font_size -= 1
+        except Exception as e:
+            # Fallback if font loading fails
+            print(f"Font size calculation error: {e}")
+            return min_font_size
+    
+    return min_font_size
+
+
+
+
 def create_plate_preview_image(window, plate, width=1600, height=1200):
     margin = 20
     img_width = width - 40
@@ -1505,18 +1560,18 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
     if window.current_mode =='A':
 
         # Try to load fonts (fallback to default if not available)
-        try:
-            # Try to load Helvetica Bold
-            label_font = ImageFont.truetype("arial.ttf", 45)
-            strain_font = ImageFont.truetype("arial.ttf", 45)
-        except IOError:
-            try:
-                # Fallback to default font if Helvetica-Bold is not found
-                label_font = ImageFont.load_default()
-                strain_font = ImageFont.load_default()
-                print("Helvetica Bold not found, using default font")
-            except:
-                print("Failed to load default font")
+        # try:
+        #     # Try to load Helvetica Bold
+        #     label_font = ImageFont.truetype("arial.ttf", 45)
+        #     strain_font = ImageFont.truetype("arial.ttf", 10)
+        # except IOError:
+        #     try:
+        #         # Fallback to default font if Helvetica-Bold is not found
+        #         label_font = ImageFont.load_default()
+        #         strain_font = ImageFont.load_default()
+        #         print("Helvetica Bold not found, using default font")
+        #     except:
+        #         print("Failed to load default font")
         
         # Draw strain sections and labels
         current_x = margin
@@ -1532,8 +1587,13 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
                     assigned_strain = assignment 
                     break
             
+
+
             # Draw strain label if assigned
             if assigned_strain:
+                font_size = calculate_font_size_preview(draw, assigned_strain, position_width)
+                # Load font with calculated size
+                strain_font = ImageFont.truetype("arial.ttf", font_size)
                 text_width = draw.textlength(assigned_strain, font=strain_font)
                 draw.text(
                     (current_x + position_width/2 - text_width/2, margin),
@@ -1608,20 +1668,14 @@ def preview_all_plates(window):
     preview_window = tk.Toplevel(window)
     preview_window.title("SpotPlotter: All Plates Preview")
     preview_window.geometry("1200x800")
+    preview_window.iconbitmap("Icons/ICON.ico")
     
-    BASE_PATH = Path(__file__).parent
 
-    # Construct the path to the icon file
-    icon_path = BASE_PATH / "Icons" / "ICON.ico"
-
-    # Set the window icon
-    preview_window.iconbitmap(icon_path)
-
-    main_frame = tk.Frame(preview_window, bg=DARK)
+    main_frame = tk.Frame(preview_window, bg=LIGHT)
     main_frame.pack(fill='both', expand=True)
-    canvas = tk.Canvas(main_frame, bg=DARK, highlightthickness=0)
+    canvas = tk.Canvas(main_frame, bg=LIGHT, highlightthickness=0)
     scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas, bg=DARK)
+    scrollable_frame = tk.Frame(canvas, bg=LIGHT)
     scrollable_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
@@ -1629,10 +1683,10 @@ def preview_all_plates(window):
     canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
     canvas.configure(yscrollcommand=scrollbar.set)
 
-    plates_per_row = 3
-    plate_width = 400
-    plate_height = 300
-    margin = 20
+    plates_per_row = 2
+    plate_width = 500
+    plate_height = 400
+    margin = 50
 
     for i, plate in enumerate(window.plates):
         row = i // plates_per_row
@@ -1673,6 +1727,84 @@ def preview_all_plates(window):
     scrollbar.pack(side="right", fill="y")
     canvas.pack(side="left", fill="both", expand=True)
 
+# def draw_plate_preview(window, canvas, plate):
+#     # Calculate cell dimensions
+#     canvas_width = canvas.winfo_reqwidth()
+#     canvas_height = canvas.winfo_reqheight()
+   
+#     margin = 20
+#     grid_width = canvas_width - 2 * margin
+#     grid_height = canvas_height - 2 * margin
+   
+#     # Calculate dimensions considering gaps
+#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+#     total_width = window.layout_data['columns'] + total_gaps
+#     cell_width = grid_width / total_width
+#     cell_height = grid_height / window.layout_data['rows']
+#     # Draw strain sections and labels
+#     current_x = margin
+#     for position_idx in range(window.layout_data['strains']):
+#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+#         position_width = (end_col - start_col + 1) * cell_width
+       
+#         # Find strain assignment for this section
+#         assigned_strain = None
+#         for pos_key, assignment in plate.get('assignments', {}).items():
+#             row, col = map(int, pos_key.split('-'))
+#             if start_col <= col <= end_col:
+#                 assigned_strain = assignment
+#                 break
+       
+#         if window.current_mode =='A':
+#             # Draw position label
+#             position_label = f"Position {window.position_labels[position_idx]}"
+#             canvas.create_text(
+#                 current_x + position_width/2,
+#                 margin,
+#                 text=position_label,
+#                 font=(FONT, 6, 'bold'),
+#                 fill=DARK,
+#                 anchor='s',
+
+
+#             )
+       
+#         for col_offset in range(end_col - start_col + 1):
+#             col = start_col + col_offset
+#             x_pos = current_x + col_offset * cell_width + cell_width/2
+           
+#             for row in range(window.layout_data['rows']):
+#                 pos_key = f"{row}-{col}"
+#                 if pos_key not in window.plate_layout['removed_positions']:
+#                     y_pos = margin + row * cell_height + cell_height/2
+                   
+#                     # Determine spot color based on strain assignment
+#                     if window.current_mode =='A':
+#                         spot_color = GRAY1
+#                     else:
+#                         spot_color = "#073b3a"
+#                     if pos_key in plate['assignments']:
+#                         strain = plate['assignments'][pos_key]
+#                         strain_index = window.strains.index(strain)
+#                         spot_color = window.strain_colors[strain_index]
+                   
+#                     # Draw spot
+#                     canvas.create_oval(
+#                         x_pos-8, y_pos-8, x_pos+8, y_pos+8,
+#                         fill=spot_color,
+#                         outline=spot_color
+#                     )
+       
+#         # Update x position for next group
+#         current_x += position_width
+       
+#         # Add gap after each position except the last one
+#         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+#             current_x += cell_width
+
+
+
 def draw_plate_preview(window, canvas, plate):
     # Calculate cell dimensions
     canvas_width = canvas.winfo_reqwidth()
@@ -1688,6 +1820,7 @@ def draw_plate_preview(window, canvas, plate):
     total_width = window.layout_data['columns'] + total_gaps
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
+    
     # Draw strain sections and labels
     current_x = margin
     for position_idx in range(window.layout_data['strains']):
@@ -1702,18 +1835,27 @@ def draw_plate_preview(window, canvas, plate):
                 assigned_strain = assignment
                 break
        
-        if window.current_mode =='A':
-            # Draw position label
-            position_label = f"Position {window.position_labels[position_idx]}"
+        if window.current_mode == 'A':
+            # Determine label text (strain or position)
+            label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+            
+            # Calculate font size to fit position width
+
+            font_size = calculate_font_size(
+                window, 
+                label_text, 
+                position_width,
+                12
+            )
+            
+            # Draw label
             canvas.create_text(
                 current_x + position_width/2,
                 margin,
-                text=position_label,
-                font=(FONT, 12, 'bold'),
+                text=label_text,
+                font=(FONT, font_size, 'bold'),
                 fill=DARK,
-                anchor='s',
-
-
+                anchor='s'
             )
        
         for col_offset in range(end_col - start_col + 1):
@@ -1726,7 +1868,7 @@ def draw_plate_preview(window, canvas, plate):
                     y_pos = margin + row * cell_height + cell_height/2
                    
                     # Determine spot color based on strain assignment
-                    if window.current_mode =='A':
+                    if window.current_mode == 'A':
                         spot_color = GRAY1
                     else:
                         spot_color = "#073b3a"
@@ -1748,10 +1890,6 @@ def draw_plate_preview(window, canvas, plate):
         # Add gap after each position except the last one
         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
             current_x += cell_width
-
-
-
-
 
 
 
