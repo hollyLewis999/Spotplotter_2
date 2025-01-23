@@ -675,7 +675,7 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
                 break
 
         # Draw position label
-        label_text = assigned_strain if assigned_strain else f"Position {window.position_labels[position_idx]}"
+        label_text = assigned_strain if assigned_strain else f"Pos {window.position_labels[position_idx]}"
         canvas.create_text(
             current_x + position_width/2,
             margin_top,
@@ -2435,7 +2435,7 @@ def create_slidersFrame(window):
     create_rounded_button(
         canvas=canvas,
         text="Next",
-        command=lambda: go_to_edit_frame(window),
+        command=lambda: go_to_edit_frame_from_sliders(window),
         x=buttonPosX,
         y=buttonPosY
     )
@@ -3133,9 +3133,9 @@ def display_images(window):
 def set_mode(window, mode):
     window.mode = mode
     if mode == "small_brush" or mode == "small_eraser":
-        window.brush_size = 10
+        window.brush_size = 5
     elif mode == "large_brush" or mode == "large_eraser":
-        window.brush_size = 50
+        window.brush_size = 30
 
 def toggle_image(window):
     window.show_original = not window.show_original
@@ -3516,7 +3516,15 @@ def display_final_image(window, override =False):
 
 
  
+def go_to_edit_frame_from_sliders(window):
+    window.history = [window.binarized_image.copy()]
+    window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = window.binarized_image.copy()
+    print("Automatic Updated")
+    window.redo_stack = []    
 
+    update_undo_redo_buttons(window)
+    create_editFrame(window)
+        
 
   
 
@@ -3967,8 +3975,8 @@ initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-# title_frame_widgets = create_titleFrame(content_frame)
-# title_frame_widgets = create_titleFrame(window)
+title_frame_widgets = create_titleFrame(content_frame)
+title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -3977,8 +3985,8 @@ window.mainloop()
 
 
 
-restore_window_state(window, 'PhiaUVData.pkl')
-process_results(window)
+# restore_window_state(window, 'PhiaUVData.pkl')
+# process_results(window)
 
 
 #FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE

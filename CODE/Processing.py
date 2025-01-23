@@ -287,6 +287,8 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
             threshold = min(threshold, 50)
             
         clusters = []
+        if (len(sorted_coords) == 0):
+            return sorted_coords
         current_cluster = [sorted_coords[0]]
         
         for i in range(1, len(sorted_coords)):

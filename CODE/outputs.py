@@ -108,6 +108,8 @@ def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
         for j in range(cols):
             result[i,j] = result[0,j] * (y_dilution_factor ** i)
     
+
+    result[0,0] = 1 #change the first point to 
     print (result)
     return result
 
@@ -1505,15 +1507,33 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 
                 # Combine groups with Control first
                 return control_groups + other_groups
-
+            
             # Updated table creation loop
             grouped_stats = group_stats_by_additive(stats)
+            #SO THAT IF ITS AVEAGES THEY WILL SHARE A TABLE
+            #  
+            def consolidate_grouped_stats(grouped_stats):
+                # Check if all groups have only one entry (average values)
+                if all(len(group) == 1 for group in grouped_stats):
+                    # Flatten the groups while maintaining their original order
+                    flattened_groups = [stat for group in grouped_stats for stat in group]
+                    
+                    # Combine into groups of 3 or less
+                    consolidated_groups = []
+                    for i in range(0, len(flattened_groups), 3):
+                        consolidated_groups.append(flattened_groups[i:i+3])
+                    return consolidated_groups
+                
+                # If not all groups have single entries, return original grouped_stats
+                return grouped_stats
+            grouped_stats = consolidate_grouped_stats(grouped_stats)
+            print(grouped_stats )
             if len(stats) < 3:
                 # Combine all stats into one table if less than 3 groups
                 combined_stats = [stat for group in grouped_stats for stat in group]  # Flatten grouped stats
                 table = create_stats_table(combined_stats)
                 story.append(table)
-                story.append(Spacer(1, 10))
+                story.append(Spacer(1, 10))  
             else:
                 # Normal logic for more than 3 groups
                 i = 0
