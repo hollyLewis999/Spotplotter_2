@@ -1496,14 +1496,14 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 # Process Control groups first
                 if 'Control' in additive_groups:
                     control_stats = additive_groups['Control']
-                    for i in range(0, len(control_stats), 4):
-                        control_groups.append(control_stats[i:i+4])
+                    for i in range(0, len(control_stats), 3):
+                        control_groups.append(control_stats[i:i+3])
                 
                 # Process other additives
                 for additive, group_stats in additive_groups.items():
                     if additive != 'Control':
-                        for i in range(0, len(group_stats), 4):
-                            other_groups.append(group_stats[i:i+4])
+                        for i in range(0, len(group_stats), 3):
+                            other_groups.append(group_stats[i:i+3])
                 
                 # Combine groups with Control first
                 return control_groups + other_groups
@@ -1540,6 +1540,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 for stats_subset in grouped_stats:
                     if i ==2 or i== 6:
                         story.append(PageBreak())
+                        story.append(Spacer(1, 2*inch))
                     table = create_stats_table(stats_subset)
                     story.append(table)
                     story.append(Spacer(1, 10))
