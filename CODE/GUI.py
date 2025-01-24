@@ -25,7 +25,7 @@ import openpyxl
 import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 from scipy.spatial import distance
-
+VERSION = "1.0.0"
 
 from Processing import *
 from Style import *
@@ -825,7 +825,7 @@ def calculate_font_size(window, text, max_width, initial_font_size=16):
             f'{{Helvetica}} {int(font_size)} bold', 
             text
         )
-        if float(text_width) <= float(max_width)*0.9:
+        if float(text_width) <= float(max_width)*0.85:
             return font_size
         font_size -= 1
     return 1
@@ -2226,7 +2226,7 @@ def next_image(window):
         # update_progress_bar(window)
 
     else:
-        save_window_state(window, 'PhiaUVData2.pkl')
+        save_window_state(window, 'PhiaUVData3.pkl')
 
         display_results(window)
         
@@ -3949,41 +3949,51 @@ def process_tool_usage(window):
         # Save the result back to the plate info
         plate_info['IMGToolUsage'] = tool_usage
 
-from tkinter import filedialog
-import os
 
-def get_save_folder(default_name="project"):
+def get_save_folder():
     """
     Opens a Save As dialog to allow the user to select a location and enter a folder name.
+    Includes a default name with the current date, time, and version.
     Returns the path to the folder to be created.
     """
+    # Generate a default folder name with the current date, time, and version
+    current_date = datetime.now().strftime("%Y.%m.%d")
+    current_time = datetime.now().strftime("%H.%M.")
+    default_name = f"{current_date}_ExperimentName_V{VERSION}_{current_time}"
+
     # Open Save As dialog to select location and name
     file_path = filedialog.asksaveasfilename(
         title="Save Project As",
         initialfile=default_name,
         filetypes=[("All Files", "*.*")],  # No file extension required
     )
-    
+   
     if not file_path:
         # If the user cancels, return None
         print("Save canceled by the user.")
         return None
-    
-    # Return the folder path (strip any extension added by the user)
-    return os.path.splitext(file_path)[0]
+
+    # Return the full path with any extensions intact
+    print(f"Folder path to save: {file_path}")
+    return file_path
+
+
 
 def process_results(window):
     # Get the save folder path
-    save_folder = get_save_folder("project")
+    # Get the save folder path
+    save_folder = get_save_folder()
+    file_name = os.path.basename(save_folder)
+    print(save_folder)
     if not save_folder:
         return  # Exit if no path is selected
-    
+   
     # Create the folder (if it doesn't exist)
     os.makedirs(save_folder, exist_ok=True)
-    
     # Define paths for the files inside the folder
-    pdf_path = os.path.join(save_folder, "report.pdf")
-    excel_path = os.path.join(save_folder, "data.xlsx")
+    pdf_log_path = os.path.join(save_folder, f"{file_name}_log.pdf")
+    pdf_report_path = os.path.join(save_folder, f"{file_name}_report.pdf")
+    excel_path = os.path.join(save_folder, f"{file_name}_data.xlsx")
     
     # Process and export files
     process_tool_usage(window)
@@ -4000,12 +4010,14 @@ def process_results(window):
         
         all_strain_data = []
         for strain, series in strain_data.items():
+
+
             figures_and_stats = plot_multiadditive_graphs(series, dilution_series, strain)
             all_strain_data.append((strain, figures_and_stats))
         
         # Generate PDF with project name
-        generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, pdf_path)
-        
+        generate_pdf_report_MODEA(window.all_plate_info, all_strain_data, pdf_report_path, file_name)
+        generate_pdf_log(window.all_plate_info, pdf_log_path, file_name)
         # Clean up matplotlib figures
         for _, figures_and_stats in all_strain_data:
             for fig, _, _ in figures_and_stats:
@@ -4020,7 +4032,7 @@ def process_results(window):
             mean_fig,
             knockdown_fig,
             individual_fig,
-            version="1.0.0"
+            file_name
         )
         df = export_plate_data_to_excel(window.all_plate_info, excel_path)
     
@@ -4113,8 +4125,8 @@ initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-title_frame_widgets = create_titleFrame(content_frame)
-title_frame_widgets = create_titleFrame(window)
+# title_frame_widgets = create_titleFrame(content_frame)
+# title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -4123,8 +4135,8 @@ window.mainloop()
 
 
 
-# restore_window_state(window, 'PhiaUVData.pkl')
-# process_results(window)
+restore_window_state(window, 'PhiaUVData2.pkl')
+process_results(window)
 
 
 #FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE

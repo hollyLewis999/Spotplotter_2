@@ -110,7 +110,7 @@ def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
     
 
     result[0,0] = 1 #change the first point to 
-    print (result)
+
     return result
 
 def get_sorted_positions(dilution_array):
@@ -160,7 +160,6 @@ def generate_data_series(window):
    
     # Iterate over all plates
     for plate in window.all_plate_info:
-       
         additive = plate.get('additive', 'Control') or 'Control'
         filename = plate.get('filename', 'Unnamed Plate')
         strains = plate['strains']
@@ -173,6 +172,8 @@ def generate_data_series(window):
        
         # For each strain in the plate
         for strain_idx, strain in enumerate(strains):
+            # print("STRAIN2")
+            # print(strain)
             # Extract y_values for this strain
             y_values = ordered_quantifications[strain_idx]
             column_indexes_for_strain = column_indexes[strain_idx]
@@ -183,7 +184,7 @@ def generate_data_series(window):
            
             # Generate a label for this series
             label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
-           
+
             # Create data series dictionary
             series_dict = {
                 'y_values': y_values,
@@ -198,26 +199,60 @@ def generate_data_series(window):
             all_data_series.append(series_dict)
     
     # Calculate normalization values for each strain
-    for strain in set(series['strain'] for series in all_data_series):
+    # for strain in set(series['strain'] for series in all_data_series):
+    #     # Calculate normalization value for this strain
+    #     print("STRAIN3")
+    #     print(strain)
+    #     norm_value = calculate_strain_normalization_value(all_data_series, strain)
+        
+    #     # Update series with normalized values for this strain
+    #     for series_dict in all_data_series:
+    #         if series_dict['strain'] == strain:
+    #             # Normalize values
+    #             normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
+                
+    #             # Update series with normalized values and normalization value
+    #             series_dict['normalized_y_values'] = normalized_y_values
+    #             series_dict['norm_value'] = norm_value
+                
+    #             # Add to strain data
+    #             strain_data[strain].append(series_dict)
+    
+    # # Convert strain_data to a list of series if needed
+    # #out of order at this point
+    # data_series = []
+
+    strain_order = []
+    strain_data = {}
+
+    # Calculate normalization values for each strain
+    for series in all_data_series:
+        strain = series['strain']
+        
+        # Collect strains in order of first appearance
+        if strain not in strain_data:
+            strain_order.append(strain)
+            strain_data[strain] = []
+        
         # Calculate normalization value for this strain
         norm_value = calculate_strain_normalization_value(all_data_series, strain)
         
-        # Update series with normalized values for this strain
-        for series_dict in all_data_series:
-            if series_dict['strain'] == strain:
-                # Normalize values
-                normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
-                
-                # Update series with normalized values and normalization value
-                series_dict['normalized_y_values'] = normalized_y_values
-                series_dict['norm_value'] = norm_value
-                
-                # Add to strain data
-                strain_data[strain].append(series_dict)
-    
-    # Convert strain_data to a list of series if needed
-    data_series = []
+        # Normalize values for this series
+        normalized_y_values = normalize_array(series['y_values'], norm_value)
+        
+        # Update series with normalized values
+        series_dict = series.copy()
+        series_dict['normalized_y_values'] = normalized_y_values
+        series_dict['norm_value'] = norm_value
+        
+        # Add to strain data
+        strain_data[strain].append(series_dict)
+
+    # Convert to list maintaining original order
+    data_series = [series for strain in strain_order for series in strain_data[strain]]
+
     for strain, series_list in strain_data.items():
+
         data_series.extend(series_list)
    
     return strain_data, dilution_series
@@ -1198,7 +1233,7 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
     story.append(PageBreak())    
     
 
-def add_title_page(doc, logo_path="Icons/LogoVerticalDark.png", version="1.0"):
+def add_title_page(doc,filename, logo_path="Icons/LogoVerticalDark.png", version="1.0.0"):
     """
     Create a title page for the document with logo, date, and version.
     
@@ -1254,22 +1289,88 @@ def add_title_page(doc, logo_path="Icons/LogoVerticalDark.png", version="1.0"):
         title_story.append(logo)
     except Exception as e:
         print(f"Error loading logo: {e}")
+
+    
     
     # Add current date and version
+    credit_text = "Developed by Holly Lewis<br/><br/>Contributions by: Mandy Mason, Robyn Verrinder<br/><br/>Contact: SpotPlotter@gmail.com"
+    title_story.append(Paragraph(credit_text, subtitle_style))
+    version_text = f"Version {version}"
+    title_story.append(Paragraph(version_text, credit_style))
+    #FLAG
+
     current_date = datetime.now().strftime("%Y-%m-%d")
-    version_text = f"Version {version} | Generated on {current_date}"
-    title_story.append(Paragraph(version_text, subtitle_style))
+    version_text = f"{current_date}| {filename}"
+    title_story.append(Paragraph(version_text, credit_style))
     
 
     
     # Optional: Add additional text or credits
-    credit_text = "Created by Holly Lewis<br/>Supervised by R. Verrinder and Dr. M. Mason"
-    title_story.append(Paragraph(credit_text, credit_style))
+
     title_story.append(PageBreak())
     return title_story
 
+def generate_pdf_log(all_plate_info, output_filename, filename, version="1.0.0" ):
+    
 
-def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, version="1.0.0"):
+    # Create footer style
+    footer_style = ParagraphStyle(
+        'Footer',
+        parent=getSampleStyleSheet()['Normal'],
+        fontSize=8,
+        textColor=colors.grey,
+        alignment=1  # Center alignment
+    )
+    
+    # Create footer function
+    def add_footer(canvas, doc):
+        footer_text = f"Generated on {datetime.now().strftime('%Y-%m-%d %H:%M')} using Spotplotter v{version}"
+        footer = Paragraph(footer_text, footer_style)
+        w, h = footer.wrap(doc.width, doc.bottomMargin)
+        footer.drawOn(canvas, doc.leftMargin, h)
+    
+    doc = SimpleDocTemplate(
+        output_filename,
+        pagesize=letter,
+        topMargin=0*inch,
+        bottomMargin=0.5*inch,
+        leftMargin=0.5*inch,
+        rightMargin=0.5*inch
+    )
+    
+    story = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(
+        name='Title',
+        parent=styles['Heading1'],
+        fontSize=16,
+        alignment=1
+    )
+    strain_style = ParagraphStyle(
+        name='StrainTitle',
+        parent=styles['Heading1'],
+        fontSize=20,
+        alignment=1,
+        spaceAfter=30
+    )
+    body_style = styles['Normal']
+    
+    # Add logo
+    logo_path = ("Icons/LogoHorizontalDark.png")
+    logo = ImageR(logo_path, width=1170/4, height=407/4)
+
+
+
+    story = add_title_page(doc, filename)
+    # Add plate info pages
+    for plate_info in all_plate_info:
+        add_info_page(plate_info, story, logo, title_style, body_style)
+
+    doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
+
+
+
+def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, filename, version="1.0.0"):
     
     """
     Generates a single PDF report containing data for all strains.
@@ -1367,17 +1468,14 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
 
 
 
-    story = add_title_page(doc)
-    # Add plate info pages
-    for plate_info in all_plate_info:
-        add_info_page(plate_info, story, logo, title_style, body_style)
+    story = add_title_page(doc, filename)
     
     def create_stats_table(stats_subset):
         """Create a statistics table for a subset of stats (max 4 entries)"""
         # Dynamically adjust column widths based on number of entries
             # If 3 or fewer entries, use wider columns
-        col_widths = [1.8 * inch]  # First column (row labels)
-        col_widths.extend([1.8 * inch] * len(stats_subset))  # Wider data columns
+        col_widths = [1 * inch]  # First column (row labels)
+        col_widths.extend([1.3 * inch] * len(stats_subset))  # Wider data columns
 
 
 
@@ -1385,7 +1483,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
         for stat in stats_subset:
             label = stat['label']
             # If label is longer than column width, split it
-            if len(label) > col_widths[1] / 6:  # Rough character estimate 
+            if len(label) > col_widths[1] / 3:  # Rough character estimate 
                 mid = len(label) // 2
                 label = label[:mid] + '\n' + label[mid:]
             header_row.append(label)
@@ -1421,8 +1519,8 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('GRID', (0, 0), (-1, -1), 1, colors.black),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-            ('FONTSIZE', (0, 0), (-1, -1), 8),
-            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 0), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 4),
             ('BACKGROUND', (0, 0), (0, -1), colors.lightgrey),
             # Ensure text wrapping for all cells
             ('WORDWRAP', (0, 0), (-1, -1), 1),  # Explicitly set word wrapping
@@ -1453,6 +1551,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
         
     # Process each strain's data
     for strain_name, figures_and_stats in all_strain_data:
+
         # Process each figure and its statistics for this strain
         for fig, stats, plot_title in figures_and_stats:
             
@@ -1527,7 +1626,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 # If not all groups have single entries, return original grouped_stats
                 return grouped_stats
             grouped_stats = consolidate_grouped_stats(grouped_stats)
-            print(grouped_stats )
+
             if len(stats) < 3:
                 # Combine all stats into one table if less than 3 groups
                 combined_stats = [stat for group in grouped_stats for stat in group]  # Flatten grouped stats
@@ -1554,7 +1653,7 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
     story.append(add_final_info_page())
     doc.build(story, onFirstPage=add_footer, onLaterPages=add_footer)
 
-def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdown_fig, individual_fig, version="1.0.0"):
+def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdown_fig, individual_fig,filename, version="1.0.0"):
     from reportlab.lib.units import inch
     from io import BytesIO
     
@@ -1584,7 +1683,7 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
     )
     
     story = []
-    story = add_title_page(doc)
+    story = add_title_page(doc, filename)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle(
         name='Title',
