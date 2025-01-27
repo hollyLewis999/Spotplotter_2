@@ -148,11 +148,9 @@ def open_help_manual(window, page_number):
 def create_controls(control_frame, window, mode):
     y_offset = 100
     spacing = 70
-    label_width = 100  # Width for right-aligned labels
+    label_width = 100
     
-    # Function to create styled input row
     def create_input_row(label_text, variable, y_pos):
-        # Right-aligned label
         label = Label(
             control_frame,
             text=label_text,
@@ -164,7 +162,6 @@ def create_controls(control_frame, window, mode):
         )
         label.place(x=10, y=y_pos)
         
-        # Custom rounded entry box
         entry_frame = RoundedEntry(control_frame, width=100, height=35)
         entry_frame.place(x=140, y=y_pos - 5)
         entry_frame.entry.config(textvariable=variable, font=(FONT, 11))
@@ -174,13 +171,18 @@ def create_controls(control_frame, window, mode):
     # Create input rows based on the mode
     create_input_row("Rows:", window.plate_layout['rows'], y_offset)
     create_input_row("Columns:", window.plate_layout['columns'], y_offset + spacing)
+
+
     
-    if mode == "A":  # Show additional options in Mode A
+    if mode == "A":
         create_input_row("Strains:", window.plate_layout['strains'], y_offset + spacing * 2)
         create_input_row("X-Dilution:", window.plate_layout['x_dilution'], y_offset + spacing * 3)
         create_input_row("Y-Dilution:", window.plate_layout['y_dilution'], y_offset + spacing * 4)
+    
+                # Store checkbox widgets in window for proper cleanup
+        window.checkboxes = []
         
-        # Create checkbox for gap between strains
+        # Create checkbox for gap between strains with proper variable binding
         checkbox1 = RoundedCheckbox(
             control_frame,
             text="Gap Between Strains",
@@ -189,6 +191,7 @@ def create_controls(control_frame, window, mode):
         )
         checkbox1.place(x=20, y=y_offset + spacing * 4.8)
         checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
+        window.checkboxes.append(checkbox1)
 
         checkbox2 = RoundedCheckbox(
             control_frame,
@@ -198,14 +201,15 @@ def create_controls(control_frame, window, mode):
         )
         checkbox2.place(x=20, y=y_offset + spacing * 5.6)
         checkbox2.label.place(x=50, y=y_offset + spacing * 5.6)
-    
+        window.checkboxes.append(checkbox2)
+
     # Bind all variables to update function
     for var_name in ['rows', 'columns', 'strains', 'x_dilution', 'y_dilution']:
-        window.plate_layout[var_name].trace_add(
-            "write",
-            lambda *args: update_plate_display_layout_designer(window)
-        )
-
+        if isinstance(window.plate_layout[var_name], tk.Variable):  # Check if it's a tkinter variable
+            window.plate_layout[var_name].trace_add(
+                "write",
+                lambda *args: update_plate_display_layout_designer(window)
+            )
 def create_mode_switcher(control_frame, window):
     def switch_mode(new_mode):
         window.current_mode = new_mode
@@ -306,7 +310,117 @@ def create_mode_switcher(control_frame, window):
         bold=True
     )
 
+# def create_plate_display(plate_frame, window):
+#     window.plate_canvas = tk.Canvas(
+#         plate_frame,
+#         bg=DARK,
+#         highlightthickness=0
+#     )
+#     window.plate_canvas.pack(expand=True, fill='both')
+#     update_plate_display_layout_designer(window)
+
+# def update_plate_display_layout_designer(window):
+#     window.plate_canvas.delete('all')
+    
+#     try:
+#         rows = max(1, window.plate_layout['rows'].get())
+#         cols = max(1, window.plate_layout['columns'].get())
+#         strains = max(1, window.plate_layout['strains'].get())
+#         x_dil = max(1, window.plate_layout['x_dilution'].get())
+#         y_dil = max(1, window.plate_layout['y_dilution'].get())
+#     except tk.TclError:
+#         return
+        
+#     width = window.plate_canvas.winfo_width()
+#     height = window.plate_canvas.winfo_height()
+#     if width <= 1 or height <= 1:
+#         window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
+#         return
+        
+#     margin =margin_sides= 50
+#     grid_width = width - 2 * margin
+#     grid_height = height - 2 * margin
+#     cols_per_strain = cols // strains
+#     total_cols = cols
+    
+#     if window.plate_layout['gap_between_strains'].get():
+#         total_gaps = strains - 1
+#         total_cols = cols + total_gaps
+
+#     # Adjust cell dimensions based on the square grid setting
+#     cell_width = grid_width / total_cols
+#     cell_height = grid_height / rows
+
+#     if window.plate_layout['square_grid'].get():
+#         # Enforce square cells considering gaps
+#         total_width_with_gaps = total_cols  # Includes gaps as extra columns
+#         cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
+#         cell_width = cell_height = cell_size
+#         margin_sides = (width - (cell_width * total_cols))/2
+#     # Update strain positions
+#     current_col = 0
+#     window.plate_layout['strain_positions'] = {}
+    
+#     for strain in range(strains):
+#         start_col = current_col
+#         end_col = start_col + cols_per_strain - 1
+#         window.plate_layout['strain_positions'][strain] = (start_col, end_col)
+#         current_col = end_col + 1
+#         if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
+#             current_col += 1  # Add one gap column
+
+#     draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
+
+# def draw_spots(window, strains,margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
+#     for strain in range(strains):
+#         start_col, end_col = window.plate_layout['strain_positions'][strain]
+#         for col_offset in range(end_col - start_col + 1):
+#             actual_col = start_col + col_offset
+#             x_value = x_dil ** col_offset
+#             x_pos = margin_sides + actual_col * cell_width + cell_width/2
+            
+#             if window.current_mode =='A':
+#                 window.plate_canvas.create_text(
+#                     x_pos,
+#                     margin - 20,
+#                     text=x_value,
+#                     fill=LIGHT,
+#                     font=(FONT, 8)
+#                 )
+            
+#             for row in range(rows):
+#                 pos_key = f"{row}-{actual_col}"
+#                 if pos_key not in window.plate_layout['removed_positions']:
+#                     x = margin_sides + actual_col * cell_width + cell_width/2
+#                     y = margin + row * cell_height + cell_height/2
+#                     color = COLORS[strain % len(COLORS)]
+                    
+#                     window.plate_canvas.create_oval(
+#                         x-10, y-10, x+10, y+10,
+#                         fill=color,
+#                         outline=color,
+#                         tags=(pos_key, "spot", f"strain_{strain}")
+#                     )
+#                         # Add y-dilution labels (to the left of the rows)
+#             for row in range(rows):
+#                 y_value = y_dil ** row
+#                 y_pos = margin + row * cell_height + cell_height / 2
+#                 if window.current_mode == 'A' and strain == 0:  # Only add y-labels once
+#                     window.plate_canvas.create_text(
+#                         margin_sides - 20,  # Positioning to the left of the spots
+#                         y_pos,
+#                         text=y_value,
+#                         fill=LIGHT,
+#                         font=(FONT, 8)
+#                     )        
+
+
 def create_plate_display(plate_frame, window):
+    # Destroy existing plate canvas if it exists
+    if hasattr(window, 'plate_canvas') and window.plate_canvas.winfo_exists():
+        window.plate_canvas.destroy()
+    
+    # Create new plate canvas
     window.plate_canvas = tk.Canvas(
         plate_frame,
         bg=DARK,
@@ -316,99 +430,132 @@ def create_plate_display(plate_frame, window):
     update_plate_display_layout_designer(window)
 
 def update_plate_display_layout_designer(window):
-    window.plate_canvas.delete('all')
-    
     try:
-        rows = max(1, window.plate_layout['rows'].get())
-        cols = max(1, window.plate_layout['columns'].get())
-        strains = max(1, window.plate_layout['strains'].get())
-        x_dil = max(1, window.plate_layout['x_dilution'].get())
-        y_dil = max(1, window.plate_layout['y_dilution'].get())
-    except tk.TclError:
-        return
-        
-    width = window.plate_canvas.winfo_width()
-    height = window.plate_canvas.winfo_height()
-    if width <= 1 or height <= 1:
-        window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
-        return
-        
-    margin =margin_sides= 50
-    grid_width = width - 2 * margin
-    grid_height = height - 2 * margin
-    cols_per_strain = cols // strains
-    total_cols = cols
-    
-    if window.plate_layout['gap_between_strains'].get():
-        total_gaps = strains - 1
-        total_cols = cols + total_gaps
-
-    # Adjust cell dimensions based on the square grid setting
-    cell_width = grid_width / total_cols
-    cell_height = grid_height / rows
-
-    if window.plate_layout['square_grid'].get():
-        # Enforce square cells considering gaps
-        total_width_with_gaps = total_cols  # Includes gaps as extra columns
-        cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
-        cell_width = cell_height = cell_size
-        margin_sides = (width - (cell_width * total_cols))/2
-    # Update strain positions
-    current_col = 0
-    window.plate_layout['strain_positions'] = {}
-    
-    for strain in range(strains):
-        start_col = current_col
-        end_col = start_col + cols_per_strain - 1
-        window.plate_layout['strain_positions'][strain] = (start_col, end_col)
-        current_col = end_col + 1
-        if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
-            current_col += 1  # Add one gap column
-
-    draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
-
-def draw_spots(window, strains,margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
-    for strain in range(strains):
-        start_col, end_col = window.plate_layout['strain_positions'][strain]
-        for col_offset in range(end_col - start_col + 1):
-            actual_col = start_col + col_offset
-            x_value = x_dil ** col_offset
-            x_pos = margin_sides + actual_col * cell_width + cell_width/2
+        # Check if plate canvas still exists
+        if not hasattr(window, 'plate_canvas') or not window.plate_canvas.winfo_exists():
+            return
             
-            if window.current_mode =='A':
-                window.plate_canvas.create_text(
-                    x_pos,
-                    margin - 20,
-                    text=x_value,
-                    fill=LIGHT,
-                    font=(FONT, 8)
-                )
+        window.plate_canvas.delete('all')
+        
+        try:
+            rows = max(1, window.plate_layout['rows'].get())
+            cols = max(1, window.plate_layout['columns'].get())
+            strains = max(1, window.plate_layout['strains'].get())
+            x_dil = max(1, window.plate_layout['x_dilution'].get())
+            y_dil = max(1, window.plate_layout['y_dilution'].get())
+        except tk.TclError:
+            # If variables are invalid or being destroyed, exit gracefully
+            return
             
-            for row in range(rows):
-                pos_key = f"{row}-{actual_col}"
-                if pos_key not in window.plate_layout['removed_positions']:
-                    x = margin_sides + actual_col * cell_width + cell_width/2
-                    y = margin + row * cell_height + cell_height/2
-                    color = COLORS[strain % len(COLORS)]
-                    
-                    window.plate_canvas.create_oval(
-                        x-10, y-10, x+10, y+10,
-                        fill=color,
-                        outline=color,
-                        tags=(pos_key, "spot", f"strain_{strain}")
-                    )
-                        # Add y-dilution labels (to the left of the rows)
-            for row in range(rows):
-                y_value = y_dil ** row
-                y_pos = margin + row * cell_height + cell_height / 2
-                if window.current_mode == 'A' and strain == 0:  # Only add y-labels once
+        width = window.plate_canvas.winfo_width()
+        height = window.plate_canvas.winfo_height()
+        if width <= 1 or height <= 1:
+            # Schedule another update when the canvas has actual dimensions
+            if window.plate_canvas.winfo_exists():
+                window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
+            return
+            
+        margin = margin_sides = 50
+        grid_width = width - 2 * margin
+        grid_height = height - 2 * margin
+        cols_per_strain = cols // strains
+        total_cols = cols
+        
+        try:
+            if window.plate_layout['gap_between_strains'].get():
+                total_gaps = strains - 1
+                total_cols = cols + total_gaps
+        except tk.TclError:
+            # Handle case where variable is being destroyed
+            return
+
+        # Adjust cell dimensions based on the square grid setting
+        cell_width = grid_width / total_cols
+        cell_height = grid_height / rows
+
+        try:
+            if window.plate_layout['square_grid'].get():
+                # Enforce square cells considering gaps
+                total_width_with_gaps = total_cols
+                cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
+                cell_width = cell_height = cell_size
+                margin_sides = (width - (cell_width * total_cols))/2
+        except tk.TclError:
+            # Handle case where variable is being destroyed
+            return
+
+        # Update strain positions
+        current_col = 0
+        window.plate_layout['strain_positions'] = {}
+        
+        for strain in range(strains):
+            start_col = current_col
+            end_col = start_col + cols_per_strain - 1
+            window.plate_layout['strain_positions'][strain] = (start_col, end_col)
+            current_col = end_col + 1
+            if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
+                current_col += 1
+
+        draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
+        
+    except tk.TclError as e:
+        # Handle any other Tcl errors that might occur during update
+        print(f"TclError during plate display update: {e}")
+        return
+
+def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
+    try:
+        if not window.plate_canvas.winfo_exists():
+            return
+            
+        for strain in range(strains):
+            start_col, end_col = window.plate_layout['strain_positions'][strain]
+            for col_offset in range(end_col - start_col + 1):
+                actual_col = start_col + col_offset
+                x_value = x_dil ** col_offset
+                x_pos = margin_sides + actual_col * cell_width + cell_width/2
+                
+                if window.current_mode == 'A':
                     window.plate_canvas.create_text(
-                        margin_sides - 20,  # Positioning to the left of the spots
-                        y_pos,
-                        text=y_value,
+                        x_pos,
+                        margin - 20,
+                        text=x_value,
                         fill=LIGHT,
                         font=(FONT, 8)
-                    )        
+                    )
+                
+                for row in range(rows):
+                    pos_key = f"{row}-{actual_col}"
+                    if pos_key not in window.plate_layout['removed_positions']:
+                        x = margin_sides + actual_col * cell_width + cell_width/2
+                        y = margin + row * cell_height + cell_height/2
+                        color = COLORS[strain % len(COLORS)]
+                        
+                        window.plate_canvas.create_oval(
+                            x-10, y-10, x+10, y+10,
+                            fill=color,
+                            outline=color,
+                            tags=(pos_key, "spot", f"strain_{strain}")
+                        )
+                        
+                # Add y-dilution labels (to the left of the rows)
+                for row in range(rows):
+                    y_value = y_dil ** row
+                    y_pos = margin + row * cell_height + cell_height / 2
+                    if window.current_mode == 'A' and strain == 0:
+                        window.plate_canvas.create_text(
+                            margin_sides - 20,
+                            y_pos,
+                            text=y_value,
+                            fill=LIGHT,
+                            font=(FONT, 8)
+                        )
+                        
+    except tk.TclError as e:
+        print(f"TclError during spot drawing: {e}")
+        return
+
+
 
 def go_to_assignment_screen(window):
     valid_positions = {}
@@ -440,30 +587,57 @@ def go_to_assignment_screen(window):
 
 
 def create_plate_designer(window, mode="A"):
-    # Clear window
+    # Properly destroy existing widgets
+    if hasattr(window, 'checkboxes'):
+        for checkbox in window.checkboxes:
+            checkbox.destroy()
+    
     for widget in window.winfo_children():
         widget.destroy()
     
-    # Initialize plate layout attributes with defaults
-    window.plate_layout = {
-        'rows': tk.IntVar(value=8),
-        'columns': tk.IntVar(value=12),
-        'strains': tk.IntVar(value=1 if mode == "B" else 3),
-        'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
-        'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
-        'gap_between_strains': tk.BooleanVar(value=False),
-        'square_grid': tk.BooleanVar(value=True),
-        'removed_positions': set(),
-        'strain_positions': {}
-    }
-    
+    # Initialize plate layout attributes with defaults if it doesn't already exist
+    if not hasattr(window, 'plate_layout'):
+        window.old_num_strains =tk.IntVar(value=3)
+        window.plate_layout = {
+            'rows': tk.IntVar(value=8),
+            'columns': tk.IntVar(value=12),
+            'strains': tk.IntVar(value=1 if mode == "B" else 3),
+            'x_dilution': tk.IntVar(value=-1 if mode == "B" else 10),
+            'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
+            'gap_between_strains': tk.BooleanVar(value=False),
+            'square_grid': tk.BooleanVar(value=True),
+            'removed_positions': set(),
+            'strain_positions': {}
+        }
+    else:
+        # If switching to mode B, update only the necessary values while preserving variable types
+        if mode == 'B':
+            # Store current values
+            current_rows = window.plate_layout['rows'].get()
+            current_cols = window.plate_layout['columns'].get()
+            current_gap = window.plate_layout['gap_between_strains'].get()
+            current_square = window.plate_layout['square_grid'].get()
+            
+            # Update values while maintaining tkinter variable types
+            window.old_num_strains = window.plate_layout['strains'].get()
+            window.plate_layout['rows'].set(current_rows)
+            window.plate_layout['columns'].set(current_cols)
+            window.plate_layout['strains'].set(1)
+            window.plate_layout['gap_between_strains'].set(current_gap)
+            window.plate_layout['square_grid'].set(current_square)
+            window.plate_layout['removed_positions'] = set()
+            window.plate_layout['strain_positions'] = {}
+        else:
+            window.plate_layout['strains'].set(window.old_num_strains)
+
+
     # Store the current mode
     window.current_mode = mode
-    
+
+    # Create the rest of the UI
     frame = Frame(window, bg=LIGHT)
     frame.pack(expand=True, fill="both")
-
-    # Create canvas for layout
+    
     canvas = Canvas(
         frame,
         bg=LIGHT,
@@ -477,19 +651,17 @@ def create_plate_designer(window, mode="A"):
     
     # Add background images and frames
     image_image_1 = PhotoImage(file=("Icons/image_1.png"))
-    canvas.image_image_1 = image_image_1  # Keeping a reference to prevent garbage collection
+    canvas.image_image_1 = image_image_1
     image_1 = canvas.create_image(719.0, 57.0, image=image_image_1)
     round_rectangle(canvas, 17.0, 168.0-y_offset_edit, 1100.0, 730.0, fill=DARK, outline="")
     round_rectangle(canvas, 1120.0, 168.0-y_offset_edit, 1422.0, 730.0, fill=DARK, outline="")
     
-    # Create frames for plate and controls
     plate_frame = Frame(canvas, bg=DARK)
     plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=542+y_offset_edit)
     
     control_frame = Frame(canvas, bg=DARK)
     control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=542+y_offset_edit)
     
-    # Create mode switcher and controls
     create_mode_switcher(control_frame, window)
     create_controls(control_frame, window, mode)
     create_plate_display(plate_frame, window)
@@ -511,17 +683,14 @@ def create_plate_designer(window, mode="A"):
         width=50,
         height=50,
         font_size=15
-
     )
-    #create_titleFrame(window)
     create_rounded_button(
         canvas=canvas,
         text="Back",
         command=lambda: create_titleFrame(window),
         x=buttonPosXleft,
         y=buttonPosY
-    )    
-
+    )
 
 
 # .d8888. d888888b d8888b.  .d8b.  d888888b d8b   db .d8888. 
@@ -548,6 +717,7 @@ def create_strain_designer(window):
     window.position_labels = {i: chr(65 + i) for i in range(window.layout_data['strains'])}
     window.column_assignments = {}
     window.atc_var = tk.StringVar(value="") 
+    window.plate_visible = True
     # Create main canvas
 
     frame = Frame(window, bg=LIGHT)
@@ -617,12 +787,26 @@ def create_strain_designer(window):
         font_size=15
 
     )
-    create_rounded_button(
-        window.canvas,
-        "Apply Previous Layout",
-        lambda: copy_from_previous_plate(window),
-        1171,
-         buttonPosY-65,
+    if window.current_mode == 'A':
+        create_rounded_button(
+            window.canvas,
+            "Apply Previous Layout",
+            lambda: copy_from_previous_plate(window),
+            1171,
+            buttonPosY-65,
+            width=200,
+            height=35,
+            cornerradius=6,
+            fill=LIGHT,
+            accent=DARK,
+            bold=False
+        )
+        create_rounded_button(
+        canvas=window.canvas,
+        text="Finish Layout",
+        command=lambda: hide_current_plate(window),
+        x=1171 -300,  # Position next to other controls
+        y=buttonPosY-65,  # Position above "Apply Previous Layout"
         width=200,
         height=35,
         cornerradius=6,
@@ -702,14 +886,13 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
                 pos_key = f"{row}-{col}"
                 if pos_key not in window.layout_data['removed_positions']:
                     y_pos = margin_top + row * cell_height + cell_height/2
-
+                    
                     # Determine spot color
                     spot_color = GRAY1
                     if pos_key in plate['assignments']:
                         strain = plate['assignments'][pos_key]
                         strain_index = window.strains.index(strain)
                         spot_color = window.strain_colors[strain_index]
-
                     # Draw spot
                     canvas.create_oval(
                         x_pos-8, y_pos-8, x_pos+8, y_pos+8,
@@ -733,6 +916,18 @@ def update_plate_display(window):
     # Validate plate index
     if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         print(f"ERROR: Invalid plate index {CURRENTPLATEINDEX}")
+        return
+
+    if not window.plate_visible:
+        window.plate_canvas.delete('all')
+        window.plate_canvas.create_text(
+            window.plate_canvas.winfo_width() // 2,
+            window.plate_canvas.winfo_height() // 2,
+            text="Layout Complete\nCreate a new plate or navigate to view other plates",
+            font=(FONT, 16, 'bold'),
+            fill=LIGHT,
+            justify='center'
+        )
         return
 
     current_plate = window.plates[CURRENTPLATEINDEX]
@@ -1077,6 +1272,8 @@ def assign_strain_to_group(window, strain):
         if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
             messagebox.showwarning("Warning", "Please create a plate first")
             return
+        if not window.plate_visible:
+            return    
         window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         # Create menu of available positions
         available_positions = []
@@ -1129,6 +1326,27 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
                 
     update_plate_display(window)
 
+
+def hide_current_plate(window):
+    if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
+        return
+        
+    # Mark plate as hidden
+    window.plate_visible = False
+    
+    # Clear the current view
+    window.plate_canvas.delete('all')
+    
+    # Show message
+    window.plate_canvas.create_text(
+        window.plate_canvas.winfo_width() // 2,
+        window.plate_canvas.winfo_height() // 2,
+        text="Layout Complete\nCreate a new plate or navigate to view other plates",
+        font=(FONT, 16, 'bold'),
+        fill=LIGHT,
+        justify='center'
+    )
+
 # d8888b. db       .d8b.  d888888b d88888b     d8b   db  .d8b.  db    db d888888b  d888b   .d8b.  d888888b d888888b  .d88b.  d8b   db 
 # 88  `8D 88      d8' `8b `~~88~~' 88'         888o  88 d8' `8b 88    88   `88'   88' Y8b d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88 
 # 88oodD' 88      88ooo88    88    88ooooo     88V8o 88 88ooo88 Y8    8P    88    88      88ooo88    88       88    88    88 88V8o 88 
@@ -1141,6 +1359,7 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
 
 def add_plate(window):
     global CURRENTPLATEINDEX
+    window.plate_visible = True 
     name = window.plate_entry.get().strip()
     if name:
         additive_name = window.additive_entry.get().strip() if window.additive_var.get() else None
@@ -1265,12 +1484,17 @@ def rename_current_plate(window):
 
 def prev_plate(window):
     global CURRENTPLATEINDEX
+    if not window.plate_visible:
+        window.plate_visible = True
+        update_plate_display(window)
+     
     if window.plates and window.current_plate > 0:
         # Clear current display
         window.plate_canvas.delete('all')
         CURRENTPLATEINDEX = CURRENTPLATEINDEX -1
         # Update current plate index
         window.current_plate -= 1
+
         new_plate = window.plates[window.current_plate]
         window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         # Update entry fields
@@ -1286,6 +1510,8 @@ def prev_plate(window):
 
 def next_plate(window):
     global CURRENTPLATEINDEX
+
+    window.plate_visible = True
     if window.plates and window.current_plate < len(window.plates) - 1:
         # Clear current display
         CURRENTPLATEINDEX = CURRENTPLATEINDEX +1
@@ -1568,19 +1794,6 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
 
     if window.current_mode =='A':
 
-        # Try to load fonts (fallback to default if not available)
-        # try:
-        #     # Try to load Helvetica Bold
-        #     label_font = ImageFont.truetype("arial.ttf", 45)
-        #     strain_font = ImageFont.truetype("arial.ttf", 10)
-        # except IOError:
-        #     try:
-        #         # Fallback to default font if Helvetica-Bold is not found
-        #         label_font = ImageFont.load_default()
-        #         strain_font = ImageFont.load_default()
-        #         print("Helvetica Bold not found, using default font")
-        #     except:
-        #         print("Failed to load default font")
         
         # Draw strain sections and labels
         current_x = margin

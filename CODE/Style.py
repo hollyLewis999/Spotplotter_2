@@ -358,8 +358,8 @@ class RoundedCheckbox(tk.Canvas):
             font=(FONT, 12)
         )
         
-        # Add trace to variable to update state when changed externally
-        self.variable.trace_add('write', self._on_var_change)
+        # Store the trace callback name
+        self.trace_id = self.variable.trace_add('write', self._on_var_change)
         
         # Initial state update
         self.update_state()
@@ -388,10 +388,32 @@ class RoundedCheckbox(tk.Canvas):
             self.command()
     
     def update_state(self):
-        current_state = "normal" if self.variable.get() else "hidden"
-        self.itemconfigure(self.checkmark, state=current_state)
+        try:
+            current_state = "normal" if self.variable.get() else "hidden"
+            if self.winfo_exists():  # Check if widget still exists
+                self.itemconfigure(self.checkmark, state=current_state)
+        except tk.TclError:
+            pass  # Widget is being destroyed, ignore the error
     
     def _on_var_change(self, *args):
-        self.update_state()
-
-
+        try:
+            if self.winfo_exists():  # Check if widget still exists
+                self.update_state()
+        except tk.TclError:
+            pass  # Widget is being destroyed, ignore the error
+    
+    def destroy(self):
+        """Properly clean up the widget and its resources"""
+        try:
+            # Remove the variable trace
+            if hasattr(self, 'trace_id'):
+                self.variable.trace_remove('write', self.trace_id)
+            
+            # Destroy the label if it exists
+            if hasattr(self, 'label') and self.label.winfo_exists():
+                self.label.destroy()
+            
+            # Call the parent's destroy method
+            super().destroy()
+        except tk.TclError:
+            pass  # Widget is already being destroyed, ignore the error
