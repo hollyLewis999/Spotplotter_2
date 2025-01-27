@@ -1259,7 +1259,7 @@ def add_title_page(doc,filename, logo_path="Icons/LogoVerticalDark.png", version
     subtitle_style = ParagraphStyle(
         name='Subtitle',
         parent=styles['Normal'],
-        fontSize=14,
+        fontSize=12,
         alignment=TA_CENTER,
         spaceAfter=12
     )
@@ -1293,16 +1293,15 @@ def add_title_page(doc,filename, logo_path="Icons/LogoVerticalDark.png", version
     
     
     # Add current date and version
-    credit_text = "Developed by Holly Lewis<br/><br/>Contributions by: Mandy Mason, Robyn Verrinder<br/><br/>Contact: SpotPlotter@gmail.com"
+    credit_text = "Developed by: Holly Lewis<br/><br/>Contributions by: Mandy Mason, Robyn Verrinder<br/><br/>Contact: SpotPlotter@gmail.com"
     title_story.append(Paragraph(credit_text, subtitle_style))
-    version_text = f"Version {version}"
-    title_story.append(Paragraph(version_text, credit_style))
-    #FLAG
+    
 
     current_date = datetime.now().strftime("%Y-%m-%d")
-    version_text = f"{current_date}| {filename}"
+    version_text = f"{filename}"
     title_story.append(Paragraph(version_text, credit_style))
-    
+    version_text = f"Version {version}"
+    title_story.append(Paragraph(version_text, credit_style))
 
     
     # Optional: Add additional text or credits

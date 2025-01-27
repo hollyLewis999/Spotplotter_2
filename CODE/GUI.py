@@ -594,7 +594,7 @@ def create_strain_designer(window):
         canvas=window.canvas,
         text="Previous Plate",
         command=lambda:prev_plate(window),
-        x=191.5+17,
+        x=191.5+17+100,
         y=buttonPosY
     )
 
@@ -602,7 +602,7 @@ def create_strain_designer(window):
         canvas=window.canvas,
         text="Next Plate",
         command=lambda:next_plate(window),
-        x=191.5+17+250+250,
+        x=191.5+17+250+250 +100,
         y=buttonPosY
     )
 
@@ -635,7 +635,7 @@ def create_strain_designer(window):
         canvas=window.canvas,
         text="Preview All",
         command=lambda:preview_all_plates(window),
-        x=191.5+17+250,
+        x=191.5+17+250 +100,
         y=buttonPosY
     )
 
@@ -646,6 +646,15 @@ def create_strain_designer(window):
         x=buttonPosX,
         y=buttonPosY
     )
+
+    create_rounded_button(
+        canvas=window.canvas,
+        text="Back",
+        command=lambda: create_plate_designer(window),
+        x=buttonPosXleft,
+        y=buttonPosY
+    )  
+
 
 def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height):
     if CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
@@ -4125,8 +4134,8 @@ initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-# title_frame_widgets = create_titleFrame(content_frame)
-# title_frame_widgets = create_titleFrame(window)
+title_frame_widgets = create_titleFrame(content_frame)
+title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -4135,8 +4144,8 @@ window.mainloop()
 
 
 
-restore_window_state(window, 'PhiaUVData2.pkl')
-process_results(window)
+# restore_window_state(window, 'PhiaUVData2.pkl')
+# process_results(window)
 
 
 #FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
