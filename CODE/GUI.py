@@ -1122,40 +1122,6 @@ def draw_positions_and_spots(window, margin_left, margin_top,
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
 
-# def draw_positions_and_spots(window, margin_left, margin_top,
-#                            cell_width, cell_height, num_strains):
-#     plate = window.plates[CURRENTPLATEINDEX]                  
-#     current_x = margin_left
-    
-#     for position_idx in range(num_strains):
-#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-#         position_width = (end_col - start_col + 1) * cell_width
-       
-#         # Find assigned strain 
-#         assigned_strain = None
-#         for pos_key in plate.get('assignments', {}):
-#             row, col = map(int, pos_key.split('-'))
-#             if start_col <= col <= end_col:
-#                 assigned_strain = plate['assignments'][pos_key]
-#                 break
-       
-#         if window.current_mode == 'A':
-#             # Draw position label
-#             label_text = assigned_strain if assigned_strain else f" Pos: {window.position_labels[position_idx]}"
-            
-#             # Calculate font size specific to this position's width
-            
-#             window.plate_canvas.create_text(
-#                 current_x + position_width/2,
-#                 margin_top,
-#                 text=label_text,
-#                 font=(FONT, int(16), 'bold'),
-#                 fill=LIGHT
-#             )
-       
-#         current_x += position_width
-#         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
-#             current_x += cell_width
 
 def create_strain_controls(window):
     if window.current_mode == 'A':
@@ -1308,7 +1274,11 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
                       strains, column_indexes):
     # Create preview image
     preview_image = create_plate_preview_image(window, plate)
-    
+    image_bytes = base64.b64decode(preview_image)
+    image = Image.open(io.BytesIO(image_bytes))
+
+    # Show the image in the default viewer
+    image.show()
     return {
         'mode': window.current_mode,
         'filename': plate['name'],
@@ -1824,112 +1794,284 @@ def add_copy_button_to_controls(window):
 
 
 
+# def create_plate_preview_image(window, plate, width=1600, height=1200):
+#     margin = 20
+#     img_width = width - 40
+#     img_height = height - 60
+#     image = Image.new('RGB', (img_width, img_height), 'white')
+#     draw = ImageDraw.Draw(image)
+    
+#     # Calculate dimensions
+#     grid_width = img_width - 2 * margin
+#     grid_height = img_height - 2 * margin
+    
+#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+#     total_width = window.layout_data['columns'] + total_gaps
+#     cell_width = grid_width / total_width
+#     cell_height = grid_height / window.layout_data['rows']
 
-def create_plate_preview_image(window, plate, width=1600, height=1200):
+#     if window.current_mode =='A':
+
+        
+#         # Draw strain sections and labels
+#         current_x = margin
+#         for position_idx in range(window.layout_data['strains']):
+#             start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+#             position_width = (end_col - start_col + 1) * cell_width
+            
+#             # Find strain assignment for this section
+#             assigned_strain = None
+#             for pos_key, assignment in plate.get('assignments', {}).items():
+#                 row, col = map(int, pos_key.split('-'))
+#                 if start_col <= col <= end_col:
+#                     assigned_strain = assignment 
+#                     break
+            
+
+
+#             # Draw strain label if assigned
+#             if assigned_strain:
+#                 strain_font = ImageFont.truetype("arial.ttf", 16)  # Fixed font size
+#                 truncated_label = truncate_strain_name(assigned_strain, position_width, window)
+#                 text_width = draw.textlength(truncated_label, font=strain_font)
+#                 draw.text(
+#                     (current_x + position_width/2 - text_width/2, margin),
+#                     truncated_label,
+#                     font=strain_font,
+#                     fill='black'
+#                 )
+            
+#             # Draw spots
+#             for col_offset in range(end_col - start_col + 1):
+#                 col = start_col + col_offset
+#                 x_pos = int(current_x + col_offset * cell_width + cell_width/2)
+                
+#                 for row in range(window.layout_data['rows']):
+#                     pos_key = f"{row}-{col}"
+#                     if pos_key not in window.plate_layout['removed_positions']:
+#                         y_pos = int(margin + row * cell_height + cell_height/2)
+                        
+#                         # Determine spot color
+#                         spot_color = GRAY1  # Your default gray color
+#                         if pos_key in plate['assignments']:
+#                             strain = plate['assignments'][pos_key]
+#                             strain_index = window.strains.index(strain)
+#                             spot_color = window.strain_colors[strain_index]
+                        
+#                         # Draw spot (circle)
+#                         size = 16
+#                         draw.ellipse(
+#                             [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
+#                             fill=spot_color,
+#                             outline=spot_color
+#                         )
+            
+#             # Update x position for next group
+#             current_x += position_width
+            
+#             # Add gap after each position except the last one
+#             if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+#                 current_x += cell_width
+
+#     else:
+
+#         # Draw spots
+#         for col in range(window.layout_data['columns']):
+#             for row in range(window.layout_data['rows']):
+#                 pos_key = f"{row}-{col}"
+#                 if pos_key not in window.plate_layout['removed_positions']:
+#                     x_pos = int(margin + col * cell_width + cell_width / 2)
+#                     y_pos = int(margin + row * cell_height + cell_height / 2)
+#                     spot_color = "#073b3a"
+#                     size = 16
+#                     draw.ellipse(
+#                         [x_pos - size, y_pos - size, x_pos + size, y_pos + size],
+#                         fill=spot_color,
+#                         outline=spot_color
+#                     )
+
+
+    
+#     # Convert to base64
+#     buffer = io.BytesIO()
+#     image.save(buffer, format='PNG')
+#     img_str = base64.b64encode(buffer.getvalue()).decode()
+
+#     return img_str
+
+def draw_unified_plate_preview(window, surface, plate, is_image=False, image_size=(1600, 1200)):
+    """
+    Unified function for drawing plate previews on both GUI canvas and PIL Image
+    with consistent styling and truncated labels
+    """
+    # Calculate dimensions based on surface type
+    if is_image:
+        canvas_width, canvas_height = image_size
+        # Reserve space for header and additive text
+        content_margin_top = 120  # Space for header and additive text
+    else:
+        canvas_width = surface.winfo_reqwidth()
+        canvas_height = surface.winfo_reqheight()
+        content_margin_top = 0  # Header is handled separately for canvas
+    
     margin = 20
-    img_width = width - 40
-    img_height = height - 60
-    image = Image.new('RGB', (img_width, img_height), 'white')
-    draw = ImageDraw.Draw(image)
+    grid_width = canvas_width - 2 * margin
+    grid_height = canvas_height - 2 * margin - content_margin_top
     
-    # Calculate dimensions
-    grid_width = img_width - 2 * margin
-    grid_height = img_height - 2 * margin
-    
+    # Calculate dimensions considering gaps
     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
     total_width = window.layout_data['columns'] + total_gaps
     cell_width = grid_width / total_width
     cell_height = grid_height / window.layout_data['rows']
-
-    if window.current_mode =='A':
-
+    
+    def calculate_max_width(width):
+        return max(int(width / 8) - 4, 5)
+    
+    def truncate_strain(strain, max_chars):
+        if len(strain) > max_chars:
+            return strain[:max_chars-3] + "..."
+        return strain
+    
+    def draw_spot(x, y, color):
+        # Increased spot size for both canvas and image
+        spot_size = 20 if is_image else 8
+        if is_image:
+            surface.ellipse(
+                [int(x-spot_size), int(y-spot_size), 
+                 int(x+spot_size), int(y+spot_size)],
+                fill=color,
+                outline=color
+            )
+        else:
+            surface.create_oval(
+                x-spot_size, y-spot_size, 
+                x+spot_size, y+spot_size,
+                fill=color,
+                outline=color
+            )
+    
+    def draw_text(x, y, text, font_size=25, anchor='s'):
+        if is_image:
+            font = ImageFont.truetype("arial.ttf", font_size+10)
+            # Center text horizontally
+            text_width = surface.textlength(text, font=font)
+            surface.text(
+                (int(x - text_width/2), int(y)),
+                text,
+                font=font,
+                fill=DARK
+            )
+        else:
+            surface.create_text(
+                x, y,
+                text=text,
+                font=(FONT, 10, 'bold'),
+                fill=DARK,
+                anchor=anchor
+            )
+    
+    # Draw header and additive text for image
+    if is_image:
+        # Draw plate name
+        draw_text(
+            canvas_width // 2,
+            margin,
+            f"{plate.get('name', 'Unnamed')}",
+            font_size=40,
+            anchor='n'
+        )
+        # Draw additive information
+        additive_text = f"Additive: {plate.get('additive', 'Control')}"
+        draw_text(
+            canvas_width // 2,
+            margin + 60,
+            additive_text,
+            font_size=18,
+            anchor='n'
+        )
+    
+    # Draw strain sections and labels
+    current_x = margin
+    content_y_start = margin + (content_margin_top if is_image else 0)
+    
+    for position_idx in range(window.layout_data['strains']):
+        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+        position_width = (end_col - start_col + 1) * cell_width
         
-        # Draw strain sections and labels
-        current_x = margin
-        for position_idx in range(window.layout_data['strains']):
-            start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-            position_width = (end_col - start_col + 1) * cell_width
-            
-            # Find strain assignment for this section
-            assigned_strain = None
-            for pos_key, assignment in plate.get('assignments', {}).items():
-                row, col = map(int, pos_key.split('-'))
-                if start_col <= col <= end_col:
-                    assigned_strain = assignment 
-                    break
-            
-
-
-            # Draw strain label if assigned
+        # Find strain assignment for this section
+        assigned_strain = None
+        for pos_key, assignment in plate.get('assignments', {}).items():
+            row, col = map(int, pos_key.split('-'))
+            if start_col <= col <= end_col:
+                assigned_strain = assignment
+                break
+        
+        if window.current_mode == 'A':
+            # Calculate available width and create label
+            max_chars = calculate_max_width(position_width)
             if assigned_strain:
-                strain_font = ImageFont.truetype("arial.ttf", 16)  # Fixed font size
-                truncated_label = truncate_strain_name(assigned_strain, position_width, window)
-                text_width = draw.textlength(truncated_label, font=strain_font)
-                draw.text(
-                    (current_x + position_width/2 - text_width/2, margin),
-                    truncated_label,
-                    font=strain_font,
-                    fill='black'
-                )
-            
-            # Draw spots
-            for col_offset in range(end_col - start_col + 1):
-                col = start_col + col_offset
-                x_pos = int(current_x + col_offset * cell_width + cell_width/2)
-                
-                for row in range(window.layout_data['rows']):
-                    pos_key = f"{row}-{col}"
-                    if pos_key not in window.plate_layout['removed_positions']:
-                        y_pos = int(margin + row * cell_height + cell_height/2)
-                        
-                        # Determine spot color
-                        spot_color = GRAY1  # Your default gray color
-                        if pos_key in plate['assignments']:
-                            strain = plate['assignments'][pos_key]
-                            strain_index = window.strains.index(strain)
-                            spot_color = window.strain_colors[strain_index]
-                        
-                        # Draw spot (circle)
-                        size = 16
-                        draw.ellipse(
-                            [x_pos-size, y_pos-size, x_pos+size, y_pos+size],
-                            fill=spot_color,
-                            outline=spot_color
-                        )
-            
-            # Update x position for next group
-            current_x += position_width
-            
-            # Add gap after each position except the last one
-            if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
-                current_x += cell_width
+                strain_number = window.strains.index(assigned_strain) + 1
 
-    else:
-
+                truncated_strain = truncate_strain(assigned_strain, max_chars)
+                label_text = f"{strain_number}. {truncated_strain}"
+            else:
+                if (max_chars >10):
+                    label_text = f"Position: {window.position_labels[position_idx]}"
+                elif (max_chars >5):
+                    label_text = f"Pos: {window.position_labels[position_idx]}"  
+                else:
+                    label_text = f"{window.position_labels[position_idx]}"    
+            
+            draw_text(
+                current_x + position_width/2,
+                content_y_start,
+                label_text
+            )
+        
         # Draw spots
-        for col in range(window.layout_data['columns']):
+        for col_offset in range(end_col - start_col + 1):
+            col = start_col + col_offset
+            x_pos = current_x + col_offset * cell_width + cell_width/2
+            
             for row in range(window.layout_data['rows']):
                 pos_key = f"{row}-{col}"
                 if pos_key not in window.plate_layout['removed_positions']:
-                    x_pos = int(margin + col * cell_width + cell_width / 2)
-                    y_pos = int(margin + row * cell_height + cell_height / 2)
-                    spot_color = "#073b3a"
-                    size = 16
-                    draw.ellipse(
-                        [x_pos - size, y_pos - size, x_pos + size, y_pos + size],
-                        fill=spot_color,
-                        outline=spot_color
-                    )
+                    y_pos = content_y_start + row * cell_height + cell_height/2
+                    
+                    # Determine spot color
+                    if window.current_mode == 'A':
+                        spot_color = GRAY1
+                    else:
+                        spot_color = "#073b3a"
+                    if pos_key in plate['assignments']:
+                        strain = plate['assignments'][pos_key]
+                        strain_index = window.strains.index(strain)
+                        spot_color = window.strain_colors[strain_index]
+                    
+                    draw_spot(x_pos, y_pos, spot_color)
+        
+        current_x += position_width
+        
+        if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+            current_x += cell_width
 
-
+def create_plate_preview_image(window, plate, width=1600, height=1200):
+    # Add extra height for header and additive text
+    image = Image.new('RGB', (width, height), 'white')
+    draw = ImageDraw.Draw(image)
     
-    # Convert to base64
+    draw_unified_plate_preview(window, draw, plate, is_image=True, 
+                             image_size=(width, height))
+    
     buffer = io.BytesIO()
     image.save(buffer, format='PNG')
-    img_str = base64.b64encode(buffer.getvalue()).decode()
+    
+    return base64.b64encode(buffer.getvalue()).decode()
 
-    return img_str
+def draw_plate_preview(window, canvas, plate):
+    draw_unified_plate_preview(window, canvas, plate, is_image=False)
 
 def preview_all_plates(window):
     if not window.plates:
@@ -1999,86 +2141,86 @@ def preview_all_plates(window):
     canvas.pack(side="left", fill="both", expand=True)
 
 
-def draw_plate_preview(window, canvas, plate):
-    # Calculate cell dimensions
-    canvas_width = canvas.winfo_reqwidth()
-    canvas_height = canvas.winfo_reqheight()
+# def draw_plate_preview(window, canvas, plate):
+#     # Calculate cell dimensions
+#     canvas_width = canvas.winfo_reqwidth()
+#     canvas_height = canvas.winfo_reqheight()
    
-    margin = 20
-    grid_width = canvas_width - 2 * margin
-    grid_height = canvas_height - 2 * margin
+#     margin = 20
+#     grid_width = canvas_width - 2 * margin
+#     grid_height = canvas_height - 2 * margin
    
-    # Calculate dimensions considering gaps
-    cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
-    total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
-    total_width = window.layout_data['columns'] + total_gaps
-    cell_width = grid_width / total_width
-    cell_height = grid_height / window.layout_data['rows']
+#     # Calculate dimensions considering gaps
+#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
+#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
+#     total_width = window.layout_data['columns'] + total_gaps
+#     cell_width = grid_width / total_width
+#     cell_height = grid_height / window.layout_data['rows']
     
-    # Draw strain sections and labels
-    current_x = margin
-    for position_idx in range(window.layout_data['strains']):
-        start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-        position_width = (end_col - start_col + 1) * cell_width
+#     # Draw strain sections and labels
+#     current_x = margin
+#     for position_idx in range(window.layout_data['strains']):
+#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
+#         position_width = (end_col - start_col + 1) * cell_width
        
-        # Find strain assignment for this section
-        assigned_strain = None
-        for pos_key, assignment in plate.get('assignments', {}).items():
-            row, col = map(int, pos_key.split('-'))
-            if start_col <= col <= end_col:
-                assigned_strain = assignment
-                break
+#         # Find strain assignment for this section
+#         assigned_strain = None
+#         for pos_key, assignment in plate.get('assignments', {}).items():
+#             row, col = map(int, pos_key.split('-'))
+#             if start_col <= col <= end_col:
+#                 assigned_strain = assignment
+#                 break
        
-        if window.current_mode == 'A':
-            # Determine label text (strain or position)
-            label_text = assigned_strain if assigned_strain else f"PosC {window.position_labels[position_idx]}"
+#         if window.current_mode == 'A':
+#             # Determine label text (strain or position)
+#             label_text = assigned_strain if assigned_strain else f"PosC {window.position_labels[position_idx]}"
             
-            # Calculate font size to fit position width
+#             # Calculate font size to fit position width
 
    
             
-            # Draw label
-            canvas.create_text(
-                current_x + position_width/2,
-                margin,
-                text=label_text,
-                font=(FONT, 12, 'bold'),
-                fill=DARK,
-                anchor='s'
-            )
+#             # Draw label
+#             canvas.create_text(
+#                 current_x + position_width/2,
+#                 margin,
+#                 text=label_text,
+#                 font=(FONT, 12, 'bold'),
+#                 fill=DARK,
+#                 anchor='s'
+#             )
        
-        for col_offset in range(end_col - start_col + 1):
-            col = start_col + col_offset
-            x_pos = current_x + col_offset * cell_width + cell_width/2
+#         for col_offset in range(end_col - start_col + 1):
+#             col = start_col + col_offset
+#             x_pos = current_x + col_offset * cell_width + cell_width/2
            
-            for row in range(window.layout_data['rows']):
-                pos_key = f"{row}-{col}"
-                if pos_key not in window.plate_layout['removed_positions']:
-                    y_pos = margin + row * cell_height + cell_height/2
+#             for row in range(window.layout_data['rows']):
+#                 pos_key = f"{row}-{col}"
+#                 if pos_key not in window.plate_layout['removed_positions']:
+#                     y_pos = margin + row * cell_height + cell_height/2
                    
-                    # Determine spot color based on strain assignment
-                    if window.current_mode == 'A':
-                        spot_color = GRAY1
-                    else:
-                        spot_color = "#073b3a"
-                    if pos_key in plate['assignments']:
-                        strain = plate['assignments'][pos_key]
-                        strain_index = window.strains.index(strain)
-                        spot_color = window.strain_colors[strain_index]
+#                     # Determine spot color based on strain assignment
+#                     if window.current_mode == 'A':
+#                         spot_color = GRAY1
+#                     else:
+#                         spot_color = "#073b3a"
+#                     if pos_key in plate['assignments']:
+#                         strain = plate['assignments'][pos_key]
+#                         strain_index = window.strains.index(strain)
+#                         spot_color = window.strain_colors[strain_index]
                    
-                    # Draw spot
-                    canvas.create_oval(
-                        x_pos-8, y_pos-8, x_pos+8, y_pos+8,
-                        fill=spot_color,
-                        outline=spot_color
-                    )
+#                     # Draw spot
+#                     canvas.create_oval(
+#                         x_pos-8, y_pos-8, x_pos+8, y_pos+8,
+#                         fill=spot_color,
+#                         outline=spot_color
+#                     )
        
-        # Update x position for next group
-        current_x += position_width
+#         # Update x position for next group
+#         current_x += position_width
        
-        # Add gap after each position except the last one
-        if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
-            current_x += cell_width
+#         # Add gap after each position except the last one
+#         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
+#             current_x += cell_width
 
 
 
