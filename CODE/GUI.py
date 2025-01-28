@@ -587,6 +587,8 @@ def go_to_assignment_screen(window):
 
 
 def create_plate_designer(window, mode="A"):
+    global CURRENTPLATEINDEX
+    CURRENTPLATEINDEX = 0
     # Properly destroy existing widgets
     if hasattr(window, 'checkboxes'):
         for checkbox in window.checkboxes:
@@ -1018,8 +1020,6 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     draw_positions_and_spots(window, margin_left, margin_top, 
                            cell_width, cell_height, num_strains) 
 
-
-
 def truncate_strain_name(strain_name, max_width, window):
     """
     Truncates strain name to fit within max_width and adds strain number
@@ -1122,7 +1122,6 @@ def draw_positions_and_spots(window, margin_left, margin_top,
         if window.layout_data['gap_between_strains'] and position_idx < num_strains - 1:
             current_x += cell_width
 
-
 def create_strain_controls(window):
     if window.current_mode == 'A':
         # "Add a strain" header
@@ -1138,7 +1137,6 @@ def create_strain_controls(window):
         # Strain name entry frame
         strain_frame = tk.Frame(window.control_frame, bg=DARK)
         strain_frame.pack(fill=tk.X, padx=10, pady=(0, 10))
-       
         # Strain entry field with RoundedEntry
         window.strain_entry = RoundedEntry(
             strain_frame,
@@ -1251,11 +1249,11 @@ def add_strain(window):
         
         # Create a Canvas for the "Assign" button
         assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.pack(side=tk.LEFT, padx=(1, 0))
-        
+        assign_canvas.pack(side=tk.LEFT, padx=0)  # No spacing on the left or right
+
         # Create a Canvas for the "X" delete button
         delete_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=30, height=30)
-        delete_canvas.pack(side=tk.LEFT, padx=(1, 0))
+        delete_canvas.pack(side=tk.LEFT, padx=0)
         
         # Create the rounded "Assign" button
         create_rounded_button(
@@ -1360,8 +1358,6 @@ def assign_strain_to_group(window, strain):
             finally:
                 strain_location_menu.grab_release()
 
-
-
 def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
     if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
         return
@@ -1389,7 +1385,6 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
                 plate['assignments'][pos_key] = strain
                 
     update_plate_display(window)
-
 
 def delete_strain(window, strain, strain_frame):
         
@@ -1469,13 +1464,15 @@ def rebuild_strain_list(window):
         button_frame = tk.Frame(strain_frame, bg=DARK)
         button_frame.pack(side=tk.RIGHT)
         
+        # Create a frame for buttons
+        
         # Create a Canvas for the "Assign" button
         assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.pack(side=tk.LEFT, padx=(1, 0))
-        
+        assign_canvas.pack(side=tk.LEFT, padx=0)  # No spacing on the left or right
+
         # Create a Canvas for the "X" delete button
         delete_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=30, height=30)
-        delete_canvas.pack(side=tk.LEFT, padx=(1, 0))
+        delete_canvas.pack(side=tk.LEFT, padx=0)
         
         # Create the rounded "Assign" button
         create_rounded_button(
@@ -1501,11 +1498,12 @@ def rebuild_strain_list(window):
             width=25,
             height=25,
             cornerradius=6,
-            fill=LIGHT,
+            fill=LIGHT,  # Red color for delete button
             accent=DARK,
             font_size=12,
             bold=True
         )
+        
         
         window.strain_buttons.append((strain_label, assign_canvas, delete_canvas))
 
@@ -1539,6 +1537,7 @@ def hide_current_plate(window):
 
 
 def add_plate(window):
+    print(window.plates)
     global CURRENTPLATEINDEX
     window.plate_visible = True 
     name = window.plate_entry.get().strip()
@@ -2169,87 +2168,6 @@ def preview_all_plates(window):
     scrollbar.pack(side="right", fill="y")
     canvas.pack(side="left", fill="both", expand=True)
 
-
-# def draw_plate_preview(window, canvas, plate):
-#     # Calculate cell dimensions
-#     canvas_width = canvas.winfo_reqwidth()
-#     canvas_height = canvas.winfo_reqheight()
-   
-#     margin = 20
-#     grid_width = canvas_width - 2 * margin
-#     grid_height = canvas_height - 2 * margin
-   
-#     # Calculate dimensions considering gaps
-#     cols_per_strain = window.layout_data['columns'] // window.layout_data['strains']
-#     total_gaps = window.layout_data['strains'] - 1 if window.layout_data['gap_between_strains'] else 0
-#     total_width = window.layout_data['columns'] + total_gaps
-#     cell_width = grid_width / total_width
-#     cell_height = grid_height / window.layout_data['rows']
-    
-#     # Draw strain sections and labels
-#     current_x = margin
-#     for position_idx in range(window.layout_data['strains']):
-#         start_col, end_col = window.plate_layout['strain_positions'][position_idx]
-#         position_width = (end_col - start_col + 1) * cell_width
-       
-#         # Find strain assignment for this section
-#         assigned_strain = None
-#         for pos_key, assignment in plate.get('assignments', {}).items():
-#             row, col = map(int, pos_key.split('-'))
-#             if start_col <= col <= end_col:
-#                 assigned_strain = assignment
-#                 break
-       
-#         if window.current_mode == 'A':
-#             # Determine label text (strain or position)
-#             label_text = assigned_strain if assigned_strain else f"PosC {window.position_labels[position_idx]}"
-            
-#             # Calculate font size to fit position width
-
-   
-            
-#             # Draw label
-#             canvas.create_text(
-#                 current_x + position_width/2,
-#                 margin,
-#                 text=label_text,
-#                 font=(FONT, 12, 'bold'),
-#                 fill=DARK,
-#                 anchor='s'
-#             )
-       
-#         for col_offset in range(end_col - start_col + 1):
-#             col = start_col + col_offset
-#             x_pos = current_x + col_offset * cell_width + cell_width/2
-           
-#             for row in range(window.layout_data['rows']):
-#                 pos_key = f"{row}-{col}"
-#                 if pos_key not in window.plate_layout['removed_positions']:
-#                     y_pos = margin + row * cell_height + cell_height/2
-                   
-#                     # Determine spot color based on strain assignment
-#                     if window.current_mode == 'A':
-#                         spot_color = GRAY1
-#                     else:
-#                         spot_color = "#073b3a"
-#                     if pos_key in plate['assignments']:
-#                         strain = plate['assignments'][pos_key]
-#                         strain_index = window.strains.index(strain)
-#                         spot_color = window.strain_colors[strain_index]
-                   
-#                     # Draw spot
-#                     canvas.create_oval(
-#                         x_pos-8, y_pos-8, x_pos+8, y_pos+8,
-#                         fill=spot_color,
-#                         outline=spot_color
-#                     )
-       
-#         # Update x position for next group
-#         current_x += position_width
-       
-#         # Add gap after each position except the last one
-#         if window.layout_data['gap_between_strains'] and position_idx < window.layout_data['strains'] - 1:
-#             current_x += cell_width
 
 
 
