@@ -310,109 +310,9 @@ def create_mode_switcher(control_frame, window):
         bold=True
     )
 
-# def create_plate_display(plate_frame, window):
-#     window.plate_canvas = tk.Canvas(
-#         plate_frame,
-#         bg=DARK,
-#         highlightthickness=0
-#     )
-#     window.plate_canvas.pack(expand=True, fill='both')
-#     update_plate_display_layout_designer(window)
 
-# def update_plate_display_layout_designer(window):
-#     window.plate_canvas.delete('all')
-    
-#     try:
-#         rows = max(1, window.plate_layout['rows'].get())
-#         cols = max(1, window.plate_layout['columns'].get())
-#         strains = max(1, window.plate_layout['strains'].get())
-#         x_dil = max(1, window.plate_layout['x_dilution'].get())
-#         y_dil = max(1, window.plate_layout['y_dilution'].get())
-#     except tk.TclError:
-#         return
-        
-#     width = window.plate_canvas.winfo_width()
-#     height = window.plate_canvas.winfo_height()
-#     if width <= 1 or height <= 1:
-#         window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
-#         return
-        
-#     margin =margin_sides= 50
-#     grid_width = width - 2 * margin
-#     grid_height = height - 2 * margin
-#     cols_per_strain = cols // strains
-#     total_cols = cols
-    
-#     if window.plate_layout['gap_between_strains'].get():
-#         total_gaps = strains - 1
-#         total_cols = cols + total_gaps
 
-#     # Adjust cell dimensions based on the square grid setting
-#     cell_width = grid_width / total_cols
-#     cell_height = grid_height / rows
 
-#     if window.plate_layout['square_grid'].get():
-#         # Enforce square cells considering gaps
-#         total_width_with_gaps = total_cols  # Includes gaps as extra columns
-#         cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
-#         cell_width = cell_height = cell_size
-#         margin_sides = (width - (cell_width * total_cols))/2
-#     # Update strain positions
-#     current_col = 0
-#     window.plate_layout['strain_positions'] = {}
-    
-#     for strain in range(strains):
-#         start_col = current_col
-#         end_col = start_col + cols_per_strain - 1
-#         window.plate_layout['strain_positions'][strain] = (start_col, end_col)
-#         current_col = end_col + 1
-#         if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
-#             current_col += 1  # Add one gap column
-
-#     draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
-
-# def draw_spots(window, strains,margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
-#     for strain in range(strains):
-#         start_col, end_col = window.plate_layout['strain_positions'][strain]
-#         for col_offset in range(end_col - start_col + 1):
-#             actual_col = start_col + col_offset
-#             x_value = x_dil ** col_offset
-#             x_pos = margin_sides + actual_col * cell_width + cell_width/2
-            
-#             if window.current_mode =='A':
-#                 window.plate_canvas.create_text(
-#                     x_pos,
-#                     margin - 20,
-#                     text=x_value,
-#                     fill=LIGHT,
-#                     font=(FONT, 8)
-#                 )
-            
-#             for row in range(rows):
-#                 pos_key = f"{row}-{actual_col}"
-#                 if pos_key not in window.plate_layout['removed_positions']:
-#                     x = margin_sides + actual_col * cell_width + cell_width/2
-#                     y = margin + row * cell_height + cell_height/2
-#                     color = COLORS[strain % len(COLORS)]
-                    
-#                     window.plate_canvas.create_oval(
-#                         x-10, y-10, x+10, y+10,
-#                         fill=color,
-#                         outline=color,
-#                         tags=(pos_key, "spot", f"strain_{strain}")
-#                     )
-#                         # Add y-dilution labels (to the left of the rows)
-#             for row in range(rows):
-#                 y_value = y_dil ** row
-#                 y_pos = margin + row * cell_height + cell_height / 2
-#                 if window.current_mode == 'A' and strain == 0:  # Only add y-labels once
-#                     window.plate_canvas.create_text(
-#                         margin_sides - 20,  # Positioning to the left of the spots
-#                         y_pos,
-#                         text=y_value,
-#                         fill=LIGHT,
-#                         font=(FONT, 8)
-#                     )        
 
 
 def create_plate_display(plate_frame, window):
@@ -599,7 +499,7 @@ def create_plate_designer(window, mode="A"):
     
     # Initialize plate layout attributes with defaults if it doesn't already exist
     if not hasattr(window, 'plate_layout'):
-        window.old_num_strains =tk.IntVar(value=3)
+        window.old_num_strains = tk.IntVar(value=3) 
         window.plate_layout = {
             'rows': tk.IntVar(value=8),
             'columns': tk.IntVar(value=12),
@@ -621,7 +521,7 @@ def create_plate_designer(window, mode="A"):
             current_square = window.plate_layout['square_grid'].get()
             
             # Update values while maintaining tkinter variable types
-            window.old_num_strains = window.plate_layout['strains'].get()
+            window.old_num_strains.set(window.plate_layout['strains'].get())
             window.plate_layout['rows'].set(current_rows)
             window.plate_layout['columns'].set(current_cols)
             window.plate_layout['strains'].set(1)
@@ -789,33 +689,7 @@ def create_strain_designer(window):
         font_size=15
 
     )
-    if window.current_mode == 'A':
-        create_rounded_button(
-            window.canvas,
-            "Apply Previous Layout",
-            lambda: copy_from_previous_plate(window),
-            1171,
-            buttonPosY-65,
-            width=200,
-            height=35,
-            cornerradius=6,
-            fill=LIGHT,
-            accent=DARK,
-            bold=False
-        )
-        create_rounded_button(
-        canvas=window.canvas,
-        text="Finish Layout",
-        command=lambda: hide_current_plate(window),
-        x=1171 -300,  # Position next to other controls
-        y=buttonPosY-65,  # Position above "Apply Previous Layout"
-        width=200,
-        height=35,
-        cornerradius=6,
-        fill=LIGHT,
-        accent=DARK,
-        bold=False
-    )
+
 
     create_rounded_button(
         canvas=window.canvas,
@@ -1164,50 +1038,50 @@ def create_strain_controls(window):
         # Create a frame to hold the canvas and scrollbar
         container_frame = tk.Frame(window.control_frame, bg=DARK)
         container_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=(5, 20))
-        
-        # Create canvas for scrollable content
+    
         canvas = tk.Canvas(container_frame, bg=DARK, highlightthickness=0)
-        scrollbar = tk.Scrollbar(container_frame, orient="vertical", command=canvas.yview)
-        
-        # Create the frame that will contain the strains
         window.strain_list_frame = tk.Frame(canvas, bg=DARK)
-        
-        # Configure the canvas
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
-        # Pack the scrollbar and canvas
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
-        # Create a window inside the canvas to hold the strain list frame
-        canvas.create_window((0, 0), window=window.strain_list_frame, anchor="nw", width=canvas.winfo_width())
-        
-        # Configure canvas scrolling
+        canvas_window = canvas.create_window((0, 0), window=window.strain_list_frame, anchor="nw")
+    
         def configure_scroll_region(event):
             canvas.configure(scrollregion=canvas.bbox("all"))
         
         def configure_window_size(event):
             canvas.itemconfig(canvas_window, width=event.width)
-            
-        # Store the window reference for later use
-        canvas_window = canvas.create_window((0, 0), window=window.strain_list_frame, anchor="nw")
         
-        # Bind events for scrolling
         window.strain_list_frame.bind("<Configure>", configure_scroll_region)
         canvas.bind("<Configure>", configure_window_size)
         
-        # Bind mouse wheel for scrolling
-        def on_mousewheel(event):
-            canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        # Smooth scrolling implementation
+        def smooth_scroll(event):
+            # Get current scroll position
+            current_position = canvas.yview()[0]
+            
+            # Calculate target position (smoother scrolling)
+            delta = -1 * (event.delta / 1200)  # Reduced scroll speed
+            target_position = current_position + delta
+            
+            # Clamp target position between 0 and 1
+            target_position = max(0, min(1, target_position))
+            
+            # Animate the scroll
+            def animate_scroll(current, target, steps=10):
+                if steps > 0:
+                    next_position = current + (target - current) / steps
+                    canvas.yview_moveto(next_position)
+                    window.after(10, animate_scroll, next_position, target, steps - 1)
+            
+            animate_scroll(current_position, target_position)
         
-        canvas.bind_all("<MouseWheel>", on_mousewheel)
+        canvas.bind_all("<MouseWheel>", smooth_scroll)
 
 def add_strain(window):
     strain = window.strain_entry.get().strip()
     def truncate_strain(strain):
-        if len(strain) > 20:
-            return strain[:17] + "..."
-            print("LARGER")
+        if len(strain) > 18:
+            return strain[:15] + "..."
         return strain
     if strain and strain not in window.strains:
         if len(window.strains) >= 14:
@@ -1245,15 +1119,17 @@ def add_strain(window):
         
         # Create a frame for buttons
         button_frame = tk.Frame(strain_frame, bg=DARK)
-        button_frame.pack(side=tk.RIGHT)
-        
-        # Create a Canvas for the "Assign" button
-        assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.pack(side=tk.LEFT, padx=0)  # No spacing on the left or right
+        button_frame.pack(side=tk.RIGHT, anchor='e')  # Ensure buttons are tight
 
-        # Create a Canvas for the "X" delete button
+             # Create a Canvas for the "X" delete button
         delete_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=30, height=30)
-        delete_canvas.pack(side=tk.LEFT, padx=0)
+        delete_canvas.pack(side=tk.RIGHT)  
+
+        # Create a Canvas for the "Assign" button
+        assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=70, height=30)  # Slightly smaller width
+        assign_canvas.pack(side=tk.RIGHT , padx=2)  # Use RIGHT for tight placement
+
+   
         
         # Create the rounded "Assign" button
         create_rounded_button(
@@ -1448,7 +1324,7 @@ def rebuild_strain_list(window):
         color_indicator.pack(side=tk.LEFT, padx=(0, 5))
         
         # Truncate strain name if necessary
-        truncated_strain = strain if len(strain) <= 20 else strain[:17] + "..."
+        truncated_strain = strain if len(strain) <= 17 else strain[:15] + "..."
         
         # Strain label with updated number
         strain_label = tk.Label(
@@ -1460,19 +1336,19 @@ def rebuild_strain_list(window):
         )
         strain_label.pack(side=tk.LEFT, expand=True, anchor='w')
         
-        # Create a frame for buttons
+              # Create a frame for buttons
         button_frame = tk.Frame(strain_frame, bg=DARK)
-        button_frame.pack(side=tk.RIGHT)
-        
-        # Create a frame for buttons
-        
-        # Create a Canvas for the "Assign" button
-        assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=80, height=30)
-        assign_canvas.pack(side=tk.LEFT, padx=0)  # No spacing on the left or right
+        button_frame.pack(side=tk.RIGHT, anchor='e')  # Ensure buttons are tight
 
-        # Create a Canvas for the "X" delete button
+             # Create a Canvas for the "X" delete button
         delete_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=30, height=30)
-        delete_canvas.pack(side=tk.LEFT, padx=0)
+        delete_canvas.pack(side=tk.RIGHT)  
+
+        # Create a Canvas for the "Assign" button
+        assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=70, height=30)  # Slightly smaller width
+        assign_canvas.pack(side=tk.RIGHT , padx=2)  # Use RIGHT for tight placement
+
+   
         
         # Create the rounded "Assign" button
         create_rounded_button(
@@ -1504,8 +1380,8 @@ def rebuild_strain_list(window):
             bold=True
         )
         
-        
         window.strain_buttons.append((strain_label, assign_canvas, delete_canvas))
+        
 
 def hide_current_plate(window):
     if not window.plates or CURRENTPLATEINDEX < 0 or CURRENTPLATEINDEX >= len(window.plates):
@@ -1781,13 +1657,10 @@ def create_plate_controls(window):
         fill = LIGHT, accent = DARK
     )
 
+
     # Plate management buttons
-    buttons_frame = tk.Frame(controls_container, bg=DARK)
-    buttons_frame.pack(fill=tk.X, pady=(5, 0))
-    
-    # Create a canvas for management buttons
-    management_button_canvas = tk.Canvas(buttons_frame, bg=DARK, highlightthickness=0, width=300, height=40)  # Increased height
-    management_button_canvas.pack(fill=tk.X)
+    management_button_canvas = tk.Canvas(window.canvas, bg=DARK, width=300, height=40, highlightthickness=0)
+    management_button_canvas .place(x=37, y=178-y_offset_edit)
     
     # Delete button
     create_rounded_button(
@@ -1798,35 +1671,83 @@ def create_plate_controls(window):
         width=80, 
         height=35, 
         cornerradius=6, 
+        font_size=8,
         fill = LIGHT, accent = DARK,
         bold=False  # Unbolded text
     )
+
+    # Rename button
+        create_rounded_button(
+            management_button_canvas, 
+            "Rename", 
+            lambda: rename_current_plate(window), 
+            90, 0, 
+            width=80, 
+            height=35, 
+            cornerradius=6,
+            font_size=8,
+            fill = LIGHT, accent = DARK,
+            bold=False  # Unbolded text
+        )
     
     # Clear button
-    create_rounded_button(
+
+
+    if window.current_mode == 'A':
+        create_rounded_button(
         management_button_canvas, 
         "Clear", 
         lambda: clear_current_plate(window), 
-        90, 0, 
-        width=80, 
-        height=35, 
-        cornerradius=6,
-        fill = LIGHT, accent = DARK,
-        bold=False  # Unbolded text
-    )
-    
-    # Rename button
-    create_rounded_button(
-        management_button_canvas, 
-        "Rename", 
-        lambda: rename_current_plate(window), 
         180, 0, 
         width=80, 
         height=35, 
         cornerradius=6,
+        font_size=8,
         fill = LIGHT, accent = DARK,
         bold=False  # Unbolded text
+        )
+
+
+        
+        
+
+
+
+        management_button_canvas2 = tk.Canvas(window.canvas, bg=DARK, width=230, height=40, highlightthickness=0)
+        management_button_canvas2.place(x=1100-257, y=178-y_offset_edit)
+
+
+        create_rounded_button(
+            management_button_canvas2,
+            "Copy Previous",
+            lambda: copy_from_previous_plate(window),
+            0,
+            0,
+            width=110,
+            height=35,
+            cornerradius=6,
+            fill=LIGHT,
+            font_size=8,
+            accent=DARK,
+            bold=False
+        )
+        create_rounded_button(
+        canvas=management_button_canvas2,
+        text="Save Layout",
+        command=lambda: hide_current_plate(window),
+        x=120,  # Position next to other controls
+        y=0,  # Position above "Apply Previous Layout"
+        width=110,
+        height=35,
+        cornerradius=6,
+        fill=LIGHT,
+        font_size=8,
+        accent=DARK,
+        bold=False
     )
+
+
+
 
 def toggle_additive_entry(window):
     if window.additive_var.get():
@@ -1838,7 +1759,7 @@ def toggle_additive_entry(window):
 def setup_frames(window):
     # Main frames
     window.plate_frame = tk.Frame(window.canvas, bg=DARK)
-    window.plate_frame.place(x=27, y=178-y_offset_edit, width=1070, height=532)
+    window.plate_frame.place(x=27, y=178-y_offset_edit+20, width=1070, height=532)
     
     window.control_frame = tk.Frame(window.canvas, bg=DARK)
     window.control_frame.place(x=1130, y=178-y_offset_edit, width=282, height=532)
@@ -2114,9 +2035,9 @@ def preview_all_plates(window):
 
     main_frame = tk.Frame(preview_window, bg=LIGHT)
     main_frame.pack(fill='both', expand=True)
-    canvas = tk.Canvas(main_frame, bg=LIGHT, highlightthickness=0)
+    canvas = tk.Canvas(main_frame, bg=DARK, highlightthickness=0)
     scrollbar = tk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
-    scrollable_frame = tk.Frame(canvas, bg=LIGHT)
+    scrollable_frame = tk.Frame(canvas, bg=DARK)
     scrollable_frame.bind(
         "<Configure>",
         lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
