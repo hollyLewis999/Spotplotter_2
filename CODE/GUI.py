@@ -1677,7 +1677,7 @@ def create_plate_controls(window):
     )
 
     # Rename button
-        create_rounded_button(
+    create_rounded_button(
             management_button_canvas, 
             "Rename", 
             lambda: rename_current_plate(window), 
