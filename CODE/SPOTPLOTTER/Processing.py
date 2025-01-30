@@ -748,5 +748,4 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_w
 
     end_time = time.time()
     print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
-    cv2.imwrite('marked_image3.jpg', marked_image)
     return counts, marked_image
