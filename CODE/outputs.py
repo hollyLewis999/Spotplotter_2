@@ -198,29 +198,6 @@ def generate_data_series(window):
             # Add to temporary list for normalization calculation
             all_data_series.append(series_dict)
     
-    # Calculate normalization values for each strain
-    # for strain in set(series['strain'] for series in all_data_series):
-    #     # Calculate normalization value for this strain
-    #     print("STRAIN3")
-    #     print(strain)
-    #     norm_value = calculate_strain_normalization_value(all_data_series, strain)
-        
-    #     # Update series with normalized values for this strain
-    #     for series_dict in all_data_series:
-    #         if series_dict['strain'] == strain:
-    #             # Normalize values
-    #             normalized_y_values = normalize_array(series_dict['y_values'], norm_value)
-                
-    #             # Update series with normalized values and normalization value
-    #             series_dict['normalized_y_values'] = normalized_y_values
-    #             series_dict['norm_value'] = norm_value
-                
-    #             # Add to strain data
-    #             strain_data[strain].append(series_dict)
-    
-    # # Convert strain_data to a list of series if needed
-    # #out of order at this point
-    # data_series = []
 
     strain_order = []
     strain_data = {}
@@ -1370,7 +1347,11 @@ def generate_pdf_log(all_plate_info, output_filename, filename, version="1.0.0" 
 
 
 def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, filename, version="1.0.0"):
-    
+    print("all_strain_data")
+    print(all_strain_data)
+
+    print("ALL PLATE INFO")
+    print(all_strain_data)
     """
     Generates a single PDF report containing data for all strains.
     Each strain's figures are on consecutive pages with statistics underneath.
