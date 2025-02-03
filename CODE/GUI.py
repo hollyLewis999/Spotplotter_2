@@ -4344,12 +4344,12 @@ window.title("SpotPlotter")
 
 
 window.iconbitmap("Icons/ICON.ico")
-# initialize_window_attributes(window)
+initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-# title_frame_widgets = create_titleFrame(content_frame)
-# title_frame_widgets = create_titleFrame(window)
+title_frame_widgets = create_titleFrame(content_frame)
+title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -4358,11 +4358,11 @@ window.mainloop()
 
 
 
-restore_window_state(window, 'PhiaUVData3.pkl')
-process_results(window)
+# restore_window_state(window, 'PhiaUVData2.pkl')
+# process_results(window)
 
 
-#FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
+# FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
 
 
 

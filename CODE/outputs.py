@@ -7,7 +7,7 @@ import pandas as pd
 import seaborn as sns
 import string
 from matplotlib.patches import Patch
-
+from scipy.optimize import curve_fit
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -607,7 +607,7 @@ def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 
 
-def calculate_statistics(x, y, color, label, additive):
+def calculate_statistics_line(x, y, color, label, additive):
     valid_x = []
     valid_y = []
     excluded_points = []
@@ -650,6 +650,91 @@ def calculate_statistics(x, y, color, label, additive):
         }
     
     return None
+
+
+import numpy as np
+from scipy import stats, optimize
+from typing import List, Dict, Optional, Tuple
+
+def calculate_statistics(x, y, color, label, additive, degree=6):
+    """
+    Calculate statistics using polynomial curve fitting.
+    
+    Args:
+        x (List[float]): X values
+        y (List[float]): Y values
+        color: Color for plotting
+        label: Label for the dataset
+        additive: Additive information
+        degree (int): Degree of polynomial fit (default=2 for quadratic)
+    """
+    valid_x = []
+    valid_y = []
+    
+    # Track points excluded from calculations
+    for xi, yi in zip(x, y):
+        if xi > 0 and yi > 10:
+            # Convert to log 10 because of the dilution sequence
+            valid_x.append(np.log10(xi))
+            valid_y.append(yi)
+    
+    if len(valid_x) > degree:  # Need more points than degree for fitting
+        # Fit polynomial of specified degree
+        coefficients = np.polyfit(valid_x, valid_y, degree)
+        
+        # Calculate R-squared
+        p = np.poly1d(coefficients)
+        y_fit = p(valid_x)
+        residuals = valid_y - y_fit
+        ss_res = np.sum(residuals**2)
+        ss_tot = np.sum((valid_y - np.mean(valid_y))**2)
+        r_squared = 1 - (ss_res / ss_tot)
+        
+        # Generate formula string
+        formula_terms = []
+        for i, coef in enumerate(coefficients):
+            power = degree - i
+            if power > 1:
+                formula_terms.append(f"{coef:.2f} * log10(x)^{power}")
+            elif power == 1:
+                formula_terms.append(f"{coef:.2f} * log10(x)")
+            else:
+                formula_terms.append(f"{coef:.2f}")
+        formula = "y = " + " + ".join(formula_terms)
+        
+        # Find x value at y=50 numerically
+        def func(x):
+            return p(np.log10(x)) - 50
+        
+        try:
+            x_at_y50 = optimize.brentq(func, 1e-10, 1e10)
+        except ValueError:
+            x_at_y50 = None
+        
+        # Find x and y intercepts
+        y_cut = p(0)  # y value at log10(x) = 0 (x = 1)
+        
+        # Find x intercept numerically
+        try:
+            x_cut = optimize.brentq(lambda x: p(np.log10(x)), 1e-10, 1e10)
+        except ValueError:
+            x_cut = None
+        
+        return {
+            'coefficients': coefficients.tolist(),
+            'r_squared': r_squared,
+            'formula': formula,
+            'y_cut': y_cut,
+            'x_cut': x_cut,
+            'x_at_y50': x_at_y50,
+            'label': label,
+            'additive': additive,
+            'color': color,
+            'full_line_formula': formula
+        }
+    
+    return None
+
 
 #  d888b  d8888b.  .d8b.  d8888b. db   db .d8888.       .d8888b.
 # 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP       88   `8D 

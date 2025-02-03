@@ -267,7 +267,6 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
     return figures_and_stats
 
-
 def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 
