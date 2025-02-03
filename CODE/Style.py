@@ -291,15 +291,16 @@ class RoundedEntry(tk.Frame):
             self,
             bg="white",
             fg=DARK,  # Ensure the text color is dark
+            insertbackground=DARK,
             bd=0,
             highlightthickness=0,
             **kwargs
         )
-        self.entry.place(
-            x=10,
-            y=height//2,
-            width=width-20,
-            anchor="w"
+        self.canvas.create_window(
+            width//2, height//2,
+            window=self.entry,
+            width=width - 20,
+            height=height - 10
         )
 
     # Add these delegate methods

@@ -1480,25 +1480,42 @@ def rename_current_plate(window):
     # Create rename dialog
     rename_dialog = tk.Toplevel(window)
     rename_dialog.title("Rename Plate")
-    rename_dialog.geometry("300x120")
+    rename_dialog.geometry("300x180")  # Increased height to accommodate rounded components
     rename_dialog.configure(bg=DARK)
+    rename_dialog.iconbitmap("Icons/ICON.ico")
     
     # Make dialog modal
     rename_dialog.transient(window)
     rename_dialog.grab_set()
     
-    # Create and pack widgets
-    tk.Label(
+    # Create main canvas for custom drawing
+    main_canvas = tk.Canvas(
         rename_dialog,
+        width=300,
+        height=180,
+        bg=DARK,
+        highlightthickness=0
+    )
+    main_canvas.pack(fill=tk.BOTH, expand=True)
+    
+    # Add label
+    main_canvas.create_text(
+        150, 30,
         text="Enter new plate name:",
         font=(FONT, 12),
-        bg=DARK,
-        fg=LIGHT
-    ).pack(pady=10)
+        fill=LIGHT
+    )
     
-    name_entry = ttk.Entry(rename_dialog, width=30)
+    # Create rounded entry
+    name_entry = RoundedEntry(
+        rename_dialog,
+        width=260,
+        height=35,
+        corner_radius=10
+    )
     name_entry.insert(0, current_name)
-    name_entry.pack(pady=5)
+    # Position the entry widget on the canvas
+    main_canvas.create_window(150, 80, window=name_entry)
     
     def do_rename():
         new_name = name_entry.get().strip()
@@ -1507,26 +1524,36 @@ def rename_current_plate(window):
             update_plate_display(window)
             rename_dialog.destroy()
     
-    button_frame = tk.Frame(rename_dialog, bg=DARK)
-    button_frame.pack(pady=10)
+    # Create rounded buttons using the existing create_rounded_button function
+    create_rounded_button(
+        main_canvas,
+        "Cancel",
+        rename_dialog.destroy,
+        20,  # x position
+        120,  # y position
+        width=120,
+        height=40,
+        cornerradius=10,
+        font_size=10,
+        fill=LIGHT,
+        accent=DARK,
+        bold = False
+    )
     
-    tk.Button(
-        button_frame,
-        text="Cancel",
-        command=rename_dialog.destroy,
-        font=(FONT, 10),
-        bg=LIGHT,
-        fg=DARK
-    ).pack(side=tk.LEFT, padx=5)
-    
-    tk.Button(
-        button_frame,
-        text="Rename",
-        command=do_rename,
-        font=(FONT, 10),
-        bg=LIGHT,
-        fg=DARK
-    ).pack(side=tk.LEFT, padx=5)
+    create_rounded_button(
+        main_canvas,
+        "Rename",
+        do_rename,
+        160,  # x position
+        120,  # y position
+        width=120,
+        height=40,
+        cornerradius=10,
+        font_size=10,
+        fill=LIGHT,
+        accent=DARK,
+        bold = False
+    )
     
     # Center the dialog on the window
     rename_dialog.update_idletasks()
@@ -1537,7 +1564,6 @@ def rename_current_plate(window):
     x = window.winfo_x() + (window_width - dialog_width) // 2
     y = window.winfo_y() + (window_height - dialog_height) // 2
     rename_dialog.geometry(f"+{x}+{y}")
-
 def prev_plate(window):
     global CURRENTPLATEINDEX
     if not window.plate_visible:
