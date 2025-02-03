@@ -945,7 +945,7 @@ def draw_positions_and_spots(window, margin_left, margin_top,
     def calculate_max_width(width):
         # Account for minimum spacing and font characteristics
         # Assuming average character width of 10 pixels at font size 16
-        return int(width*0.9 / 10) - 2  # -2 for some padding, minimum 5 chars
+        return int(width*0.8 / 10) - 2  # -2 for some padding, minimum 5 chars
     
     def truncate_strain(strain, max_chars):
         if len(strain) > max_chars:
@@ -2045,8 +2045,8 @@ def create_plate_preview_image(window, plate, width=1600, height=1200):
     
     return base64.b64encode(buffer.getvalue()).decode()
 
-def draw_plate_preview(window, canvas, plate):
-    draw_unified_plate_preview(window, canvas, plate, is_image=False)
+# def draw_plate_preview(window, canvas, plate):
+#     draw_unified_plate_preview(window, canvas, plate, is_image=False)
 
 def preview_all_plates(window):
     if not window.plates:
