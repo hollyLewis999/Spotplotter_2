@@ -450,8 +450,6 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             color_map[additive] = GREENCOLOURS
         elif len(color_map) % 4 == 2:
             color_map[additive] = PURPLESCOLOURS
-        elif len(color_map) % 4 == 3:
-            color_map[additive] = PINKCOLOURS    
     
     individual_statistics = []
     average_statistics = []
@@ -492,7 +490,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
             
             # Create a custom label that combines both scatter and trend line information
-            custom_label = f"{series['label']}\n(R² = {stats['r_squared']:.3f}\n{stats['formula']})"
+            custom_label = f"{series['label']}\n R² = {stats['r_squared']:.3f}\n{stats['formula']}"
             
             # Create a custom handle that will display both scatter and trend line
             custom_handle = plt.Line2D([0], [0], marker=marker, color=color, 
@@ -552,7 +550,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
                 
                 # Create custom handle and label for average plot legend
-                custom_label_avg = f"{additive}\n(R² = {stats['r_squared']:.3f}\n{stats['formula']})"
+                custom_label_avg = f"{additive}\nR² = {stats['r_squared']:.3f}\n{stats['formula']}"
                 custom_handle_avg = plt.Line2D([0], [0], marker=marker, color=color_map[additive][1], 
                                                linestyle='--', markersize=10, 
                                                label=custom_label_avg)
@@ -576,7 +574,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
             fontsize=20,
             loc='upper center',
             bbox_to_anchor=(0.5, -0.15),
-            ncol=3,  # 3 sets per row
+            ncol=4,  # 3 sets per row
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
@@ -601,7 +599,6 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
     return figures_and_stats
-
 
 def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
@@ -656,86 +653,47 @@ import numpy as np
 from scipy import stats, optimize
 from typing import List, Dict, Optional, Tuple
 
-def calculate_statistics(x, y, color, label, additive, degree=6):
-    """
-    Calculate statistics using polynomial curve fitting.
-    
-    Args:
-        x (List[float]): X values
-        y (List[float]): Y values
-        color: Color for plotting
-        label: Label for the dataset
-        additive: Additive information
-        degree (int): Degree of polynomial fit (default=2 for quadratic)
-    """
+
+def calculate_statistics(x, y, color, label, additive):
     valid_x = []
     valid_y = []
-    
+    excluded_points = []
+   
+   
     # Track points excluded from calculations
     for xi, yi in zip(x, y):
         if xi > 0 and yi > 10:
             # Convert to log 10 because of the dilution sequence
             valid_x.append(np.log10(xi))
             valid_y.append(yi)
-    
-    if len(valid_x) > degree:  # Need more points than degree for fitting
-        # Fit polynomial of specified degree
-        coefficients = np.polyfit(valid_x, valid_y, degree)
-        
-        # Calculate R-squared
-        p = np.poly1d(coefficients)
-        y_fit = p(valid_x)
-        residuals = valid_y - y_fit
-        ss_res = np.sum(residuals**2)
-        ss_tot = np.sum((valid_y - np.mean(valid_y))**2)
-        r_squared = 1 - (ss_res / ss_tot)
-        
-        # Generate formula string
-        formula_terms = []
-        for i, coef in enumerate(coefficients):
-            power = degree - i
-            if power > 1:
-                formula_terms.append(f"{coef:.2f} * log10(x)^{power}")
-            elif power == 1:
-                formula_terms.append(f"{coef:.2f} * log10(x)")
-            else:
-                formula_terms.append(f"{coef:.2f}")
-        formula = "y = " + " + ".join(formula_terms)
-        
-        # Find x value at y=50 numerically
-        def func(x):
-            return p(np.log10(x)) - 50
-        
-        try:
-            x_at_y50 = optimize.brentq(func, 1e-10, 1e10)
-        except ValueError:
-            x_at_y50 = None
-        
-        # Find x and y intercepts
-        y_cut = p(0)  # y value at log10(x) = 0 (x = 1)
-        
-        # Find x intercept numerically
-        try:
-            x_cut = optimize.brentq(lambda x: p(np.log10(x)), 1e-10, 1e10)
-        except ValueError:
-            x_cut = None
-        
+   
+    if len(valid_x) > 1:
+        # Getting statistics for filtered data
+        slope, intercept, r_value, p_value, std_err = stats.linregress(valid_x, valid_y)
+        r_squared = r_value*r_value
+        m, b = np.polyfit(valid_x, valid_y, 1)
+        y_cut = b
+        x_cut = 10*(-b / m)
+        x_at_y50 = 10 ** ((50 - b) / m)
+        formula = f"y = {m:.2f} * log10(x) + {b:.2f}"
+   
+   
+        # Return as a dictionary since it's nice to call values from
         return {
-            'coefficients': coefficients.tolist(),
+            'slope': m,
+            'intercept': b,
             'r_squared': r_squared,
             'formula': formula,
             'y_cut': y_cut,
             'x_cut': x_cut,
             'x_at_y50': x_at_y50,
             'label': label,
-            'additive': additive,
-            'color': color,
-            'full_line_formula': formula
+            'additive':additive,
+            'color': color,  # Add the color to the statistics dictionary
+            'full_line_formula': formula # Include full line formula
         }
-    
+   
     return None
-
-
 #  d888b  d8888b.  .d8b.  d8888b. db   db .d8888.       .d8888b.
 # 88' Y8b 88  `8D d8' `8b 88  `8D 88   88 88'  YP       88   `8D 
 # 88      88oobY' 88ooo88 88oodD' 88ooo88 `8bo.         88ooooY'
@@ -1660,14 +1618,14 @@ def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, 
                 # Process Control groups first
                 if 'Control' in additive_groups:
                     control_stats = additive_groups['Control']
-                    for i in range(0, len(control_stats), 3):
-                        control_groups.append(control_stats[i:i+3])
+                    for i in range(0, len(control_stats), 4):
+                        control_groups.append(control_stats[i:i+4])
                 
                 # Process other additives
                 for additive, group_stats in additive_groups.items():
                     if additive != 'Control':
-                        for i in range(0, len(group_stats), 3):
-                            other_groups.append(group_stats[i:i+3])
+                        for i in range(0, len(group_stats), 4):
+                            other_groups.append(group_stats[i:i+4])
                 
                 # Combine groups with Control first
                 return control_groups + other_groups

@@ -116,9 +116,15 @@ def stretch_and_gray(original_image, show_images=False):
     # Compute sigmaX and sigmaY as a function of the image size
     sigmaX = sigma_scale * width
     sigmaY = sigma_scale * height
-
+    sigma = min(sigmaX,sigmaY)
+    print("_________________________________")
+    print (sigmaX)
+    print(sigmaY)
+    print("_________________________________")
+    print("_________________________________")
+    print("_________________________________")
     # Apply Gaussian blur with calculated sigma values
-    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigmaX, sigmaY=sigmaX)
+    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
     # blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
     print(sigmaX, sigmaY)
@@ -414,190 +420,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         return grid_start_x, grid_start_y, cell_width, cell_width # maintains backward compatibility
     else:
         return grid_start_x, grid_start_y, cell_width, cell_height
-
-# def process_label(args):
-#     """
-#     Process a single label (spot) in the image
-    
-#     Parameters:
-#     - args: Tuple containing:
-#         - labeled_image: Labeled image from ndimage.label
-#         - label: Current label to process
-#         - grid_start_x: Starting x coordinate of the grid
-#         - grid_start_y: Starting y coordinate of the grid
-#         - cell_size: Size of each grid cell
-#         - rows: Number of rows in the grid
-#         - columns: Number of columns in the grid
-#         - width: Image width
-#         - height: Image height
-    
-#     Returns:
-#     - Tuple of (row, col, total_area) if the spot is successfully counted
-#     - None if the spot is not counted
-#     """
-#     (labeled_image, label, grid_start_x, grid_start_y, cell_size, 
-#      rows, columns, width, height) = args
-    
-#     component = (labeled_image == label)
-#     coords = np.column_stack(np.where(component))
-    
-#     # Calculate grid bounds
-#     min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
-#     max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
-#     min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
-#     max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
-    
-#     main_cell = None
-#     max_overlap = 0
-#     total_area = np.sum(component)
-    
-#     # Find the main cell with maximum overlap
-#     for row in range(min_row, max_row + 1):
-#         for col in range(min_col, max_col + 1):
-#             x1 = int(grid_start_x + col * cell_size)
-#             y1 = int(grid_start_y + row * cell_size)
-#             x2 = int(x1 + cell_size)
-#             y2 = int(y1 + cell_size)
-            
-#             x1, y1 = max(0, x1), max(0, y1)
-#             x2, y2 = min(width, x2), min(height, y2)
-            
-#             cell = component[y1:y2, x1:x2]
-#             overlap = np.sum(cell)
-            
-#             if overlap > max_overlap:
-#                 max_overlap = overlap
-#                 main_cell = (row, col)
-    
-#     # Check if the spot should be counted
-#     if main_cell is not None:
-#         main_row, main_col = main_cell
-#         outside_area = total_area - max_overlap
-        
-#         if outside_area <= 0.4 * total_area:
-#             return (main_row, main_col, total_area)
-    
-#     return None
-
-
-
-# def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_size, 
-#                   rows, columns, width, height):
-#     """
-#     Process a single label (spot) in the image
-    
-#     Returns:
-#     - Tuple of (row, col, total_area) if the spot is successfully counted
-#     - None if the spot is not counted
-#     """
-#     component = (labeled_image == label)
-#     coords = np.column_stack(np.where(component))
-    
-#     # Calculate grid bounds
-#     min_row = max(0, int((np.min(coords[:, 0]) - grid_start_y) // cell_size))
-#     max_row = min(rows - 1, int((np.max(coords[:, 0]) - grid_start_y) // cell_size))
-#     min_col = max(0, int((np.min(coords[:, 1]) - grid_start_x) // cell_size))
-#     max_col = min(columns - 1, int((np.max(coords[:, 1]) - grid_start_x) // cell_size))
-    
-#     main_cell = None
-#     max_overlap = 0
-#     total_area = np.sum(component)
-    
-#     # Find the main cell with maximum overlap
-#     for row in range(min_row, max_row + 1):
-#         for col in range(min_col, max_col + 1):
-#             x1 = int(grid_start_x + col * cell_size)
-#             y1 = int(grid_start_y + row * cell_size)
-#             x2 = int(x1 + cell_size)
-#             y2 = int(y1 + cell_size)
-            
-#             x1, y1 = max(0, x1), max(0, y1)
-#             x2, y2 = min(width, x2), min(height, y2)
-            
-#             cell = component[y1:y2, x1:x2]
-#             overlap = np.sum(cell)
-            
-#             if overlap > max_overlap:
-#                 max_overlap = overlap
-#                 main_cell = (row, col)
-    
-#     # Check if the spot should be counted
-#     if main_cell is not None:
-#         main_row, main_col = main_cell
-#         outside_area = total_area - max_overlap
-        
-#         if outside_area <= 0.4 * total_area:
-#             return (main_row, main_col, total_area, component)
-    
-#     return None
-
-# def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_size, columns, rows):
-#     start_time = time.time()
-#     height, width = binary_image.shape
-
-#     # Label the image
-#     labeled_image, num_features = ndimage.label(binary_image) 
-#     counts = np.zeros((rows, columns), dtype=int)
-
-#     # Convert to color image if grayscale
-#     if len(marked_image.shape) == 2:  
-#         marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
-
-#     # Mark non-counted areas dark grey
-#     white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
-#     marked_image[white_areas] = [64, 64, 64]
-    
-#     # Process labels with ThreadPoolExecutor
-#     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() + 1)) as executor:
-#         # Submit all label processing tasks
-#         future_to_label = {
-#             executor.submit(process_label, labeled_image, label, grid_start_x, grid_start_y, 
-#                             cell_size, rows, columns, width, height): label 
-#             for label in range(1, num_features + 1)
-#         }
-        
-#         # Process results as they complete
-#         for future in as_completed(future_to_label):
-#             result = future.result()
-#             if result is not None:
-#                 row, col, total_area, component = result
-#                 counts[row, col] += total_area
-#                 marked_image[component] = [255, 255, 255]
-    
-#     print("COUNTS")
-#     print(counts)
-#     # Scale counts
-#     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
-    
-#     # Draw grid and add counts (same as original function)
-#     font = cv2.FONT_HERSHEY_SIMPLEX
-#     font_scale = width *0.0008
-#     thickness = int(width *0.002)
-#     print("FONT SCALE AND THICKNESS")
-#     print (font_scale)
-#     print (thickness)
-
-#     for row in range(rows):
-#         for col in range(columns):
-#             x1 = int(grid_start_x + col * cell_size)
-#             y1 = int(grid_start_y + row * cell_size)
-#             x2 = int(x1 + cell_size)
-#             y2 = int(y1 + cell_size)
-            
-#             cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
-            
-#             text = str(counts[row, col])
-#             text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-            
-#             text_x = int(x1 + (cell_size - text_size[0]) // 2)
-#             text_y = int(y1 + (cell_size + text_size[1]) // 2)
-            
-#             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-
-#     end_time = time.time()
-#     print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
-    
-#     return counts, marked_image
 
 
 
