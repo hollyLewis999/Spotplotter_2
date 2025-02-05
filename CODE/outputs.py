@@ -245,7 +245,7 @@ def process_split_order_quantifications(window):
     for plate in window.all_plate_info:
         # Extract plate layout and dilution factors
         rows = plate['layout']['rows']
-        cols = len(plate['column_indexes'][0])
+        cols = plate['layout']['columns']
         x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
         y_dilution_factor = plate['layout']['y_dilution']
 

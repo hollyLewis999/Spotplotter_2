@@ -117,12 +117,7 @@ def stretch_and_gray(original_image, show_images=False):
     sigmaX = sigma_scale * width
     sigmaY = sigma_scale * height
     sigma = min(sigmaX,sigmaY)
-    print("_________________________________")
-    print (sigmaX)
-    print(sigmaY)
-    print("_________________________________")
-    print("_________________________________")
-    print("_________________________________")
+
     # Apply Gaussian blur with calculated sigma values
     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
     # blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
@@ -229,7 +224,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     
     height, width = binary_image.shape
     max_radius = int(width/(columns*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
-    min_radius = int(max_radius/3)
+    min_radius = int(max_radius/6)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
 

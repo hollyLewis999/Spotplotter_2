@@ -183,15 +183,15 @@ def create_controls(control_frame, window, mode):
         window.checkboxes = []
         
         # Create checkbox for gap between strains with proper variable binding
-        checkbox1 = RoundedCheckbox(
-            control_frame,
-            text="Gap Between Strains",
-            variable=window.plate_layout['gap_between_strains'],
-            command=lambda: update_plate_display_layout_designer(window)
-        )
-        checkbox1.place(x=20, y=y_offset + spacing * 4.8)
-        checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
-        window.checkboxes.append(checkbox1)
+        # checkbox1 = RoundedCheckbox(
+        #     control_frame,
+        #     text="Gap Between Strains",
+        #     variable=window.plate_layout['gap_between_strains'],
+        #     command=lambda: update_plate_display_layout_designer(window)
+        # )
+        # checkbox1.place(x=20, y=y_offset + spacing * 4.8)
+        # checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
+        # window.checkboxes.append(checkbox1)
 
         checkbox2 = RoundedCheckbox(
             control_frame,
