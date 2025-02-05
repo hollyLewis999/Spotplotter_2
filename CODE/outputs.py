@@ -97,6 +97,9 @@ def calculate_strain_normalization_value(data_series, strain):
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
     # Initialize the result array
+    print("ROWS AND COLOUMS")
+    print(rows)
+    print(cols)
     result = np.zeros((rows, cols))
     
     # Calculate dilutions along x-axis (first row)
@@ -136,18 +139,15 @@ def get_sorted_positions(dilution_array):
 
 def extract_values_at_positions(array, positions):
     """
-    Extract values from an array using a list of positions.
-    
-    Parameters:
-    array (numpy.ndarray): 2D array to extract values from
-    positions (list): List of (row, column) tuples
-    
-    Returns:
-    list: Values from the array at the specified positions
+    Extract values from an array using a list of positions that align with the dilutions
     """
     # print('extract_values_at_positions')
     # print(array)
     # print(positions)
+    print("ARRAY")
+    print(array)
+    print("POSITIONS")
+    print(positions)
     return [array[row, col] for row, col in positions]  
 
 def generate_data_series(window):
@@ -244,8 +244,8 @@ def process_split_order_quantifications(window):
     """
     for plate in window.all_plate_info:
         # Extract plate layout and dilution factors
-        rows = plate['layout']['rows']
-        cols = plate['layout']['columns']
+        rows = int(plate['layout']['rows'])
+        cols = int(plate['layout']['columns'] / len(plate['strains']))  #this is coloums per strain
         x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
         y_dilution_factor = plate['layout']['y_dilution']
 
