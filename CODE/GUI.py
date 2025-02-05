@@ -2451,7 +2451,7 @@ def next_image(window):
         # update_progress_bar(window)
 
     else:
-        save_window_state(window, 'PhiaUVData3.pkl')
+        save_window_state(window, 'PhiaUVData4.pkl')
 
         display_results(window)
         
@@ -3877,7 +3877,6 @@ def display_final_image(window, override =False):
     canvas.create_image(x_position, y_position, anchor="nw", image=photo)
     canvas.image = photo
 
-
  
 def go_to_edit_frame_from_sliders(window):
     window.history = [window.binarized_image.copy()]
@@ -3887,8 +3886,6 @@ def go_to_edit_frame_from_sliders(window):
 
     update_undo_redo_buttons(window)
     create_editFrame(window)
-        
-
   
 
 def go_to_edit_frame(window):
@@ -4343,12 +4340,12 @@ window.title("SpotPlotter")
 
 
 window.iconbitmap("Icons/ICON.ico")
-# initialize_window_attributes(window)
+initialize_window_attributes(window)
 content_frame = Frame(window, bg=LIGHT)
 content_frame.pack(expand=True, fill="both")
 
-# title_frame_widgets = create_titleFrame(content_frame)
-# title_frame_widgets = create_titleFrame(window)
+title_frame_widgets = create_titleFrame(content_frame)
+title_frame_widgets = create_titleFrame(window)
 
 window.resizable(True, True)
 window.mainloop()
@@ -4357,8 +4354,8 @@ window.mainloop()
 
 
 
-restore_window_state(window, 'PhiaUVData3.pkl')
-process_results(window)
+# restore_window_state(window, 'PhiaUVData3.pkl')
+# process_results(window)
 
 
 # FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
