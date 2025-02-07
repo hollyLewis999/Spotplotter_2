@@ -14,6 +14,7 @@ import math
 import sys
 import json
 import os
+import openpyxl
 from datetime import datetime
 
 
@@ -22,14 +23,11 @@ from outputs import *
 
 sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
-import openpyxl
 
 
 
 DARK = "#092934"
 LIGHT = "#FFFFFF"
-# DARK = "#FFFFFF"
-# LIGHT = "#092934"
 GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"

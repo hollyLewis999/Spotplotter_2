@@ -103,7 +103,10 @@ def stretch_and_gray(original_image, show_images=False):
     idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
     print("Streach range diff: " + str(upper_bound - lower_bound))
 
-    
+
+    print("________________________________")
+    print(idealContrast)
+    print("________________________________")
     idealContrast = max(idealContrast,2)
     idealContrast = min(idealContrast,20)
 

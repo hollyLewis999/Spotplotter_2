@@ -183,15 +183,15 @@ def create_controls(control_frame, window, mode):
         window.checkboxes = []
         
         # Create checkbox for gap between strains with proper variable binding
-        # checkbox1 = RoundedCheckbox(
-        #     control_frame,
-        #     text="Gap Between Strains",
-        #     variable=window.plate_layout['gap_between_strains'],
-        #     command=lambda: update_plate_display_layout_designer(window)
-        # )
-        # checkbox1.place(x=20, y=y_offset + spacing * 4.8)
-        # checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
-        # window.checkboxes.append(checkbox1)
+        checkbox1 = RoundedCheckbox(
+            control_frame,
+            text="Gap Between Strains",
+            variable=window.plate_layout['gap_between_strains'],
+            command=lambda: update_plate_display_layout_designer(window)
+        )
+        checkbox1.place(x=20, y=y_offset + spacing * 4.8)
+        checkbox1.label.place(x=50, y=y_offset + spacing * 4.8)
+        window.checkboxes.append(checkbox1)
 
         checkbox2 = RoundedCheckbox(
             control_frame,
@@ -309,10 +309,6 @@ def create_mode_switcher(control_frame, window):
         font_size=12,
         bold=True
     )
-
-
-
-
 
 
 def create_plate_display(plate_frame, window):
@@ -1195,6 +1191,7 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'ordered_quantifications':[],
         'removed_positions': list(window.plate_layout['removed_positions']),
         'layout': {
+            'num_strains' : window.layout_data['strains'],
             'rows': rows,
             'columns': cols,
             'x_dilution': window.layout_data['x_dilution'],
@@ -1986,7 +1983,7 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
         if window.current_mode == 'A':
             # Calculate available width and create label
             max_chars = calculate_max_width(position_width)
-            if assigned_strain:
+            if assigned_strain and assigned_strain != "unassigned":
                 strain_number = window.strains.index(assigned_strain) + 1
 
                 truncated_strain = truncate_strain(assigned_strain, max_chars)
@@ -2022,8 +2019,9 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
                         spot_color = "#073b3a"
                     if pos_key in plate['assignments']:
                         strain = plate['assignments'][pos_key]
-                        strain_index = window.strains.index(strain)
-                        spot_color = window.strain_colors[strain_index]
+                        if strain != "unassigned":
+                            strain_index = window.strains.index(strain)
+                            spot_color = window.strain_colors[strain_index]
                     
                     draw_spot(x_pos, y_pos, spot_color)
         
@@ -2152,6 +2150,7 @@ def export_data(window):
         for pos_idx in range(window.layout_data['strains']):
             start_col, end_col = window.plate_layout['strain_positions'][pos_idx]
            
+            # Check if any column in this position is assigned
             strain = None
             for col in range(start_col, end_col + 1):
                 test_key = f"0-{col}"
@@ -2159,11 +2158,20 @@ def export_data(window):
                     strain = plate_assignments[test_key]
                     break
            
-            if strain:
-                ordered_assignments.append({
-                    'strain': strain,
-                    'columns': list(range(start_col, end_col + 1))
-                })
+            # If no strain is assigned, use "unassigned"
+            if not strain:
+                strain = "unassigned"
+                # Add "unassigned" assignments to the plate
+                for row in range(rows):
+                    for col in range(start_col, end_col + 1):
+                        pos_key = f"{row}-{col}"
+                        if pos_key not in window.layout_data['removed_positions']:
+                            plate_assignments[pos_key] = strain
+           
+            ordered_assignments.append({
+                'strain': strain,
+                'columns': list(range(start_col, end_col + 1))
+            })
        
         strains = [assignment['strain'] for assignment in ordered_assignments]
         column_indexes = [assignment['columns'] for assignment in ordered_assignments]
@@ -2183,10 +2191,10 @@ def export_data(window):
     if not filename:
         print("Export canceled by the user.")
         return None
-        
+       
     save_to_file(all_plate_info, filename)
     print(f"Data exported successfully to {filename}")
-    
+   
     window.all_plate_info = all_plate_info
     create_titleFrame(window)
     return all_plate_info
@@ -2347,6 +2355,11 @@ def process_image(window):
         widget.destroy()
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
     window.contrast_value = idealContrast
+    window.contrast_value = 20
+    #FLAG
+    print("__________________________________________")
+    print(idealContrast)
+    print("__________________________________________")
     width = window.current_image.shape[1]
 
     colomns = window.all_plate_info[window.current_image_index]['layout']['columns']
@@ -2355,6 +2368,7 @@ def process_image(window):
     blocksize = width/colomns/2#blocksize is a half of he spot size
     print (blocksize)
     window.block_size = int(blocksize)
+    window.block_size = 61
     if window.block_size %2 ==0:
         window.block_size =  window.block_size +1
     window.gray_image = gray_image
@@ -2758,6 +2772,8 @@ def create_slidersFrame(window):
     y_offset = 20
     spacing = 150
 
+
+
     # Threshold Slider
     threshold_label = Label(control_frame, text="Threshold", font=(FONT, 12, 'bold'), fg=LIGHT, bg=DARK)
     threshold_label.place(x=16 , y=y_offset)
@@ -2780,6 +2796,7 @@ def create_slidersFrame(window):
         position=(16, y_offset + spacing + 30),
         command=lambda v: on_excludeSmallDots(window, v, False),
         initial_value=window.excludeSmallDots
+
     )
 
     # Block Size Slider
@@ -3811,15 +3828,6 @@ def display_final_image(window, override =False):
         font=(FONT, 12, "bold"),
         anchor="center" 
     )
-    # window.progress_frame = Frame(canvas, bg=LIGHT)
-    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-    #                                     length=150, mode="determinate", maximum=100, value=0)
-    # window.progress_bar.pack(side="left", padx=(0, 10))
-    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    # window.progress_label.pack(side="left")
-    
-    # update_progress_bar(window)
 
     window.update()
     #frame where result will be displayed
@@ -3829,12 +3837,14 @@ def display_final_image(window, override =False):
         marked_image = window.marked_image
         result_grid = window.result_grid
         window.all_plate_info[window.current_image_index]['unorderedquantifications'] = result_grid
-        # print(f"Debug: CURRENT INDEX {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
-        # print(f"Debug: 345434 ALL INFO : {window.image_info}" )
+
     else:   
         gray_image = window.gray_image  
         columns = window.all_plate_info[window.current_image_index]['layout']['columns']
+        if window.all_plate_info[window.current_image_index]['layout']['gap_between_strains']:
+            columns = columns + int(window.all_plate_info[window.current_image_index]['layout']['num_strains']) - 1
+
+        #FLAG
         rows = window.all_plate_info[window.current_image_index]['layout']['rows']
         square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
         result_grid, marked_image = detect_and_draw_circles(window.binarized_image, gray_image, False,columns = columns, rows = rows , square_grid=square_grid)
@@ -4318,6 +4328,8 @@ def initialize_window_attributes(window):
     window.update_undo_redo_buttons = update_undo_redo_buttons
     window.display_images = display_images
     window.excludeSmallDots = 15
+    window.excludeSmallDots = 100
+    #FLAG
     window.contrast_value = 20
     window.block_size = 301
     window.image_paths = []

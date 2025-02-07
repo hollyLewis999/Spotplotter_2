@@ -18,6 +18,11 @@ from reportlab.lib.enums import TA_CENTER
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.graphics import renderPDF
 
+
+from scipy import optimize
+from typing import List, Dict, Optional, Tuple
+
+
 import cv2
 import sys
 from PIL import Image 
@@ -140,14 +145,9 @@ def get_sorted_positions(dilution_array):
 def extract_values_at_positions(array, positions):
     """
     Extract values from an array using a list of positions that align with the dilutions
+    So esentially odering the quantifications based on their asscoaited dilution
     """
-    # print('extract_values_at_positions')
-    # print(array)
-    # print(positions)
-    print("ARRAY")
-    print(array)
-    print("POSITIONS")
-    print(positions)
+
     return [array[row, col] for row, col in positions]  
 
 def generate_data_series(window):
@@ -184,19 +184,19 @@ def generate_data_series(window):
            
             # Generate a label for this series
             label = f"{additive if additive != 'none' else 'Control'} ({filename} {start_col}-{end_col})"
-
-            # Create data series dictionary
-            series_dict = {
-                'y_values': y_values,
-                'additive': additive,
-                'label': label,
-                'strain': strain,
-                'filename': filename,
-                'column_indexes': column_indexes_for_strain
-            }
-            
-            # Add to temporary list for normalization calculation
-            all_data_series.append(series_dict)
+            if strain != "unassigned":
+                # Create data series dictionary
+                series_dict = {
+                    'y_values': y_values,
+                    'additive': additive,
+                    'label': label,
+                    'strain': strain,
+                    'filename': filename,
+                    'column_indexes': column_indexes_for_strain
+                }
+                
+                # Add to temporary list for normalization calculation
+                all_data_series.append(series_dict)
     
 
     strain_order = []
@@ -236,16 +236,13 @@ def generate_data_series(window):
 
 def process_split_order_quantifications(window):
     """
-    Processes all_plate_info by calculating dilution series, splitting unordered quantifications
-    into split_quantifications based on strain_positions, and saving ordered quantifications.
-
-    Parameters:
-    window (object): The window object containing all_plate_info
+    Splits up the quantifications into their corresponding strains
     """
     for plate in window.all_plate_info:
         # Extract plate layout and dilution factors
         rows = int(plate['layout']['rows'])
-        cols = int(plate['layout']['columns'] / len(plate['strains']))  #this is coloums per strain
+        #FLAGGGG
+        cols = int(plate['layout']['columns'] / int(window.all_plate_info[window.current_image_index]['layout']['num_strains']))  #this is coloums per strain
         x_dilution_factor = plate['layout']['x_dilution'] #see how many coloums each strain takes up
         y_dilution_factor = plate['layout']['y_dilution']
 
@@ -287,10 +284,7 @@ def process_split_order_quantifications(window):
 #  Y88888P'
 def analyze_plate_data(all_plate_info):
     """
-    Analyze plate data and create three separate figures:
-    1. Bar plot with means and dashed lines
-    2. Knockdown plot
-    3. Individual values plot
+    takes in all the plate info and split it up, create the dataframe and plot the graphs
     """
     # Separate control and treatment data
     control_plates = []
@@ -368,7 +362,9 @@ def analyze_plate_data(all_plate_info):
 #   .88.   88  88  88 88   88 88. ~8~ 88.       88   88 88.     88booo. 88      88.     88 `88. 
 # Y888888P YP  YP  YP YP   YP  Y888P  Y88888P   YP   YP Y88888P Y88888P 88      Y88888P 88   YD 
                                                                                               
-                                                                                              
+"""
+This is needed to convert the images from cv2 into a format that can be saved to the PDF
+"""                                                                                     
 def cv2_to_pil(cv2_img, convertColour = True):
     if cv2_img is None:
         return None
@@ -409,7 +405,9 @@ def resize_for_display(image, max_width=1280, max_height=720):
 # 88. ~8~ 88 `88. 88   88 88      88   88 db   8D       88   88
 #  Y888P  88   YD YP   YP 88      YP   YP `8888Y'       YP   YP
                                                 
-                                                
+"""
+This plots the main graphs
+"""                                                   
 
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     
@@ -439,7 +437,8 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     max_y = max(max(series['normalized_y_values']) for series in data_series)
     y_max = max_y + 10
 
-    # Color mapping (rest of the function remains the same as before)
+
+    # Color mapping for the different addatives
     color_map = {}
     for additive in additives:
         if additive == 'Control':
@@ -649,9 +648,6 @@ def calculate_statistics_line(x, y, color, label, additive):
     return None
 
 
-import numpy as np
-from scipy import stats, optimize
-from typing import List, Dict, Optional, Tuple
 
 
 def calculate_statistics(x, y, color, label, additive):
