@@ -83,10 +83,11 @@ LIGHT_ALPHA = 0.2
                                                                                                       
                                                                                                       
 
-def normalize_array(arr, norm_value):
-    return [100 * x / norm_value for x in arr]
+# def normalize_array(arr, norm_value):
+#     return [100 * x / norm_value for x in arr]
 
 def normalize_array(values, norm_value):
+    
     return np.array(values) / norm_value * 100
 
 def calculate_strain_normalization_value(data_series, strain):
@@ -98,13 +99,14 @@ def calculate_strain_normalization_value(data_series, strain):
     if not norm_values:
         raise ValueError(f"Must have at least one control series for strain {strain}")
     
-    return sum(norm_values) / len(norm_values)
+
+    norm_value = sum(norm_values) / len(norm_values)
+    if norm_value == 0 :
+        norm_value = 1
+    return norm_value
 
 def calculate_dilution_series(rows, cols, x_dilution_factor, y_dilution_factor):
-    # Initialize the result array
-    print("ROWS AND COLOUMS")
-    print(rows)
-    print(cols)
+
     result = np.zeros((rows, cols))
     
     # Calculate dilutions along x-axis (first row)
@@ -172,9 +174,6 @@ def generate_data_series(window):
        
         # For each strain in the plate
         for strain_idx, strain in enumerate(strains):
-            # print("STRAIN2")
-            # print(strain)
-            # Extract y_values for this strain
             y_values = ordered_quantifications[strain_idx]
             column_indexes_for_strain = column_indexes[strain_idx]
    
@@ -1071,6 +1070,10 @@ def generate_tidy_dataframe(window):
                 if series.get('additive') in [None, 'Control']
             ]
             norm_value = sum(norm_values) / len(norm_values) if norm_values else 1
+            if norm_value ==0:
+                norm_values ==1
+            print("________________________________________________")
+            print (norm_value)    
             
             # Normalize the y_values
             normalized_y_values = [y / norm_value * 100 for y in y_values]
@@ -1386,11 +1389,7 @@ def generate_pdf_log(all_plate_info, output_filename, filename, version="1.0.0" 
 
 
 def generate_pdf_report_MODEA(all_plate_info, all_strain_data, output_filename, filename, version="1.0.0"):
-    print("all_strain_data")
-    print(all_strain_data)
 
-    print("ALL PLATE INFO")
-    print(all_strain_data)
     """
     Generates a single PDF report containing data for all strains.
     Each strain's figures are on consecutive pages with statistics underneath.
