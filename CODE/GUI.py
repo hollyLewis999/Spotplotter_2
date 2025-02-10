@@ -393,25 +393,31 @@ def update_plate_display_layout_designer(window):
             if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
                 current_col += 1
 
-        draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows)
+        draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows,cols )
         
     except tk.TclError as e:
         # Handle any other Tcl errors that might occur during update
         print(f"TclError during plate display update: {e}")
         return
 
-def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows):
+def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows, cols):
     try:
         if not window.plate_canvas.winfo_exists():
             return
-            
+        
+        # Keep track of which columns have been filled
+        filled_columns = set()
+        
+        # Draw colored spots for strains
         for strain in range(strains):
             start_col, end_col = window.plate_layout['strain_positions'][strain]
             for col_offset in range(end_col - start_col + 1):
                 actual_col = start_col + col_offset
+                filled_columns.add(actual_col)
                 x_value = x_dil ** col_offset
                 x_pos = margin_sides + actual_col * cell_width + cell_width/2
                 
+                # Draw x-dilution labels
                 if window.current_mode == 'A':
                     window.plate_canvas.create_text(
                         x_pos,
@@ -421,6 +427,7 @@ def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x
                         font=(FONT, 8)
                     )
                 
+                # Draw colored spots
                 for row in range(rows):
                     pos_key = f"{row}-{actual_col}"
                     x = margin_sides + actual_col * cell_width + cell_width/2
@@ -433,26 +440,39 @@ def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x
                         outline=color,
                         tags=(pos_key, "spot", f"strain_{strain}")
                     )
-                        
-                # Add y-dilution labels (to the left of the rows)
+                
+                # Add y-dilution labels (only once for the first strain)
+                if strain == 0:
+                    for row in range(rows):
+                        y_value = y_dil ** row
+                        y_pos = margin + row * cell_height + cell_height/2
+                        if window.current_mode == 'A':
+                            window.plate_canvas.create_text(
+                                margin_sides - 20,
+                                y_pos,
+                                text=y_value,
+                                fill=LIGHT,
+                                font=(FONT, 8)
+                            )
+        
+        # Fill remaining columns with gray spots
+        for col in range(cols):
+            if col not in filled_columns:
                 for row in range(rows):
-                    y_value = y_dil ** row
-                    y_pos = margin + row * cell_height + cell_height / 2
-                    if window.current_mode == 'A' and strain == 0:
-                        window.plate_canvas.create_text(
-                            margin_sides - 20,
-                            y_pos,
-                            text=y_value,
-                            fill=LIGHT,
-                            font=(FONT, 8)
-                        )
-                        
+                    pos_key = f"{row}-{col}"
+                    x = margin_sides + col * cell_width + cell_width/2
+                    y = margin + row * cell_height + cell_height/2
+                    
+                    window.plate_canvas.create_oval(
+                        x-10, y-10, x+10, y+10,
+                        fill=GRAY,
+                        outline=GRAY,
+                        tags=(pos_key, "spot", "empty")
+                    )
+                    
     except tk.TclError as e:
         print(f"TclError during spot drawing: {e}")
         return
-
-
-
 def go_to_assignment_screen(window):
     valid_positions = {}
     for strain, (start_col, end_col) in window.plate_layout['strain_positions'].items():
