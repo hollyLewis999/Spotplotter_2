@@ -365,8 +365,10 @@ def update_plate_display_layout_designer(window):
             return
 
         # Adjust cell dimensions based on the square grid setting
+
         cell_width = grid_width / total_cols
         cell_height = grid_height / rows
+
 
         try:
             if window.plate_layout['square_grid'].get():
