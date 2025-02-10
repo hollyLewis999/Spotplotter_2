@@ -263,7 +263,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
         return None, None
 
     counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
-    cv2.imwrite('marked_image.jpg', gray_image)
+    # cv2.imwrite('marked_image.jpg', gray_image)
     return counts, marked_image
 
 
@@ -484,10 +484,7 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, 
     return None
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows):
-    cv2.imwrite('marked_image2.jpg', marked_image)
-    cv2.imwrite('binary_image2.jpg', binary_image)
-    print(cell_width)
-    print(cell_height)
+
     """
     Quantify spots in a grid and visualize results
     
@@ -502,10 +499,8 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_w
     - square_grid: If True, cells are square and cell_size is a single value
                   If False, cell_size should be a tuple of (cell_width, cell_height)
     """
-    start_time = time.time()
+
     height, width = binary_image.shape
-
-
     # Label the image
     labeled_image, num_features = ndimage.label(binary_image) 
     counts = np.zeros((rows, columns), dtype=int)
@@ -534,19 +529,14 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_w
                 row, col, total_area, component = result
                 counts[row, col] += total_area
                 marked_image[component] = [255, 255, 255]
-    
-    print("COUNTS")
-    print(counts)
     # Scale counts
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
     
     # Draw grid and add counts
     font = cv2.FONT_HERSHEY_SIMPLEX
+    #scaling the size and thickness so that its proportanal to the quality of the image
     font_scale = width * 0.0008
     thickness = int(width * 0.002)
-    print("FONT SCALE AND THICKNESS")
-    print(font_scale)
-    print(thickness)
 
     for row in range(rows):
         for col in range(columns):
@@ -565,8 +555,4 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_w
             text_y = int(y1 + (cell_height + text_size[1]) // 2)
             
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-
-    end_time = time.time()
-    print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
-    cv2.imwrite('marked_image3.jpg', marked_image)
     return counts, marked_image

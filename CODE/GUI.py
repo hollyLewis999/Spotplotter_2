@@ -18,7 +18,7 @@ from pathlib import Path
 from tkinter import BOTTOM,BooleanVar,Button,Canvas,CENTER,Checkbutton,DoubleVar,Entry,Frame,HORIZONTAL,Label,LEFT,Message,PhotoImage,RIGHT,ROUND,Scale,Scrollbar,Text,Toplevel,Tk,Y,X,filedialog,font,messagebox
 from tkinter import ttk
 from concurrent.futures import ThreadPoolExecutor
-
+from tkinter import TclError
 import cv2
 import numpy as np
 import openpyxl
@@ -26,7 +26,6 @@ import pandas as pd
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 from scipy.spatial import distance
 VERSION = "1.0.0"
-
 from Processing import *
 from Style import *
 from outputs import *
@@ -334,8 +333,8 @@ def update_plate_display_layout_designer(window):
         window.plate_canvas.delete('all')
         
         try:
-            rows = max(1, window.plate_layout['rows'].get())
-            cols = max(1, window.plate_layout['columns'].get())
+            rows = min(max(0, window.plate_layout['rows'].get()),99)
+            cols = min(max(0, window.plate_layout['columns'].get()),99)
             strains = max(1, window.plate_layout['strains'].get())
             x_dil = max(1, window.plate_layout['x_dilution'].get())
             y_dil = max(1, window.plate_layout['y_dilution'].get())
@@ -510,9 +509,16 @@ def create_plate_designer(window, mode="A"):
     else:
         # If switching to mode B, update only the necessary values while preserving variable types
         if mode == 'B':
+            def safe_get(variable, default=0):
+                try:
+                    return int(variable.get())  # Ensure integer conversion
+                except (ValueError, TclError):  # Handle empty string or invalid value
+                    return default
+
+
             # Store current values
-            current_rows = window.plate_layout['rows'].get()
-            current_cols = window.plate_layout['columns'].get()
+            current_rows = safe_get(window.plate_layout['rows'])
+            current_cols = safe_get(window.plate_layout['columns'])
             current_gap = window.plate_layout['gap_between_strains'].get()
             current_square = window.plate_layout['square_grid'].get()
             
@@ -804,7 +810,6 @@ def update_plate_display(window):
 
     current_plate = window.plates[CURRENTPLATEINDEX]
 
-
     # Verify plate_canvas exists
     if not hasattr(window, 'plate_canvas'):
         print("ERROR: plate_canvas does not exist")
@@ -857,8 +862,6 @@ def update_plate_display(window):
         print(f"ERROR in draw_plate_grid: {e}")
         import traceback
         traceback.print_exc()
-
-    print("======== PLATE DISPLAY UPDATE COMPLETE ========")
 
 def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top, 
                    margin_bottom, grid_width, grid_height):
@@ -1399,6 +1402,8 @@ def hide_current_plate(window):
         fill=LIGHT,
         justify='center'
     )
+
+
 # d8888b. db       .d8b.  d888888b d88888b     d8b   db  .d8b.  db    db d888888b  d888b   .d8b.  d888888b d888888b  .d88b.  d8b   db 
 # 88  `8D 88      d8' `8b `~~88~~' 88'         888o  88 d8' `8b 88    88   `88'   88' Y8b d8' `8b `~~88~~'   `88'   .8P  Y8. 888o  88 
 # 88oodD' 88      88ooo88    88    88ooooo     88V8o 88 88ooo88 Y8    8P    88    88      88ooo88    88       88    88    88 88V8o 88 
