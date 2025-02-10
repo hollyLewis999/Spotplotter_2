@@ -423,17 +423,16 @@ def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x
                 
                 for row in range(rows):
                     pos_key = f"{row}-{actual_col}"
-                    if pos_key not in window.plate_layout['removed_positions']:
-                        x = margin_sides + actual_col * cell_width + cell_width/2
-                        y = margin + row * cell_height + cell_height/2
-                        color = COLORS[strain % len(COLORS)]
-                        
-                        window.plate_canvas.create_oval(
-                            x-10, y-10, x+10, y+10,
-                            fill=color,
-                            outline=color,
-                            tags=(pos_key, "spot", f"strain_{strain}")
-                        )
+                    x = margin_sides + actual_col * cell_width + cell_width/2
+                    y = margin + row * cell_height + cell_height/2
+                    color = COLORS[strain % len(COLORS)]
+                    
+                    window.plate_canvas.create_oval(
+                        x-10, y-10, x+10, y+10,
+                        fill=color,
+                        outline=color,
+                        tags=(pos_key, "spot", f"strain_{strain}")
+                    )
                         
                 # Add y-dilution labels (to the left of the rows)
                 for row in range(rows):
@@ -461,8 +460,7 @@ def go_to_assignment_screen(window):
         for row in range(window.plate_layout['rows'].get()):
             for col in range(start_col, end_col + 1):
                 pos_key = f"{row}-{col}"
-                if pos_key not in window.plate_layout['removed_positions']:
-                    strain_positions.append(pos_key)
+                strain_positions.append(pos_key)
         valid_positions[strain] = strain_positions
 
     layout_data = {
@@ -473,7 +471,6 @@ def go_to_assignment_screen(window):
         'y_dilution': window.plate_layout['y_dilution'].get(),
         'gap_between_strains': window.plate_layout['gap_between_strains'].get(),
         'square_grid': window.plate_layout['square_grid'].get(),
-        'removed_positions': list(window.plate_layout['removed_positions']),
         'strain_positions': window.plate_layout['strain_positions'],
         'valid_positions': valid_positions
     }
@@ -505,7 +502,6 @@ def create_plate_designer(window, mode="A"):
             'y_dilution': tk.IntVar(value=-1 if mode == "B" else 2),
             'gap_between_strains': tk.BooleanVar(value=False),
             'square_grid': tk.BooleanVar(value=True),
-            'removed_positions': set(),
             'strain_positions': {}
         }
     else:
@@ -531,7 +527,6 @@ def create_plate_designer(window, mode="A"):
             window.plate_layout['strains'].set(1)
             window.plate_layout['gap_between_strains'].set(current_gap)
             window.plate_layout['square_grid'].set(current_square)
-            window.plate_layout['removed_positions'] = set()
             window.plate_layout['strain_positions'] = {}
         else:
             window.plate_layout['strains'].set(window.old_num_strains.get())
@@ -764,22 +759,22 @@ def draw_plate(window, canvas, margin_left, margin_top, grid_width, grid_height)
 
             for row in range(window.layout_data['rows']):
                 pos_key = f"{row}-{col}"
-                if pos_key not in window.layout_data['removed_positions']:
-                    y_pos = margin_top + row * cell_height + cell_height/2
-                    
-                    # Determine spot color
-                    spot_color = GRAY1
-                    if pos_key in plate['assignments']:
-                        strain = plate['assignments'][pos_key]
-                        strain_index = window.strains.index(strain)
-                        spot_color = window.strain_colors[strain_index]
-                    # Draw spot
-                    canvas.create_oval(
-                        x_pos-8, y_pos-8, x_pos+8, y_pos+8,
-                        fill=spot_color,
-                        outline=spot_color,
-                        tags=(pos_key, "spot")
-                    )
+
+                y_pos = margin_top + row * cell_height + cell_height/2
+                
+                # Determine spot color
+                spot_color = GRAY1
+                if pos_key in plate['assignments']:
+                    strain = plate['assignments'][pos_key]
+                    strain_index = window.strains.index(strain)
+                    spot_color = window.strain_colors[strain_index]
+                # Draw spot
+                canvas.create_oval(
+                    x_pos-8, y_pos-8, x_pos+8, y_pos+8,
+                    fill=spot_color,
+                    outline=spot_color,
+                    tags=(pos_key, "spot")
+                )
 
         current_x += position_width
 
@@ -1194,7 +1189,6 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
         'strain_positions': window.plate_layout['strain_positions'],
         'split_quantifications':[],
         'ordered_quantifications':[],
-        'removed_positions': list(window.plate_layout['removed_positions']),
         'layout': {
             'num_strains' : window.layout_data['strains'],
             'rows': rows,
@@ -1259,8 +1253,7 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
     for row in range(window.layout_data['rows']):
         for col in range(start_col, end_col + 1):
             pos_key = f"{row}-{col}"
-            if pos_key not in window.layout_data['removed_positions']:
-                plate['assignments'][pos_key] = strain
+            plate['assignments'][pos_key] = strain
                 
     update_plate_display(window)
 
@@ -2016,21 +2009,21 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
             
             for row in range(window.layout_data['rows']):
                 pos_key = f"{row}-{col}"
-                if pos_key not in window.plate_layout['removed_positions']:
-                    y_pos = content_y_start + row * cell_height + cell_height/2
-                    
-                    # Determine spot color
-                    if window.current_mode == 'A':
-                        spot_color = GRAY1
-                    else:
-                        spot_color = "#073b3a"
-                    if pos_key in plate['assignments']:
-                        strain = plate['assignments'][pos_key]
-                        if strain != "unassigned":
-                            strain_index = window.strains.index(strain)
-                            spot_color = window.strain_colors[strain_index]
-                    
-                    draw_spot(x_pos, y_pos, spot_color)
+
+                y_pos = content_y_start + row * cell_height + cell_height/2
+                
+                # Determine spot color
+                if window.current_mode == 'A':
+                    spot_color = GRAY1
+                else:
+                    spot_color = "#073b3a"
+                if pos_key in plate['assignments']:
+                    strain = plate['assignments'][pos_key]
+                    if strain != "unassigned":
+                        strain_index = window.strains.index(strain)
+                        spot_color = window.strain_colors[strain_index]
+                
+                draw_spot(x_pos, y_pos, spot_color)
         
         current_x += position_width
         
@@ -2172,8 +2165,7 @@ def export_data(window):
                 for row in range(rows):
                     for col in range(start_col, end_col + 1):
                         pos_key = f"{row}-{col}"
-                        if pos_key not in window.layout_data['removed_positions']:
-                            plate_assignments[pos_key] = strain
+                        plate_assignments[pos_key] = strain
            
             ordered_assignments.append({
                 'strain': strain,
