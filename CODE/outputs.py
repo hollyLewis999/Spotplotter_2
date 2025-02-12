@@ -1799,10 +1799,3 @@ def generate_pdf_report_MODEB(all_plate_info, output_filename, mean_fig, knockdo
 
 
 
-
-
-
-
-
-
-

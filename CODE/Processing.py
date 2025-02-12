@@ -52,114 +52,119 @@ def resize_for_display(image, max_width=1280, max_height=720):
 # 88      88   YD Y88888P 88      88   YD  `Y88P'   `Y88P' 
 
 
-# def calculate_brightness(img_array):
-#     #Purpose: Calculate image brightness using weighted color channels
-#     #get the different channels, this colour is in BGR not RGB
-#     blue_channel = img_array[:, :, 0]
-#     green_channel = img_array[:, :, 1]
-#     red_channel = img_array[:, :, 2]
+def calculate_brightness(img_array):
+    #Purpose: Calculate image brightness using weighted color channels
+    #get the different channels, this colour is in BGR not RGB
+    blue_channel = img_array[:, :, 0]
+    green_channel = img_array[:, :, 1]
+    red_channel = img_array[:, :, 2]
     
-#     #weighted changels based on fomula
-#     red_weighted = 0.299 * red_channel
-#     green_weighted = 0.587 * green_channel
-#     blue_weighted = 0.114 * blue_channel
-#     brightness = red_weighted + green_weighted + blue_weighted
+    #weighted changels based on fomula
+    red_weighted = 0.299 * red_channel
+    green_weighted = 0.587 * green_channel
+    blue_weighted = 0.114 * blue_channel
+    brightness = red_weighted + green_weighted + blue_weighted
     
-#     return brightness
+    return brightness
 
-# def get_inner_image(image):
-#     #Purpose: Get just the inner part of the image for histogram analysis
-#     height, width = image.shape[:2]
-#     start_y = int(height * 0.1) #take off more from the bottom becuse of plate edge
-#     end_y = int(height * 0.9)
-#     start_x = int(width * 0.1)
-#     end_x = int(width * 0.9)
-#     return image[start_y:end_y, start_x:end_x]
+def get_inner_image(image):
+    #Purpose: Get just the inner part of the image for histogram analysis
+    height, width = image.shape[:2]
+    start_y = int(height * 0.1) #take off more from the bottom becuse of plate edge
+    end_y = int(height * 0.9)
+    start_x = int(width * 0.1)
+    end_x = int(width * 0.9)
+    return image[start_y:end_y, start_x:end_x]
 
-# def get_99_percent_range(brightness):
-#     #using a cumalitive histogramdisstogram
-#     hist, bin_edges = np.histogram(brightness.ravel(), bins=256, range=(0, 255))
-#     cumulative = np.cumsum(hist)
-#     total_pixels = cumulative[-1]
-#     lower = np.searchsorted(cumulative, 0.005 * total_pixels)
-#     upper = np.searchsorted(cumulative, 0.995 * total_pixels)
-#     return int(lower), int(upper)
+def get_99_percent_range(brightness):
+    #using a cumalitive histogramdisstogram
+    hist, bin_edges = np.histogram(brightness.ravel(), bins=256, range=(0, 255))
+    cumulative = np.cumsum(hist)
+    total_pixels = cumulative[-1]
+    lower = np.searchsorted(cumulative, 0.005 * total_pixels)
+    upper = np.searchsorted(cumulative, 0.995 * total_pixels)
+    return int(lower), int(upper)
 
-# def analyze_tonal_range(image):
-#     #get the total range that 99% of pixels fall into
-#     inner_image = get_inner_image(image)
-#     brightness = calculate_brightness(inner_image)
-#     lower, upper = get_99_percent_range(brightness)
-#     return lower, upper
+def analyze_tonal_range(image):
+    #get the total range that 99% of pixels fall into
+    inner_image = get_inner_image(image)
+    brightness = calculate_brightness(inner_image)
+    lower, upper = get_99_percent_range(brightness)
+    return lower, upper
 
-# def stretch_and_gray(original_image, show_images=False):
+def stretch_and_gray(original_image, show_images=False):
 
-#     lower_bound, upper_bound = analyze_tonal_range(original_image)
-#     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    lower_bound, upper_bound = analyze_tonal_range(original_image)
+    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     
 
-#     idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
-#     idealContrast = max(idealContrast,2)
-#     idealContrast = min(idealContrast,20)
+    idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
+    idealContrast = max(idealContrast,2)
+    idealContrast = min(idealContrast,20)
 
 
-#     height, width = original_image.shape[:2]
-#     sigma_scale = 0.0015
-#     sigmaX = sigma_scale * width
-#     sigmaY = sigma_scale * height
-#     sigma = min(sigmaX,sigmaY)
-#     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
+    height, width = original_image.shape[:2]
+    sigma_scale = 0.0015
+    sigmaX = sigma_scale * width
+    sigmaY = sigma_scale * height
+    sigma = min(sigmaX,sigmaY)
+    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
 
-#     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-#     cv2.imwrite('1stretched.jpg', stretched)
-#     cv2.imwrite('2blurred.jpg', blurred)
-#     cv2.imwrite('3gray_image.jpg', gray_image)
-#     print(sigmaX, sigmaY)
+    gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+    cv2.imwrite('1stretched.jpg', stretched)
+    cv2.imwrite('2blurred.jpg', blurred)
+    cv2.imwrite('3gray_image.jpg', gray_image)
+    print(sigmaX, sigmaY)
 
-#     return stretched, blurred, gray_image, idealContrast
+    return stretched, blurred, gray_image, idealContrast
     
-# def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
-#     #make it into a binart image using adaptive thresholding  
-#     c = max(-50, min(int(-contrast), 0))
+def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
+    #make it into a binart image using adaptive thresholding  
+    c = max(-50, min(int(-contrast), 0))
 
-#     cv2.imwrite('gray_image.jpg', gray_image)
-#     cv2.imwrite('original_image.jpg', original_image)
-#     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY, block_size, c)  
-#     cv2.imwrite('binary_imageInitial.jpg', binary_image)                                   
-#     contour_img = original_image.copy()
-#     final_binary = np.zeros_like(binary_image)
+    cv2.imwrite('gray_image.jpg', gray_image)
+    cv2.imwrite('original_image.jpg', original_image)
+    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY, block_size, c)  
+    cv2.imwrite('binary_imageInitial.jpg', binary_image)                                   
+    contour_img = original_image.copy()
+    final_binary = np.zeros_like(binary_image)
     
-#     # Use RETR_LIST to find all contours without hierarchical relationships
-#     contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-#     height, width = binary_image.shape
-#     image_area = height * width
+    # Use RETR_LIST to find all contours without hierarchical relationships
+    contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    height, width = binary_image.shape
+    image_area = height * width
     
-#     # Scale the exclude small dots
-#     excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
+    # Scale the exclude small dots
+    excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
     
-#     # Filter and draw inner contours
-#     for i, cntr in enumerate(contours):
-#         area = cv2.contourArea(cntr)
+    # Filter and draw inner contours
+    for i, cntr in enumerate(contours):
+        area = cv2.contourArea(cntr)
         
-#         # Skip very small contours
-#         if area <= excludeSmallDots:
-#             continue
+        # Skip very small contours
+        if area <= excludeSmallDots:
+            continue
         
-#         # Skip contours that are too large
-#         if area > 0.5 * image_area:
-#             continue
+        # Skip contours that are too large
+        if area > 0.5 * image_area:
+            continue
         
-#         # Draw the contour
-#         cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
-#         cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+        # Draw the contour
+        cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
+        cv2.drawContours(final_binary, [cntr], 0, 255, -1)
 
-#     cv2.imwrite('contour_img.jpg', contour_img)  
-#     cv2.imwrite('final_binary.jpg', final_binary)  
+    cv2.imwrite('contour_img.jpg', contour_img)  
+    cv2.imwrite('final_binary.jpg', final_binary)  
 
-#     return binary_image, contour_img, final_binary, block_size
+    return binary_image, contour_img, final_binary, block_size
 
 
-
+import cv2
+import numpy as np
+import skimage.exposure
+import matplotlib.pyplot as plt
+import seaborn as sns
+from matplotlib.patches import Rectangle
 
 
 #  .o88b. d888888b d8888b.  .o88b. db      d88888b .d8888. 
@@ -219,9 +224,12 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     grid_calculated = False
 
     while not grid_calculated and tries < max_tries:
+        print("while loop")
         try:
             grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(x_coords, y_coords, width, height, binary_image, gray_image, columns, rows, square_grid=square_grid, debug=False)
+            print("here")
             grid_calculated = True
+            
         except ValueError as e:
             print(f"Error in grid calculation: {e}")
             print("Attempting blob detection with looser parameters")
@@ -235,12 +243,13 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
                 tries += 1
                 continue
             tries += 1
-
+        max_tries = max_tries+1
     if not grid_calculated:
         return None, None
-
+    print("epfre")
     counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
     # cv2.imwrite('marked_image.jpg', gray_image)
+    print("after")
     return counts, marked_image
 
 
@@ -250,7 +259,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 # 88  ooo 88`8b      88    88   88 
 # 88. ~8~ 88 `88.   .88.   88  .8D 
 #  Y888P  88   YD Y888888P Y8888D' 
-# 
+#
 
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
 
@@ -332,6 +341,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
     y_lowerBound = height/(rows*2)
     y_upperBound = height/(rows*0.5)
     
+    print("HERER1")
     filtered_x_diffs = [x for x in x_diffs if x_lowerBound <= x <= x_upperBound]
     filtered_y_diffs = [y for y in y_diffs if y_lowerBound <= y <= y_upperBound]
 
@@ -375,7 +385,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
             cell_height = height / rows  # fallback to even distribution
         else:
             cell_height = median_y_diff
-    
+    print("HERER2")
     grid_start_x = min(x_clusters) - cell_width / 2
     grid_start_y = min(y_clusters) - cell_height / 2
     
@@ -386,10 +396,13 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         grid_start_x = width - grid_width
     if grid_start_y + grid_height > height:
         grid_start_y = height - grid_height
-    
+    print("HERER3")
     if square_grid:
+        print("returned")
+        print(grid_start_x, grid_start_y, cell_width, cell_width)
         return grid_start_x, grid_start_y, cell_width, cell_width # maintains backward compatibility
     else:
+        print("retuned")
         return grid_start_x, grid_start_y, cell_width, cell_height
 
 
@@ -456,7 +469,146 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, 
     
     return None
 
-def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows):
+import numpy as np
+from scipy import ndimage
+import cv2
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
+
+def process_label(labeled_image, label, grid_start_x, grid_start_y, 
+                 cell_width, cell_height, rows, columns, width, height):
+    """Helper function to process each label"""
+    # Get component pixels
+    component = (labeled_image == label)
+    if not np.any(component):
+        return None
+        
+    # Find the centroid of the component
+    y_indices, x_indices = np.nonzero(component)
+    if len(x_indices) == 0 or len(y_indices) == 0:
+        return None
+        
+    centroid_x = np.mean(x_indices)
+    centroid_y = np.mean(y_indices)
+    
+    # Calculate grid position
+    col = int((centroid_x - grid_start_x) / cell_width)
+    row = int((centroid_y - grid_start_y) / cell_height)
+    
+    # Check if centroid is within grid bounds
+    if (0 <= row < rows and 0 <= col < columns and 
+        grid_start_x <= centroid_x < grid_start_x + columns * cell_width and
+        grid_start_y <= centroid_y < grid_start_y + rows * cell_height):
+        
+        total_area = np.sum(component)
+        return row, col, total_area, component
+    
+    return None
+
+def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, 
+                 cell_width, cell_height, columns, rows):
+    """
+    Quantify spots in a grid and visualize results
+    
+    Args:
+    - binary_image: Binary image with spots
+    - marked_image: Image to draw results on
+    - grid_start_x: Starting x coordinate of the grid
+    - grid_start_y: Starting y coordinate of the grid
+    - cell_width: Width of each grid cell
+    - cell_height: Height of each grid cell
+    - columns: Number of grid columns
+    - rows: Number of grid rows
+    
+    Returns:
+    - counts: Array of spot counts per grid cell
+    - marked_image: Visualization of the grid and counts
+    """
+    # Input validation
+    if not isinstance(binary_image, np.ndarray) or binary_image.dtype != bool:
+        binary_image = binary_image.astype(bool)
+    
+    height, width = binary_image.shape
+    
+    # Label the image
+    labeled_image, num_features = ndimage.label(binary_image)
+    counts = np.zeros((rows, columns), dtype=int)
+    
+    # Convert to color image if grayscale
+    if len(marked_image.shape) == 2:
+        marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
+    marked_image = marked_image.copy()  # Create a copy to avoid modifying the original
+    
+    # Mark non-counted areas dark grey
+    white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
+    marked_image[white_areas] = [64, 64, 64]
+    
+    try:
+        # Process labels with ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 1)) as executor:
+            # Submit all label processing tasks
+            future_to_label = {
+                executor.submit(
+                    process_label, labeled_image, label, grid_start_x, grid_start_y,
+                    cell_width, cell_height, rows, columns, width, height
+                ): label for label in range(1, num_features + 1)
+            }
+            
+            # Process results as they complete with timeout
+            for future in as_completed(future_to_label, timeout=30):
+                try:
+                    result = future.result(timeout=5)
+                    if result is not None:
+                        row, col, total_area, component = result
+                        counts[row, col] += total_area
+                        marked_image[component] = [255, 255, 255]
+                except TimeoutError:
+                    print(f"Processing label {future_to_label[future]} timed out")
+                    continue
+                
+    except Exception as e:
+        print(f"Error in parallel processing: {str(e)}")
+        return None, None
+    
+    # Scale counts (avoid division by zero)
+    scaling_factor = (width-1)**2
+    if scaling_factor > 0:
+        counts = (np.round((counts / scaling_factor) * 1000000)).astype(int)
+    
+    # Draw grid and add counts
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    font_scale = max(width * 0.0008, 0.3)  # Set minimum font scale
+    thickness = max(int(width * 0.002), 1)  # Set minimum thickness
+    
+    for row in range(rows):
+        for col in range(columns):
+            x1 = int(grid_start_x + col * cell_width)
+            y1 = int(grid_start_y + row * cell_height)
+            x2 = int(x1 + cell_width)
+            y2 = int(y1 + cell_height)
+            
+            # Ensure coordinates are within image bounds
+            x1 = max(0, min(x1, width-1))
+            y1 = max(0, min(y1, height-1))
+            x2 = max(0, min(x2, width-1))
+            y2 = max(0, min(y2, height-1))
+            
+            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
+            
+            text = str(counts[row, col])
+            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
+            
+            # Center text in potentially rectangular cell
+            text_x = int(x1 + (cell_width - text_size[0]) // 2)
+            text_y = int(y1 + (cell_height + text_size[1]) // 2)
+            
+            # Ensure text coordinates are within bounds
+            text_x = max(0, min(text_x, width-1))
+            text_y = max(0, min(text_y, height-1))
+            
+            cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
+    
+    return counts, marked_image
 
     """
     Quantify spots in a grid and visualize results

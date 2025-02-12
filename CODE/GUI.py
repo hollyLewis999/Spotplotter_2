@@ -2468,7 +2468,7 @@ def next_image(window):
         # update_progress_bar(window)
 
     else:
-        save_window_state(window, 'PhiaUVData4.pkl')
+        # save_window_state(window, 'PhiaUVData4.pkl')
 
         display_results(window)
         
@@ -4125,6 +4125,7 @@ def recalculate_grid(window):
     columns = window.all_plate_info[window.current_image_index]['layout']['columns']
     rows = window.all_plate_info[window.current_image_index]['layout']['rows']
     grid_start_x, grid_start_y, cell_width, cell_height = calculate_grid(window.clicked_pointsx,window.clicked_pointsy, width, height, window.binary_image, window.gray_image, columns, rows, square_grid=square_grid)
+    print("RETURNED")
     print(cell_width, cell_height)
     counts, marked_image= quantify_grid(window.binary_image, window.binary_image, grid_start_x, grid_start_y, cell_width, cell_height,columns, rows)
 
