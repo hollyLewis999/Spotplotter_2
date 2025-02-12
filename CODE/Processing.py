@@ -52,129 +52,111 @@ def resize_for_display(image, max_width=1280, max_height=720):
 # 88      88   YD Y88888P 88      88   YD  `Y88P'   `Y88P' 
 
 
-def calculate_brightness(img_array):
-
-    #Purpose: Calculate image brightness using weighted color channels
-    #get the different channels, this colour is in BGR not RGB
-    blue_channel = img_array[:, :, 0]
-    green_channel = img_array[:, :, 1]
-    red_channel = img_array[:, :, 2]
+# def calculate_brightness(img_array):
+#     #Purpose: Calculate image brightness using weighted color channels
+#     #get the different channels, this colour is in BGR not RGB
+#     blue_channel = img_array[:, :, 0]
+#     green_channel = img_array[:, :, 1]
+#     red_channel = img_array[:, :, 2]
     
-    #weighted changels based on fomula
-    red_weighted = 0.299 * red_channel
-    green_weighted = 0.587 * green_channel
-    blue_weighted = 0.114 * blue_channel
-    brightness = red_weighted + green_weighted + blue_weighted
+#     #weighted changels based on fomula
+#     red_weighted = 0.299 * red_channel
+#     green_weighted = 0.587 * green_channel
+#     blue_weighted = 0.114 * blue_channel
+#     brightness = red_weighted + green_weighted + blue_weighted
     
-    return brightness
+#     return brightness
 
+# def get_inner_image(image):
+#     #Purpose: Get just the inner part of the image for histogram analysis
+#     height, width = image.shape[:2]
+#     start_y = int(height * 0.1) #take off more from the bottom becuse of plate edge
+#     end_y = int(height * 0.9)
+#     start_x = int(width * 0.1)
+#     end_x = int(width * 0.9)
+#     return image[start_y:end_y, start_x:end_x]
+
+# def get_99_percent_range(brightness):
+#     #using a cumalitive histogramdisstogram
+#     hist, bin_edges = np.histogram(brightness.ravel(), bins=256, range=(0, 255))
+#     cumulative = np.cumsum(hist)
+#     total_pixels = cumulative[-1]
+#     lower = np.searchsorted(cumulative, 0.005 * total_pixels)
+#     upper = np.searchsorted(cumulative, 0.995 * total_pixels)
+#     return int(lower), int(upper)
+
+# def analyze_tonal_range(image):
+#     #get the total range that 99% of pixels fall into
+#     inner_image = get_inner_image(image)
+#     brightness = calculate_brightness(inner_image)
+#     lower, upper = get_99_percent_range(brightness)
+#     return lower, upper
+
+# def stretch_and_gray(original_image, show_images=False):
+
+#     lower_bound, upper_bound = analyze_tonal_range(original_image)
+#     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
     
-def get_inner_image(image):
-    #Purpose: Get just the inner part of the image for histogram analysis
-    height, width = image.shape[:2]
-    start_y = int(height * 0.1) #take off more from the bottom becuse of plate edge
-    end_y = int(height * 0.9)
-    start_x = int(width * 0.1)
-    end_x = int(width * 0.9)
-    return image[start_y:end_y, start_x:end_x]
 
-def get_99_percent_range(brightness):
-    #using a cumalitive histogramdisstogram
-    hist, bin_edges = np.histogram(brightness.ravel(), bins=256, range=(0, 255))
-    cumulative = np.cumsum(hist)
-    total_pixels = cumulative[-1]
-    lower = np.searchsorted(cumulative, 0.005 * total_pixels)
-    upper = np.searchsorted(cumulative, 0.995 * total_pixels)
-    return int(lower), int(upper)
+#     idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
+#     idealContrast = max(idealContrast,2)
+#     idealContrast = min(idealContrast,20)
 
-def analyze_tonal_range(image):
-    #get the total range that 99% of pixels fall into
-    inner_image = get_inner_image(image)
-    brightness = calculate_brightness(inner_image)
-    lower, upper = get_99_percent_range(brightness)
+
+#     height, width = original_image.shape[:2]
+#     sigma_scale = 0.0015
+#     sigmaX = sigma_scale * width
+#     sigmaY = sigma_scale * height
+#     sigma = min(sigmaX,sigmaY)
+#     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
+
+#     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
+#     cv2.imwrite('1stretched.jpg', stretched)
+#     cv2.imwrite('2blurred.jpg', blurred)
+#     cv2.imwrite('3gray_image.jpg', gray_image)
+#     print(sigmaX, sigmaY)
+
+#     return stretched, blurred, gray_image, idealContrast
     
-    return lower, upper
+# def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
+#     #make it into a binart image using adaptive thresholding  
+#     c = max(-50, min(int(-contrast), 0))
 
-def stretch_and_gray(original_image, show_images=False):
-    #streach the contrast differnet and make the image into greyscale
-    lower_bound, upper_bound = analyze_tonal_range(original_image)
-    stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
-    #setting contrast as a function of the streach
-    idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
-    print("Streach range diff: " + str(upper_bound - lower_bound))
-
-
-    print("________________________________")
-    print(idealContrast)
-    print("________________________________")
-    idealContrast = max(idealContrast,2)
-    idealContrast = min(idealContrast,20)
-
-
-    height, width = original_image.shape[:2]
-    print(f"HEIGHT {height}, WIDTH {width}")
-    # Define a scaling factor for sigma, e.g., 1% of the image dimensions
-    sigma_scale = 0.0015  # Adjust this as needed
-
-    # Compute sigmaX and sigmaY as a function of the image size
-    sigmaX = sigma_scale * width
-    sigmaY = sigma_scale * height
-    sigma = min(sigmaX,sigmaY)
-
-    # Apply Gaussian blur with calculated sigma values
-    blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
-    # blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
-    gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-    print(sigmaX, sigmaY)
-
-        #CONTOURS HERE FOR TESTING
-    # cv2.imshow('stretched', resize_for_display(stretched))
-    # cv2.imshow('blurred', resize_for_display(blurred))
-    # cv2.imshow('gray_image', resize_for_display(gray_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
-
-    return stretched, blurred, gray_image, idealContrast
+#     cv2.imwrite('gray_image.jpg', gray_image)
+#     cv2.imwrite('original_image.jpg', original_image)
+#     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY, block_size, c)  
+#     cv2.imwrite('binary_imageInitial.jpg', binary_image)                                   
+#     contour_img = original_image.copy()
+#     final_binary = np.zeros_like(binary_image)
     
- 
-def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
-    #make it into a binart image using adaptive thresholding  
-    c = max(-50, min(int(-contrast), -1))-5
-    cv2.imwrite('gray_image.jpg', gray_image)
-    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)  
-    cv2.imwrite('binary_image.jpg', binary_image)
-    contour_img = original_image.copy()
-    final_binary = np.zeros_like(binary_image)
+#     # Use RETR_LIST to find all contours without hierarchical relationships
+#     contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+#     height, width = binary_image.shape
+#     image_area = height * width
     
-    # Use RETR_LIST to find all contours without hierarchical relationships
-    contours, hierarchy = cv2.findContours(binary_image, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-   
-    height, width = binary_image.shape
-    image_area = height * width
+#     # Scale the exclude small dots
+#     excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
     
-    # Scale the exclude small dots
-    excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
-    
-    # Filter and draw inner contours
-    for i, cntr in enumerate(contours):
-        area = cv2.contourArea(cntr)
+#     # Filter and draw inner contours
+#     for i, cntr in enumerate(contours):
+#         area = cv2.contourArea(cntr)
         
-        # Skip very small contours
-        if area <= excludeSmallDots:
-            continue
+#         # Skip very small contours
+#         if area <= excludeSmallDots:
+#             continue
         
-        # Skip contours that are too large
-        if area > 0.5 * image_area:
-            continue
+#         # Skip contours that are too large
+#         if area > 0.5 * image_area:
+#             continue
         
-        # Draw the contour
-        cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
-        cv2.drawContours(final_binary, [cntr], 0, 255, -1)
-    
-    cv2.imwrite('contour_img.jpg', gray_image)
-    return binary_image, contour_img, final_binary, block_size
+#         # Draw the contour
+#         cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
+#         cv2.drawContours(final_binary, [cntr], 0, 255, -1)
+
+#     cv2.imwrite('contour_img.jpg', contour_img)  
+#     cv2.imwrite('final_binary.jpg', final_binary)  
+
+#     return binary_image, contour_img, final_binary, block_size
 
 
 
@@ -196,11 +178,6 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
 
     #needs to be convered to colour so that it can be drawn on
     result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-
-    #CONTOURS HERE FOR TESTING
-    # cv2.imshow('contours', resize_for_display(result_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
     x_coords =[]
     y_coords=[]
@@ -276,7 +253,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 # 
 
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
-    start_time = time.time()
+
     def find_clusters(coords, min_count=2):
         # [Previous find_clusters implementation remains unchanged]
         FONT = "Microsoft New Tai Lue"
@@ -310,8 +287,9 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
             clusters.append(current_cluster)
 
         cluster_means = [np.mean(cluster) for cluster in clusters]
-    
         mean_diffs = np.diff(cluster_means)
+        print(mean_diffs)
+        print("________meandiffs_______________________________________________")
         if len(mean_diffs) > 0:
             kde = stats.gaussian_kde(mean_diffs)
             x_range = np.linspace(mean_diffs.min(), mean_diffs.max(), 100)
@@ -375,8 +353,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         raise ValueError("Both x and y differences are invalid")
     
     if square_grid:
-        print("YES SQUARE GRID")
-        print(square_grid)
+
         # Original behavior for square cells
         if median_x_diff is None:
             cell_size = median_y_diff
@@ -387,8 +364,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         cell_width = cell_size
         cell_height = cell_size
     else:
-        print("NO SQUARE GRID")
-        print(square_grid)
+
         # Handle rectangular cells
         if median_x_diff is None:
             cell_width = width / columns  # fallback to even distribution
@@ -410,9 +386,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         grid_start_x = width - grid_width
     if grid_start_y + grid_height > height:
         grid_start_y = height - grid_height
-        
-    end_time = time.time()
-    print(f"calculate_grid total execution time: {end_time - start_time:.4f} seconds")
     
     if square_grid:
         return grid_start_x, grid_start_y, cell_width, cell_width # maintains backward compatibility

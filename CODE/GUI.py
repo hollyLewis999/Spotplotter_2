@@ -29,6 +29,8 @@ VERSION = "1.0.0"
 from Processing import *
 from Style import *
 from outputs import *
+import os
+from tkinter import filedialog, messagebox
 # from help import *
 
 
@@ -2372,34 +2374,22 @@ def validate_and_proceed(window):
 def process_image(window):
     for widget in window.winfo_children():
         widget.destroy()
-    stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
-    window.contrast_value = idealContrast
-    window.contrast_value = 20
-    #FLAG
-    print("__________________________________________")
-    print(idealContrast)
-    print("__________________________________________")
-    width = window.current_image.shape[1]
 
+    stretched, blurred, window.gray_image, window.contrast_value  = stretch_and_gray(window.current_image, False)
+    
+    width = window.current_image.shape[1]
     colomns = window.all_plate_info[window.current_image_index]['layout']['columns']
-    print (width)
-    print(colomns)
-    blocksize = width/colomns/2#blocksize is a half of he spot size
-    print (blocksize)
-    window.block_size = int(blocksize)
-    window.block_size = 61
+    window.block_size = int(width/colomns/2) #blocksize is a half of he spot size
     if window.block_size %2 ==0:
         window.block_size =  window.block_size +1
-    window.gray_image = gray_image
-    binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
 
-    window.contour_img = contour_img
-    window.binarized_image = final_binary
-    window.debug_image = np.stack((final_binary,) * 3, axis=-1)
+    #FLAG for testing
+    #window.block_size = 61 
+    # window.contrast_value = 20   
+
+    binary_image, window.contour_img , window.binarized_image, block_size = binarize(window.gray_image, window.current_image, excludeSmallDots=window.excludeSmallDots, contrast=window.contrast_value, block_size = window.block_size)
+    window.debug_image = np.stack((window.binarized_image,) * 3, axis=-1)
     
-    # only initialize history if it's empty, othewise its adding doubles
-
-    #create_editFrame(window)
     create_slidersFrame(window)
 
 
@@ -2408,8 +2398,7 @@ def upload_images(window):
     Allow the user to upload image files in the order they appear in the metadata.
     Warn the user if there are filenames in the metadata that were not uploaded.
     """
-    import os
-    from tkinter import filedialog, messagebox
+
     
     # Allow user to select image files
     file_paths = filedialog.askopenfilenames(filetypes=[("Image files", "*.png *.jpg *.jpeg *.bmp *.gif *.tif")])
@@ -2462,11 +2451,6 @@ def load_current_image(window):
             messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
             return
         window.current_image = window.original_image.copy()
-       
-        # # Update the current image info
-        # print("IS IT HERE??????")
-
-        # print("AFTER")
 
         #TODO NEED TO FIX HERE TO LOAD THE INFO
         window.current_info = window.all_plate_info[window.current_image_index].copy()
@@ -2799,7 +2783,7 @@ def create_slidersFrame(window):
     create_circular_slider(
         control_frame, 
         min_val=0, 
-        max_val=60,
+        max_val=40,
         position=(16 , y_offset + 30),
         command=lambda v: on_contrast_change(window, v, False),
         initial_value=window.contrast_value
