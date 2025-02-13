@@ -88,7 +88,7 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     fig_average = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
     ax2 = fig_average.add_subplot(111)
     
-    sns.set_context("notebook", font_scale=3)
+    sns.set_context("notebook", font_scale=3) 
     
     # Set log scale and style
     for ax in [ax1, ax2]:
