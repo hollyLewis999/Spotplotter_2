@@ -1250,7 +1250,163 @@ def add_info_page(plate_info, story, logo, title_style, body_style):
         story.append(table)
         story.append(Spacer(1, 10))
     story.append(PageBreak())    
+
+
+# def add_info_page(plate_info, story, logo, title_style, body_style):
+#     """Helper function to add plate information page and save images"""  
+#     # Add title with plate name + Log
+#     story.append(Spacer(1, 10))
+#     title_text = f"\n{plate_info['filename']} Log"
+#     story.append(Paragraph(title_text, title_style))
+#     story.append(Spacer(1, 10))
     
+#     max_width = 280
+#     max_height = 170
+    
+#     def save_image(img, img_key, plate_name):
+#         """Helper function to save image to file"""
+#         try:
+#             # Create safe filename from plate name and image key
+#             safe_name = "".join(x for x in plate_name if x.isalnum() or x in (' ', '-', '_'))
+#             filename = f"{safe_name}_{img_key}.jpg"
+            
+#             # Save the image
+#             if isinstance(img, Image.Image):
+#                 img.save(filename, 'JPEG', quality=95)
+#             else:  # OpenCV image
+#                 cv2.imwrite(filename, img)
+#             print(f"Saved {filename}")
+#         except Exception as e:
+#             print(f"Error saving {img_key}: {e}")
+
+#     def create_image_with_caption(img_key, caption, max_width=280, max_height=170):
+#         """
+#         Creates an image and caption for the PDF report using ReportLab components.
+#         Also saves each image as a separate file.
+#         """
+#         try:
+#             if img_key == "IMGPreview":
+#                 # Handle preview image
+#                 if plate_info.get('layout', {}).get('IMGPreview') is not None:
+#                     img_data = base64.b64decode(plate_info['layout']['IMGPreview'])
+#                     pil_img = Image.open(io.BytesIO(img_data))
+#                     # Save the preview image
+#                     save_image(pil_img, img_key, plate_info['filename'])
+#                 else:
+#                     raise KeyError("IMGPreview not found in layout")
+#             else:
+#                 # Handle other image types
+#                 if plate_info.get(img_key) is not None:
+#                     # Save the original OpenCV image first
+#                     save_image(plate_info[img_key], img_key, plate_info['filename'])
+                    
+#                     if img_key == "IMGgrid":
+#                         pil_img = cv2_to_pil(plate_info[img_key], False)
+#                     else:
+#                         pil_img = cv2_to_pil(plate_info[img_key])
+#                 else:
+#                     raise KeyError(f"{img_key} not found in plate_info")
+
+#             if pil_img:
+#                 # Convert to RGB if needed
+#                 if pil_img.mode != 'RGB':
+#                     pil_img = pil_img.convert('RGB')
+                
+#                 # Check and limit maximum resolution
+#                 orig_width, orig_height = pil_img.size
+#                 if orig_width > 2500 or orig_height > 2500:
+#                     scale_factor = min(2500 / orig_width, 2500 / orig_height)
+#                     new_width = int(orig_width * scale_factor)
+#                     new_height = int(orig_height * scale_factor)
+#                     pil_img = pil_img.resize((new_width, new_height), Image.LANCZOS)
+                
+#                 # Resize image maintaining aspect ratio for PDF display
+#                 img_width, img_height = get_image_size(pil_img, max_width, max_height)
+                
+#                 # Save to bytes buffer for PDF
+#                 img_data = BytesIO()
+#                 pil_img.save(img_data, format='JPEG', quality=40)
+#                 img_data.seek(0)
+                
+#                 # Create ReportLab image
+#                 img = ImageR(img_data, width=img_width, height=img_height)
+                
+#                 # Create caption style
+#                 caption_style = ParagraphStyle(
+#                     'CaptionStyle',
+#                     parent=body_style,
+#                     fontWeight='bold',
+#                     fontStyle='italic',
+#                     alignment=TA_CENTER
+#                 )
+                
+#                 return [
+#                     Paragraph(caption, caption_style),
+#                     img
+#                 ]
+#         except Exception as e:
+#             print(f"Error creating image with caption for {img_key}: {e}")
+#             return []
+
+#     # Rest of the function remains the same
+#     def create_info_text(plate_info):
+#         if (plate_info['layout']['x_dilution'] == -1  and plate_info['layout']['y_dilution'] == -1):
+#             info_text = f"""
+#             <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+#             <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+#             <b>Threshold:</b> {plate_info['threshold']}<br/>
+#             <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+#             <b>Block Size:</b> {plate_info['blocksize']}<br/>
+#             """
+#         else:
+#             info_text = f"""
+#             <b>Filename:</b> {plate_info.get('filename', 'Not specified')}<br/>
+#             <b>Additive:</b> {plate_info.get('additive', 'None')}<br/>
+#             <b>X Dilution:</b> {plate_info['layout']['x_dilution']}<br/>
+#             <b>Y Dilution:</b> {plate_info['layout']['y_dilution']}<br/>
+#             <b>Strains:</b> {", ".join(plate_info.get('strains', [])) if plate_info.get('strains') else 'None'}<br/>
+#             <b>Column Indexes:</b> {plate_info.get('column_indexes', 'Not specified')}<br/>
+#             <b>Gap Between Strains:</b> {plate_info['layout']['gap_between_strains']}<br/>
+#             <b>Threshold:</b> {plate_info['threshold']}<br/>
+#             <b>Minimum Area:</b> {plate_info['smallArea']}<br/>
+#             <b>Block Size:</b> {plate_info['blocksize']}<br/>
+#             """
+#         return Paragraph(info_text, body_style)
+
+#     # Create tables
+#     row1_data = [
+#         [create_image_with_caption('IMGPreview', "Assay Layout"),
+#          create_info_text(plate_info)]
+#     ]
+#     row1_table = Table(row1_data, colWidths=[max_width, max_width])
+    
+#     row2_data = [
+#         [create_image_with_caption('IMGToolUsage', "Tool Usage: Red(+) Blue(-)"),
+#          create_image_with_caption('IMGbinary', "Final Binary Image")]
+#     ]
+#     row2_table = Table(row2_data, colWidths=[max_width, max_width])
+    
+#     row3_data = [
+#         [create_image_with_caption('IMGgrid', "Detected Grid and Quantifications"),
+#          create_image_with_caption('IMGcontours', "Contours overaly")]
+#     ]
+#     row3_table = Table(row3_data, colWidths=[max_width, max_width])
+    
+#     # Apply table styling
+#     table_style = TableStyle([
+#         ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+#         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+#         ('LEFTPADDING', (0, 0), (-1, -1), 10),
+#         ('RIGHTPADDING', (0, 0), (-1, -1), 10),
+#         ('TOPPADDING', (0, 0), (-1, -1), 10),
+#         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+#     ])
+    
+#     for table in [row1_table, row2_table, row3_table]:
+#         table.setStyle(table_style)
+#         story.append(table)
+#         story.append(Spacer(1, 10))
+#     story.append(PageBreak())
 
 def add_title_page(doc,filename, logo_path="Icons/LogoVerticalDark.png", version="1.0.0"):
     """
