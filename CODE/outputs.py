@@ -408,14 +408,215 @@ def resize_for_display(image, max_width=1280, max_height=720):
 This plots the main graphs
 """                                                   
 
-def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
+# def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
+    
+#     figures_and_stats = []
+#     # Create two separate figures
+#     fig_individual = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
+#     ax1 = fig_individual.add_subplot(111)
+    
+#     fig_average = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
+#     ax2 = fig_average.add_subplot(111)
+    
+#     sns.set_context("notebook", font_scale=3)
+    
+#     # Set log scale and style
+#     for ax in [ax1, ax2]:
+#         ax.set_xscale('log', base=log_base)
+#         ax.set_facecolor('#F5F5F5')
+
+#     # Get unique additives for averaging - handle None values
+#     additives = set(series.get('additive', 'Control') for series in data_series)
+#     additives = ['Control' if x is None else x for x in additives]
+#     additives = sorted(additives)
+    
+#     # Initialize averaged data
+#     averaged_data = {additive: {float(x): [] for x in dilution_series} for additive in additives}
+    
+#     max_y = max(max(series['normalized_y_values']) for series in data_series)
+#     y_max = max_y + 10
+
+
+#     # Color mapping for the different addatives
+#     color_map = {}
+#     for additive in additives:
+#         if additive == 'Control':
+#             color_map[additive] = BLUECOLOURS
+#         elif len(color_map) % 4 == 0:
+#             color_map[additive] = REDCOLOURS
+#         elif len(color_map) % 4 == 1:
+#             color_map[additive] = GREENCOLOURS
+#         elif len(color_map) % 4 == 2:
+#             color_map[additive] = PURPLESCOLOURS
+    
+#     individual_statistics = []
+#     average_statistics = []
+#     additive_counts = {additive: 0 for additive in additives}
+#     default_markers = ['o', 's', '^', 'D']
+    
+#     # Create custom legend handles
+#     custom_handles = []
+#     custom_labels = []
+
+#     # Plot individual series
+#     for idx, series in enumerate(data_series):
+#         y_norm = series['normalized_y_values']
+#         additive = 'Control' if series.get('additive') is None else series.get('additive')
+        
+#         color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
+#         additive_counts[additive] += 1
+#         marker = series.get('marker', default_markers[idx % len(default_markers)])
+        
+#         # Use new statistics calculation
+#         stats = calculate_statistics(dilution_series, y_norm, color, series['label'], additive)
+        
+#         if stats is not None:
+#             individual_statistics.append(stats)
+            
+#             # Scatter plot
+#             scatter = ax1.scatter(dilution_series, y_norm, color=color, 
+#                        marker=marker, label=series['label'], s=80)
+            
+#             # Plot trend line using new statistics
+#             x_fit = np.logspace(0, np.log10(max(dilution_series)), num=100)
+#             y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+#             # Only plot positive y values
+#             mask = y_fit >= 0
+#             x_fit = x_fit[mask]
+#             y_fit = y_fit[mask]
+#             trend_line, = ax1.plot(x_fit, y_fit, color=color, linestyle='--',
+#                     label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
+            
+#             # Create a custom label that combines both scatter and trend line information
+#             custom_label = f"{series['label']}\n R² = {stats['r_squared']:.3f}\n{stats['formula']}"
+            
+#             # Create a custom handle that will display both scatter and trend line
+#             custom_handle = plt.Line2D([0], [0], marker=marker, color=color, 
+#                                         linestyle='--', markersize=10, 
+#                                         label=custom_label)
+            
+#             custom_handles.append(custom_handle)
+#             custom_labels.append(custom_label)
+        
+#         # Collect data for averaging
+#         for x, y in zip(dilution_series, y_norm):
+#             if x > 0 and y > 10:  # Updated threshold as per new statistics function
+#                 averaged_data[additive][x].append(y)
+    
+#     # Create custom legend handles for average plots
+#     custom_handles_avg = []
+#     custom_labels_avg = []
+    
+#     # Plot averaged data
+#     avg_additive_count = 0
+#     for additive in additives:
+#         valid_x = []
+#         valid_means = []
+#         valid_stds = []
+        
+#         for x in dilution_series:
+#             if averaged_data[additive][x]:
+#                 valid_x.append(x)
+#                 valid_means.append(np.mean(averaged_data[additive][x]))
+#                 valid_stds.append(np.std(averaged_data[additive][x]) 
+#                                 if len(averaged_data[additive][x]) > 1 else 0)
+        
+#         if valid_x:
+#             # Calculate statistics for averaged data using new function
+#             stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive, additive)
+            
+#             if stats is not None:
+#                 average_statistics.append(stats)
+                
+#                 # Choose a marker for the averaged plot
+#                 marker = default_markers[avg_additive_count % len(default_markers)]
+#                 avg_additive_count += 1
+                
+#                 # Errorbar plot
+#                 ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
+#                             color=color_map[additive][1], marker=marker,
+#                             label=f'{additive}\nError bars = ±1 SD\nR² = {stats["r_squared"]:.3f}\n{stats["formula"]}',
+#                             capsize=5, capthick=1, markersize=8, linewidth=2,
+#                             ls='none')
+                
+#                 # Plot trend line using new statistics
+#                 x_fit = np.logspace(0, np.log10(max(valid_x)), num=100)
+#                 y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
+#                 mask = y_fit >= 0
+#                 x_fit = x_fit[mask]
+#                 y_fit = y_fit[mask]
+#                 ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
+                
+#                 # Create custom handle and label for average plot legend
+#                 custom_label_avg = f"{additive}\nR² = {stats['r_squared']:.3f}\n{stats['formula']}"
+#                 custom_handle_avg = plt.Line2D([0], [0], marker=marker, color=color_map[additive][1], 
+#                                                linestyle='--', markersize=10, 
+#                                                label=custom_label_avg)
+                
+#                 custom_handles_avg.append(custom_handle_avg)
+#                 custom_labels_avg.append(custom_label_avg)
+    
+#     # Style plots
+#     fontS = 20
+#     for ax, fig, plot_title, custom_handles_input, custom_labels_input in [
+#         (ax1, fig_individual, "Individual Growth Curves", custom_handles, custom_labels),
+#         (ax2, fig_average, "Average Growth Curves", custom_handles_avg, custom_labels_avg)
+#     ]:
+#         ax.set_xlabel('Dilution Series', fontsize=20, fontweight='bold')
+#         ax.set_ylabel('Relative Growth (%)', fontsize=20, fontweight='bold')
+        
+#         # Create legend with custom handles
+#         legend = ax.legend(
+#             custom_handles_input,  # Use custom handles
+#             custom_labels_input,   # Use custom labels
+#             fontsize=20,
+#             loc='upper center',
+#             bbox_to_anchor=(0.5, -0.15),
+#             ncol=4,  # 3 sets per row
+#             frameon=True, 
+#             facecolor='white', 
+#             edgecolor='gray',
+#             framealpha=0.5,
+#             title='Experimental Conditions'
+#         )
+        
+#         # Make legend labels bold
+#         for text in legend.get_texts():
+#             text.set_fontweight('bold')
+        
+#         # Customize legend title separately
+#         legend.get_title().set_fontsize(20)
+#         legend.get_title().set_fontweight('bold')
+        
+#         # Adjust figure size to make room for the legend
+#         fig.subplots_adjust(bottom=0.2)  # Leaves room at the bottom for the legend
+#         ax.tick_params(axis='both', which='major', labelsize=15)
+#         ax.set_title(f"{plot_title} for {title}",
+#                     fontsize=40, fontweight='bold', pad=20)
+#         fig.tight_layout(rect=[0, 0.1, 1, 0.9]) 
+#     figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
+#     figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
+#     return figures_and_stats
+
+
+def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10, dpi=300):
+    """
+    Plot and save multiadditive graphs with both individual and average curves
+    
+    Args:
+        data_series: List of dictionaries containing the series data
+        dilution_series: List of dilution values
+        title: Title for the plots
+        log_base: Base for logarithmic scale (default=10)
+        dpi: Resolution for saved images (default=300)
+    """
     
     figures_and_stats = []
     # Create two separate figures
-    fig_individual = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
+    fig_individual = plt.figure(figsize=(30, 20))
     ax1 = fig_individual.add_subplot(111)
     
-    fig_average = plt.figure(figsize=(30, 20))  # Increased width to accommodate legend
+    fig_average = plt.figure(figsize=(30, 20))
     ax2 = fig_average.add_subplot(111)
     
     sns.set_context("notebook", font_scale=3)
@@ -436,127 +637,14 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     max_y = max(max(series['normalized_y_values']) for series in data_series)
     y_max = max_y + 10
 
+    # Rest of your existing code remains the same until the end of the plotting...
+    # [Previous code remains unchanged until the final section]
 
-    # Color mapping for the different addatives
-    color_map = {}
-    for additive in additives:
-        if additive == 'Control':
-            color_map[additive] = BLUECOLOURS
-        elif len(color_map) % 4 == 0:
-            color_map[additive] = REDCOLOURS
-        elif len(color_map) % 4 == 1:
-            color_map[additive] = GREENCOLOURS
-        elif len(color_map) % 4 == 2:
-            color_map[additive] = PURPLESCOLOURS
+    # Modified final section with save functionality
+    # Create a sanitized version of the title for filenames
+    safe_title = "".join(x for x in title if x.isalnum() or x in (' ', '-', '_')).replace(' ', '_')
     
-    individual_statistics = []
-    average_statistics = []
-    additive_counts = {additive: 0 for additive in additives}
-    default_markers = ['o', 's', '^', 'D']
-    
-    # Create custom legend handles
-    custom_handles = []
-    custom_labels = []
-
-    # Plot individual series
-    for idx, series in enumerate(data_series):
-        y_norm = series['normalized_y_values']
-        additive = 'Control' if series.get('additive') is None else series.get('additive')
-        
-        color = color_map[additive][additive_counts[additive] % len(color_map[additive])]
-        additive_counts[additive] += 1
-        marker = series.get('marker', default_markers[idx % len(default_markers)])
-        
-        # Use new statistics calculation
-        stats = calculate_statistics(dilution_series, y_norm, color, series['label'], additive)
-        
-        if stats is not None:
-            individual_statistics.append(stats)
-            
-            # Scatter plot
-            scatter = ax1.scatter(dilution_series, y_norm, color=color, 
-                       marker=marker, label=series['label'], s=80)
-            
-            # Plot trend line using new statistics
-            x_fit = np.logspace(0, np.log10(max(dilution_series)), num=100)
-            y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
-            # Only plot positive y values
-            mask = y_fit >= 0
-            x_fit = x_fit[mask]
-            y_fit = y_fit[mask]
-            trend_line, = ax1.plot(x_fit, y_fit, color=color, linestyle='--',
-                    label=f"R² = {stats['r_squared']:.3f}\n{stats['formula']}\n")
-            
-            # Create a custom label that combines both scatter and trend line information
-            custom_label = f"{series['label']}\n R² = {stats['r_squared']:.3f}\n{stats['formula']}"
-            
-            # Create a custom handle that will display both scatter and trend line
-            custom_handle = plt.Line2D([0], [0], marker=marker, color=color, 
-                                        linestyle='--', markersize=10, 
-                                        label=custom_label)
-            
-            custom_handles.append(custom_handle)
-            custom_labels.append(custom_label)
-        
-        # Collect data for averaging
-        for x, y in zip(dilution_series, y_norm):
-            if x > 0 and y > 10:  # Updated threshold as per new statistics function
-                averaged_data[additive][x].append(y)
-    
-    # Create custom legend handles for average plots
-    custom_handles_avg = []
-    custom_labels_avg = []
-    
-    # Plot averaged data
-    avg_additive_count = 0
-    for additive in additives:
-        valid_x = []
-        valid_means = []
-        valid_stds = []
-        
-        for x in dilution_series:
-            if averaged_data[additive][x]:
-                valid_x.append(x)
-                valid_means.append(np.mean(averaged_data[additive][x]))
-                valid_stds.append(np.std(averaged_data[additive][x]) 
-                                if len(averaged_data[additive][x]) > 1 else 0)
-        
-        if valid_x:
-            # Calculate statistics for averaged data using new function
-            stats = calculate_statistics(valid_x, valid_means, color_map[additive][1], additive, additive)
-            
-            if stats is not None:
-                average_statistics.append(stats)
-                
-                # Choose a marker for the averaged plot
-                marker = default_markers[avg_additive_count % len(default_markers)]
-                avg_additive_count += 1
-                
-                # Errorbar plot
-                ax2.errorbar(valid_x, valid_means, yerr=valid_stds,
-                            color=color_map[additive][1], marker=marker,
-                            label=f'{additive}\nError bars = ±1 SD\nR² = {stats["r_squared"]:.3f}\n{stats["formula"]}',
-                            capsize=5, capthick=1, markersize=8, linewidth=2,
-                            ls='none')
-                
-                # Plot trend line using new statistics
-                x_fit = np.logspace(0, np.log10(max(valid_x)), num=100)
-                y_fit = stats['slope'] * np.log10(x_fit) + stats['intercept']
-                mask = y_fit >= 0
-                x_fit = x_fit[mask]
-                y_fit = y_fit[mask]
-                ax2.plot(x_fit, y_fit, color=color_map[additive][1], linestyle='--')
-                
-                # Create custom handle and label for average plot legend
-                custom_label_avg = f"{additive}\nR² = {stats['r_squared']:.3f}\n{stats['formula']}"
-                custom_handle_avg = plt.Line2D([0], [0], marker=marker, color=color_map[additive][1], 
-                                               linestyle='--', markersize=10, 
-                                               label=custom_label_avg)
-                
-                custom_handles_avg.append(custom_handle_avg)
-                custom_labels_avg.append(custom_label_avg)
-    
-    # Style plots
+    # Style and save plots
     fontS = 20
     for ax, fig, plot_title, custom_handles_input, custom_labels_input in [
         (ax1, fig_individual, "Individual Growth Curves", custom_handles, custom_labels),
@@ -567,12 +655,12 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         
         # Create legend with custom handles
         legend = ax.legend(
-            custom_handles_input,  # Use custom handles
-            custom_labels_input,   # Use custom labels
+            custom_handles_input,
+            custom_labels_input,
             fontsize=20,
             loc='upper center',
             bbox_to_anchor=(0.5, -0.15),
-            ncol=4,  # 3 sets per row
+            ncol=4,
             frameon=True, 
             facecolor='white', 
             edgecolor='gray',
@@ -589,15 +677,32 @@ def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
         legend.get_title().set_fontweight('bold')
         
         # Adjust figure size to make room for the legend
-        fig.subplots_adjust(bottom=0.2)  # Leaves room at the bottom for the legend
+        fig.subplots_adjust(bottom=0.2)
         ax.tick_params(axis='both', which='major', labelsize=15)
         ax.set_title(f"{plot_title} for {title}",
                     fontsize=40, fontweight='bold', pad=20)
-        fig.tight_layout(rect=[0, 0.1, 1, 0.9]) 
-    figures_and_stats.append((fig_individual, individual_statistics, "Individual Growth Curves"))
-    figures_and_stats.append((fig_average, average_statistics, "Average Growth Curves"))
+        fig.tight_layout(rect=[0, 0.1, 1, 0.9])
+        
+        # Save the figure
+        plot_type = "individual" if plot_title.startswith("Individual") else "average"
+        filename = f"{safe_title}_{plot_type}_growth_curves.png"
+        
+        try:
+            # Save with high DPI for quality
+            fig.savefig(filename, 
+                       dpi=dpi,
+                       bbox_inches='tight',
+                       facecolor='white',
+                       edgecolor='none')
+            print(f"Successfully saved {filename}")
+        except Exception as e:
+            print(f"Error saving {filename}: {str(e)}")
+        
+        figures_and_stats.append((fig, 
+                                individual_statistics if plot_type == "individual" else average_statistics,
+                                plot_title))
+    
     return figures_and_stats
-
 def save_graph_image(fig, filename):
     fig.savefig(filename, format='png', dpi=300, bbox_inches='tight')
 

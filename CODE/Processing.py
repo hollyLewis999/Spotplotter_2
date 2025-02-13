@@ -16,7 +16,6 @@ from scipy import stats
 import time
 import seaborn as sns
 
-
 import time
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -176,34 +175,43 @@ from matplotlib.patches import Rectangle
                                                          
 #adpated method from:
 ####https://learnopencv.com/blob-detection-using-opencv-python-c/
-def findBlobs(binary_image, min_area, max_area, thickness=2):
-
-    #find contours to look for blobs in
+def findBlobs(binary_image, min_area, max_area, output_path="detected_blobs.png", thickness=2):
+    # Find contours to look for blobs in
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    #needs to be convered to colour so that it can be drawn on
+    
+    # Convert to color so that it can be drawn on
     result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-
-    x_coords =[]
-    y_coords=[]
+    
+    x_coords = []
+    y_coords = []
+    
     for contour in contours:
-
         area = cv2.contourArea(contour)
         if min_area <= area <= max_area:
-            #circuarity
+            # Circularity check
             perimeter = cv2.arcLength(contour, True)
             circularity = 4 * np.pi * area / (perimeter * perimeter)
-
-            if circularity > 0.30:
-                #find center using moments
+            
+            if circularity > 0.40:
+                # Find center using moments
                 M = cv2.moments(contour)
                 if M["m00"] != 0:
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-                    #if it meets the criteria then add the centerpoint
+                    
+                    # Add the centerpoint
                     x_coords.append(cX)
                     y_coords.append(cY)
-    return x_coords,y_coords,result_image
+                    
+                    # Draw circle and center point
+                    cv2.circle(result_image, (cX, cY), 10, (0, 0, 255), thickness)  # Green circle
+                    cv2.circle(result_image, (cX, cY), 2, (0, 0, 255), -1)  # Red center point
+                    
+                    # # Draw contour
+                    # cv2.drawContours(result_image, [contour], -1, (255, 0, 0), 1)  # Blue contour
+    
+    
+    return x_coords, y_coords, result_image
 
 def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28, columns = 12, rows=8, square_grid = False):
     
@@ -215,9 +223,9 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 
     counts = np.zeros((rows, columns))
 
-    x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
+    x_coords, y_coords, marked_image_blobs = findBlobs(binary_image, min_area, max_area)
     grid_calculated = False
-
+    cv2.imwrite("1detected blobs.jpg", marked_image_blobs)
 
     tries = 0
     max_tries = 2
@@ -247,7 +255,9 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     if not grid_calculated:
         return None, None
     print("epfre")
-    counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
+    # cv2.imwrite("2detected circles.jpg", marked_image)
+    counts, marked_image = quantify_grid(binary_image, binary_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
+    cv2.imwrite("3quantified image circles.jpg", marked_image)
     # cv2.imwrite('marked_image.jpg', gray_image)
     print("after")
     return counts, marked_image
@@ -261,10 +271,9 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 #  Y888P  88   YD Y888888P Y8888D' 
 #
 
-def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
+def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=True):
 
-    def find_clusters(coords, min_count=2):
-        # [Previous find_clusters implementation remains unchanged]
+    def find_clusters(coords, min_count=2, debug=True):
         FONT = "Microsoft New Tai Lue"
         plt.rcParams['font.family'] = FONT
         sns.set_style("whitegrid")
@@ -297,34 +306,88 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
         cluster_means = [np.mean(cluster) for cluster in clusters]
         mean_diffs = np.diff(cluster_means)
-        print(mean_diffs)
-        print("________meandiffs_______________________________________________")
+        
         if len(mean_diffs) > 0:
             kde = stats.gaussian_kde(mean_diffs)
             x_range = np.linspace(mean_diffs.min(), mean_diffs.max(), 100)
             modal_diff = x_range[np.argmax(kde(x_range))]
         else:
             modal_diff = threshold
-
-        if True:    
-            combined_clusters = []
-            combined_indices = []
-            i = 0
-            while i < len(clusters):
-                current_combined = clusters[i]
-                combined_group = [i]
-                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                    current_combined.extend(clusters[i+1])
-                    combined_group.append(i+1)
-                    i += 1
-                combined_clusters.append(current_combined)
-                if len(combined_group) > 1:
-                    combined_indices.append(combined_group)
+        
+        # Combine clusters that are too close together
+        combined_clusters = []
+        combined_indices = []
+        i = 0
+        while i < len(clusters):
+            current_combined = clusters[i]
+            combined_group = [i]
+            while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
+                current_combined.extend(clusters[i+1])
+                combined_group.append(i+1)
                 i += 1
-            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-            return final_cluster_means
-        else:
-            return cluster_means
+            combined_clusters.append(current_combined)
+            if len(combined_group) > 1:
+                combined_indices.append(combined_group)
+            i += 1
+        final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
+        
+        if debug:
+            plt.rcParams['font.family'] = FONT
+            plt.rcParams['font.weight'] = 'bold'
+            plt.rcParams['font.size'] = 12
+            sns.set_style("whitegrid")
+            
+            # Create the plot
+            plt.figure(figsize=(8, 6))
+            ax = plt.gca()
+            ax.set_facecolor('#F5F5F5')
+            
+            # Create color array for scatter plot
+            colors = ['#073B3A' if any(coord in cluster for cluster in combined_clusters) 
+                    else '#D24C4A' for coord in coords]
+            
+            plt.scatter(coords, [0] * len(coords), c=colors, alpha=0.5)
+            ax.yaxis.set_ticklabels([])
+            
+            # Plot original cluster means
+            for mean in cluster_means:
+                plt.axvline(x=mean, color='#D3784A', linestyle='--', alpha=0.5)
+            
+            # Plot final cluster means with labels
+            for i, mean in enumerate(final_cluster_means):
+                plt.axvline(x=mean, color='green', linestyle='-', linewidth=2)
+                plt.text(mean, 0.1, f'C{i}', rotation=90, verticalalignment='bottom')
+            
+            # Highlight combined clusters
+            for group in combined_indices:
+                min_x = min(cluster_means[i] for i in group)
+                max_x = max(cluster_means[i] for i in group)
+                plt.axvspan(min_x, max_x, facecolor='yellow', alpha=0.3)
+            
+            plt.xticks(final_cluster_means, [f'{coord:.2f}' for coord in final_cluster_means], 
+                    ha='right', rotation=45)
+            plt.xlabel('Cluster Coordinates', fontweight='bold', labelpad=15)
+            plt.title('Detected Clusters', fontweight='bold', pad=20)
+            
+            # Add legend
+            plt.scatter([], [], c='#073B3A', label='Spots in Clusters', alpha=0.5)
+            plt.scatter([], [], c='#D24C4A', label='Spots not in Clusters', alpha=0.5)
+            plt.legend(prop={'weight': 'bold'})
+            
+            plt.tight_layout()
+            plt.show()
+            
+            # Print debug information
+            print(f"Number of original clusters: {len(clusters)}")
+            print(f"Number of combined clusters: {len(combined_clusters)}")
+            print(f"Combined cluster groups: {combined_indices}")
+        
+        return final_cluster_means
+
+
+
+
+
 
     x_clusters = find_clusters(x_coords)
     y_clusters = find_clusters(y_coords)
@@ -407,6 +470,9 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
 
 
+
+
+
 def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, cell_height, 
                   rows, columns, width, height):
     """
@@ -469,147 +535,11 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, 
     
     return None
 
-import numpy as np
-from scipy import ndimage
-import cv2
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import os
-
-def process_label(labeled_image, label, grid_start_x, grid_start_y, 
-                 cell_width, cell_height, rows, columns, width, height):
-    """Helper function to process each label"""
-    # Get component pixels
-    component = (labeled_image == label)
-    if not np.any(component):
-        return None
-        
-    # Find the centroid of the component
-    y_indices, x_indices = np.nonzero(component)
-    if len(x_indices) == 0 or len(y_indices) == 0:
-        return None
-        
-    centroid_x = np.mean(x_indices)
-    centroid_y = np.mean(y_indices)
-    
-    # Calculate grid position
-    col = int((centroid_x - grid_start_x) / cell_width)
-    row = int((centroid_y - grid_start_y) / cell_height)
-    
-    # Check if centroid is within grid bounds
-    if (0 <= row < rows and 0 <= col < columns and 
-        grid_start_x <= centroid_x < grid_start_x + columns * cell_width and
-        grid_start_y <= centroid_y < grid_start_y + rows * cell_height):
-        
-        total_area = np.sum(component)
-        return row, col, total_area, component
-    
-    return None
-
-def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, 
-                 cell_width, cell_height, columns, rows):
-    """
-    Quantify spots in a grid and visualize results
-    
-    Args:
-    - binary_image: Binary image with spots
-    - marked_image: Image to draw results on
-    - grid_start_x: Starting x coordinate of the grid
-    - grid_start_y: Starting y coordinate of the grid
-    - cell_width: Width of each grid cell
-    - cell_height: Height of each grid cell
-    - columns: Number of grid columns
-    - rows: Number of grid rows
-    
-    Returns:
-    - counts: Array of spot counts per grid cell
-    - marked_image: Visualization of the grid and counts
-    """
-    # Input validation
-    if not isinstance(binary_image, np.ndarray) or binary_image.dtype != bool:
-        binary_image = binary_image.astype(bool)
-    
-    height, width = binary_image.shape
-    
-    # Label the image
-    labeled_image, num_features = ndimage.label(binary_image)
-    counts = np.zeros((rows, columns), dtype=int)
-    
-    # Convert to color image if grayscale
-    if len(marked_image.shape) == 2:
-        marked_image = cv2.cvtColor(marked_image, cv2.COLOR_GRAY2BGR)
-    marked_image = marked_image.copy()  # Create a copy to avoid modifying the original
-    
-    # Mark non-counted areas dark grey
-    white_areas = (marked_image[:, :, 0] == 255) & (marked_image[:, :, 1] == 255) & (marked_image[:, :, 2] == 255)
-    marked_image[white_areas] = [64, 64, 64]
-    
-    try:
-        # Process labels with ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 1)) as executor:
-            # Submit all label processing tasks
-            future_to_label = {
-                executor.submit(
-                    process_label, labeled_image, label, grid_start_x, grid_start_y,
-                    cell_width, cell_height, rows, columns, width, height
-                ): label for label in range(1, num_features + 1)
-            }
-            
-            # Process results as they complete with timeout
-            for future in as_completed(future_to_label, timeout=30):
-                try:
-                    result = future.result(timeout=5)
-                    if result is not None:
-                        row, col, total_area, component = result
-                        counts[row, col] += total_area
-                        marked_image[component] = [255, 255, 255]
-                except TimeoutError:
-                    print(f"Processing label {future_to_label[future]} timed out")
-                    continue
-                
-    except Exception as e:
-        print(f"Error in parallel processing: {str(e)}")
-        return None, None
-    
-    # Scale counts (avoid division by zero)
-    scaling_factor = (width-1)**2
-    if scaling_factor > 0:
-        counts = (np.round((counts / scaling_factor) * 1000000)).astype(int)
-    
-    # Draw grid and add counts
-    font = cv2.FONT_HERSHEY_SIMPLEX
-    font_scale = max(width * 0.0008, 0.3)  # Set minimum font scale
-    thickness = max(int(width * 0.002), 1)  # Set minimum thickness
-    
-    for row in range(rows):
-        for col in range(columns):
-            x1 = int(grid_start_x + col * cell_width)
-            y1 = int(grid_start_y + row * cell_height)
-            x2 = int(x1 + cell_width)
-            y2 = int(y1 + cell_height)
-            
-            # Ensure coordinates are within image bounds
-            x1 = max(0, min(x1, width-1))
-            y1 = max(0, min(y1, height-1))
-            x2 = max(0, min(x2, width-1))
-            y2 = max(0, min(y2, height-1))
-            
-            cv2.rectangle(marked_image, (x1, y1), (x2, y2), (255, 105, 65), thickness)
-            
-            text = str(counts[row, col])
-            text_size = cv2.getTextSize(text, font, font_scale, thickness)[0]
-            
-            # Center text in potentially rectangular cell
-            text_x = int(x1 + (cell_width - text_size[0]) // 2)
-            text_y = int(y1 + (cell_height + text_size[1]) // 2)
-            
-            # Ensure text coordinates are within bounds
-            text_x = max(0, min(text_x, width-1))
-            text_y = max(0, min(text_y, height-1))
-            
-            cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
-    
-    return counts, marked_image
-
+def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows):
+    cv2.imwrite('marked_image2.jpg', marked_image)
+    cv2.imwrite('binary_image2.jpg', binary_image)
+    print(cell_width)
+    print(cell_height)
     """
     Quantify spots in a grid and visualize results
     
@@ -624,8 +554,10 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y,
     - square_grid: If True, cells are square and cell_size is a single value
                   If False, cell_size should be a tuple of (cell_width, cell_height)
     """
-
+    start_time = time.time()
     height, width = binary_image.shape
+
+
     # Label the image
     labeled_image, num_features = ndimage.label(binary_image) 
     counts = np.zeros((rows, columns), dtype=int)
@@ -654,14 +586,19 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y,
                 row, col, total_area, component = result
                 counts[row, col] += total_area
                 marked_image[component] = [255, 255, 255]
+    
+    print("COUNTS")
+    print(counts)
     # Scale counts
     counts = (np.round((counts / ((width-1)**2)) * 1000000)).astype(int)
     
     # Draw grid and add counts
     font = cv2.FONT_HERSHEY_SIMPLEX
-    #scaling the size and thickness so that its proportanal to the quality of the image
     font_scale = width * 0.0008
     thickness = int(width * 0.002)
+    print("FONT SCALE AND THICKNESS")
+    print(font_scale)
+    print(thickness)
 
     for row in range(rows):
         for col in range(columns):
@@ -680,4 +617,27 @@ def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y,
             text_y = int(y1 + (cell_height + text_size[1]) // 2)
             
             cv2.putText(marked_image, text, (text_x, text_y), font, font_scale, (255, 105, 65), thickness)
+
+    end_time = time.time()
+    print(f"quantify_grid total execution time: {end_time - start_time:.4f} seconds")
+    cv2.imwrite('marked_image3.jpg', marked_image)
     return counts, marked_image
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
