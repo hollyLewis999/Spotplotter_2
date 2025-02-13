@@ -16,6 +16,7 @@ from scipy import stats
 import time
 import seaborn as sns
 
+
 import time
 import multiprocessing
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -175,51 +176,40 @@ from matplotlib.patches import Rectangle
                                                          
 #adpated method from:
 ####https://learnopencv.com/blob-detection-using-opencv-python-c/
-def findBlobs(binary_image, min_area, max_area, output_path="detected_blobs.png", thickness=2):
-    # Find contours to look for blobs in
+def findBlobs(binary_image, min_area, max_area, thickness=2):
+
+    #find contours to look for blobs in
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
-    # Convert to color so that it can be drawn on
+
+    #needs to be convered to colour so that it can be drawn on
     result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-    
-    x_coords = []
-    y_coords = []
-    
+
+    x_coords =[]
+    y_coords=[]
     for contour in contours:
+
         area = cv2.contourArea(contour)
         if min_area <= area <= max_area:
-            # Circularity check
+            #circuarity
             perimeter = cv2.arcLength(contour, True)
             circularity = 4 * np.pi * area / (perimeter * perimeter)
-            
-            if circularity > 0.40:
-                # Find center using moments
+
+            if circularity > 0.30:
+                #find center using moments
                 M = cv2.moments(contour)
                 if M["m00"] != 0:
                     cX = int(M["m10"] / M["m00"])
                     cY = int(M["m01"] / M["m00"])
-                    
-                    # Add the centerpoint
+                    #if it meets the criteria then add the centerpoint
                     x_coords.append(cX)
                     y_coords.append(cY)
-                    
-                    # Draw circle and center point
-                    cv2.circle(result_image, (cX, cY), 10, (0, 0, 255), thickness)  # Green circle
-                    cv2.circle(result_image, (cX, cY), 2, (0, 0, 255), -1)  # Red center point
-                    
-                    # # Draw contour
-                    # cv2.drawContours(result_image, [contour], -1, (255, 0, 0), 1)  # Blue contour
-    
-
-    cv2.imwrite("Detectedblobs.jpg", result_image)
-    
-    return x_coords, y_coords, result_image
+    return x_coords,y_coords,result_image
 
 def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50, max_radius=140, param1=50, param2=28, columns = 12, rows=8, square_grid = False):
     
     height, width = binary_image.shape
     max_radius = int(width/(columns*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
-    min_radius = int(max_radius/3)
+    min_radius = int(max_radius/6)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
 
@@ -227,7 +217,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 
     x_coords, y_coords, marked_image = findBlobs(binary_image, min_area, max_area)
     grid_calculated = False
-    cv2.imwrite("1detected blobs.jpg", marked_image)
+
 
     tries = 0
     max_tries = 2
@@ -257,9 +247,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     if not grid_calculated:
         return None, None
     print("epfre")
-    cv2.imwrite("2detected circles.jpg", marked_image)
     counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
-    cv2.imwrite("3quantified image circles.jpg", marked_image)
     # cv2.imwrite('marked_image.jpg', gray_image)
     print("after")
     return counts, marked_image
@@ -273,71 +261,10 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 #  Y888P  88   YD Y888888P Y8888D' 
 #
 
-def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=True):
+def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
 
-    # def find_clusters(coords, min_count=2):
-    #     # [Previous find_clusters implementation remains unchanged]
-    #     FONT = "Microsoft New Tai Lue"
-    #     plt.rcParams['font.family'] = FONT
-    #     sns.set_style("whitegrid")
-    #     sorted_coords = np.sort(coords)
-    #     diffs = np.diff(sorted_coords)
-    #     filtered_diff = diffs[(diffs > 0) & (diffs < 50)]
-    #     median_diff = np.median(filtered_diff)
-        
-    #     if (math.isnan(median_diff)):
-    #         threshold = 2
-    #     else:    
-    #         threshold = max(median_diff * 3, 12)
-    #         threshold = min(threshold, 50)
-            
-    #     clusters = []
-    #     if (len(sorted_coords) == 0):
-    #         return sorted_coords
-    #     current_cluster = [sorted_coords[0]]
-        
-    #     for i in range(1, len(sorted_coords)):
-    #         if diffs[i-1] < threshold:
-    #             current_cluster.append(sorted_coords[i])
-    #         else:
-    #             if len(current_cluster) >= min_count:
-    #                 clusters.append(current_cluster)
-    #             current_cluster = [sorted_coords[i]]
-        
-    #     if len(current_cluster) >= min_count:
-    #         clusters.append(current_cluster)
-
-    #     cluster_means = [np.mean(cluster) for cluster in clusters]
-    #     mean_diffs = np.diff(cluster_means)
-    #     print(mean_diffs)
-    #     print("________meandiffs_______________________________________________")
-    #     if len(mean_diffs) > 0:
-    #         kde = stats.gaussian_kde(mean_diffs)
-    #         x_range = np.linspace(mean_diffs.min(), mean_diffs.max(), 100)
-    #         modal_diff = x_range[np.argmax(kde(x_range))]
-    #     else:
-    #         modal_diff = threshold
-        
-    #     if True:    
-    #         combined_clusters = []
-    #         combined_indices = []
-    #         i = 0
-    #         while i < len(clusters):
-    #             current_combined = clusters[i]
-    #             combined_group = [i]
-    #             while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-    #                 current_combined.extend(clusters[i+1])
-    #                 combined_group.append(i+1)
-    #                 i += 1
-    #             combined_clusters.append(current_combined)
-    #             if len(combined_group) > 1:
-    #                 combined_indices.append(combined_group)
-    #             i += 1
-    #         final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-    #         return final_cluster_means
-    #     else:
-    #         return cluster_means
-    def find_clusters(coords, min_count=2, debug=True):
+    def find_clusters(coords, min_count=2):
+        # [Previous find_clusters implementation remains unchanged]
         FONT = "Microsoft New Tai Lue"
         plt.rcParams['font.family'] = FONT
         sns.set_style("whitegrid")
@@ -370,88 +297,34 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
         cluster_means = [np.mean(cluster) for cluster in clusters]
         mean_diffs = np.diff(cluster_means)
-        
+        print(mean_diffs)
+        print("________meandiffs_______________________________________________")
         if len(mean_diffs) > 0:
             kde = stats.gaussian_kde(mean_diffs)
             x_range = np.linspace(mean_diffs.min(), mean_diffs.max(), 100)
             modal_diff = x_range[np.argmax(kde(x_range))]
         else:
             modal_diff = threshold
-        
-        # Combine clusters that are too close together
-        combined_clusters = []
-        combined_indices = []
-        i = 0
-        while i < len(clusters):
-            current_combined = clusters[i]
-            combined_group = [i]
-            while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                current_combined.extend(clusters[i+1])
-                combined_group.append(i+1)
+
+        if True:    
+            combined_clusters = []
+            combined_indices = []
+            i = 0
+            while i < len(clusters):
+                current_combined = clusters[i]
+                combined_group = [i]
+                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
+                    current_combined.extend(clusters[i+1])
+                    combined_group.append(i+1)
+                    i += 1
+                combined_clusters.append(current_combined)
+                if len(combined_group) > 1:
+                    combined_indices.append(combined_group)
                 i += 1
-            combined_clusters.append(current_combined)
-            if len(combined_group) > 1:
-                combined_indices.append(combined_group)
-            i += 1
-        final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-        
-        if debug:
-            plt.rcParams['font.family'] = FONT
-            plt.rcParams['font.weight'] = 'bold'
-            plt.rcParams['font.size'] = 12
-            sns.set_style("whitegrid")
-            
-            # Create the plot
-            plt.figure(figsize=(8, 6))
-            ax = plt.gca()
-            ax.set_facecolor('#F5F5F5')
-            
-            # Create color array for scatter plot
-            colors = ['#073B3A' if any(coord in cluster for cluster in combined_clusters) 
-                    else '#D24C4A' for coord in coords]
-            
-            plt.scatter(coords, [0] * len(coords), c=colors, alpha=0.5)
-            ax.yaxis.set_ticklabels([])
-            
-            # Plot original cluster means
-            for mean in cluster_means:
-                plt.axvline(x=mean, color='#D3784A', linestyle='--', alpha=0.5)
-            
-            # Plot final cluster means with labels
-            for i, mean in enumerate(final_cluster_means):
-                plt.axvline(x=mean, color='green', linestyle='-', linewidth=2)
-                plt.text(mean, 0.1, f'C{i}', rotation=90, verticalalignment='bottom')
-            
-            # Highlight combined clusters
-            for group in combined_indices:
-                min_x = min(cluster_means[i] for i in group)
-                max_x = max(cluster_means[i] for i in group)
-                plt.axvspan(min_x, max_x, facecolor='yellow', alpha=0.3)
-            
-            plt.xticks(final_cluster_means, [f'{coord:.2f}' for coord in final_cluster_means], 
-                    ha='right', rotation=45)
-            plt.xlabel('Cluster Coordinates', fontweight='bold', labelpad=15)
-            plt.title('Detected Clusters', fontweight='bold', pad=20)
-            
-            # Add legend
-            plt.scatter([], [], c='#073B3A', label='Spots in Clusters', alpha=0.5)
-            plt.scatter([], [], c='#D24C4A', label='Spots not in Clusters', alpha=0.5)
-            plt.legend(prop={'weight': 'bold'})
-            
-            plt.tight_layout()
-            plt.show()
-            
-            # Print debug information
-            print(f"Number of original clusters: {len(clusters)}")
-            print(f"Number of combined clusters: {len(combined_clusters)}")
-            print(f"Combined cluster groups: {combined_indices}")
-        
-        return final_cluster_means
-
-
-
-
-
+            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
+            return final_cluster_means
+        else:
+            return cluster_means
 
     x_clusters = find_clusters(x_coords)
     y_clusters = find_clusters(y_coords)
@@ -596,6 +469,11 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, 
     
     return None
 
+import numpy as np
+from scipy import ndimage
+import cv2
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 def process_label(labeled_image, label, grid_start_x, grid_start_y, 
                  cell_width, cell_height, rows, columns, width, height):
