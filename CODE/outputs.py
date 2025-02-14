@@ -7,7 +7,6 @@ import pandas as pd
 import seaborn as sns
 import string
 from matplotlib.patches import Patch
-from scipy.optimize import curve_fit
 
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak, Image as ImageR
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -19,13 +18,10 @@ from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.graphics import renderPDF
 
 
-from scipy import optimize
 from typing import List, Dict, Optional, Tuple
-
 
 import cv2
 import sys
-from PIL import Image 
 from datetime import datetime
 from tkinter import filedialog, simpledialog
 import os
@@ -34,17 +30,13 @@ import base64
 import io
 import math
 from collections import defaultdict
-
 from io import BytesIO
 
-from PIL import Image, ImageTk
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH  / "Icons"
 from matplotlib.colors import rgb2hex
 import matplotlib.colors as mcolors
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 import tkinter as tk
-from PIL import ImageTk
+
 
 
 GREENCOLOURS = ["#073B3A", "#0B614D", "#0F8660", "#7DB46F"] #https://coolors.co/073b3a-0b614d-0f8660-7db46f
@@ -404,9 +396,7 @@ def resize_for_display(image, max_width=1280, max_height=720):
 # 88. ~8~ 88 `88. 88   88 88      88   88 db   8D       88   88
 #  Y888P  88   YD YP   YP 88      YP   YP `8888Y'       YP   YP
                                                 
-"""
-This plots the main graphs
-"""                                                   
+                                                
 
 def plot_multiadditive_graphs(data_series, dilution_series, title, log_base=10):
     
@@ -1072,8 +1062,7 @@ def generate_tidy_dataframe(window):
             norm_value = sum(norm_values) / len(norm_values) if norm_values else 1
             if norm_value ==0:
                 norm_values ==1
-            print("________________________________________________")
-            print (norm_value)    
+
             
             # Normalize the y_values
             normalized_y_values = [y / norm_value * 100 for y in y_values]
