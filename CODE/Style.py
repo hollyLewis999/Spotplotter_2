@@ -13,7 +13,6 @@ import time
 import math 
 import sys
 import json
-import os
 import openpyxl
 from datetime import datetime
 
@@ -21,21 +20,15 @@ from datetime import datetime
 from Processing import *
 from outputs import *
 
-sys.path.append(r'C:\Users\ThinkPad\AppData\Roaming\Python\Python312\site-packages')
 COLORS = ["#3B82F6", "#10B981", "#F97316", "#EF4444", "#8B5CF6", "#D53F8C", "#6B7280", "#4B5563"]
-
-
-
 DARK = "#092934"
 LIGHT = "#FFFFFF"
 GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
-TITLEHEIGHT = 130
-OUTPUT_PATH = Path(__file__).parent
-ASSETS_PATH = OUTPUT_PATH /  "Icons"
-buttonPosX = 1200
 
+TITLEHEIGHT = 130
+buttonPosX = 1200
 backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
