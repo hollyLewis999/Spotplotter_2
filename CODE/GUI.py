@@ -2374,20 +2374,12 @@ def process_image(window):
         widget.destroy()
     stretched, blurred, gray_image, idealContrast = stretch_and_gray(window.current_image, False)
     window.contrast_value = idealContrast
-    window.contrast_value = 20
-    #FLAG
-    print("__________________________________________")
-    print(idealContrast)
-    print("__________________________________________")
-    width = window.current_image.shape[1]
 
+    width = window.current_image.shape[1]
     colomns = window.all_plate_info[window.current_image_index]['layout']['columns']
-    print (width)
-    print(colomns)
     blocksize = width/colomns/2#blocksize is a half of he spot size
-    print (blocksize)
     window.block_size = int(blocksize)
-    window.block_size = 61
+
     if window.block_size %2 ==0:
         window.block_size =  window.block_size +1
     window.gray_image = gray_image
@@ -3918,10 +3910,6 @@ def go_to_edit_frame_from_sliders(window):
   
 
 def go_to_edit_frame(window):
-    # if not window.history:
-    #     window.history = [window.binarized_image.copy()]
-    #     window.redo_stack = []
-
     window.history = [window.binarized_image.copy()]
     window.redo_stack = []    
     
@@ -4347,8 +4335,6 @@ def initialize_window_attributes(window):
     window.update_undo_redo_buttons = update_undo_redo_buttons
     window.display_images = display_images
     window.excludeSmallDots = 15
-    window.excludeSmallDots = 100
-    #FLAG
     window.contrast_value = 20
     window.block_size = 301
     window.image_paths = []
