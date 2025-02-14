@@ -38,17 +38,16 @@ COLORS = ["#D24C4A", "#D3784A", "#DFA24F", "#7DB46F", "#0F8660", "#46A2A2", "#7C
 COLORS = ["#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C", "#D24C4A", "#DFA24F", "#7DB46F", "#7CC7BC", "#46A2A2", "#0F8660", "#A9599C", "#D3784A", "#A9599C"] #https://coolors.co/d24c4a-d3784a-dfa24f-7db46f-0f8660-46a2a2-7cc7bc-a9599c
 CURRENTPLATEINDEX =-1
 GRAY1 = "#F0F0F0"
-GRAY2 = "#E0E0E0"
 GRAY = "#B0B0B0"
 ACCENT = "#4169E1"
 FONT = "Microsoft New Tai Lue"
 
+
+backToEdit2 = False
 TITLEHEIGHT = 130
 buttonPosX = 1440 -200 -17
 buttonPosXleft = 17
-
 buttonPosY = 728 +20
-backToEdit2 = False
 PROGRESSX = 1180
 PROGRESSY = 36
 base_y = 212.0
@@ -128,7 +127,7 @@ def open_help_manual(window, page_number):
     """
     # Map page numbers to corresponding image paths
     help_images = {
-        1: "help_images/AllHelpScreens_page-0001.jpg",  # Replace with your actual help image paths
+        1: "help_images/AllHelpScreens_page-0001.jpg", 
         2: "help_images/AllHelpScreens_page-0002.jpg",
         3: "help_images/AllHelpScreens_page-0003.jpg",
         4: "help_images/AllHelpScreens_page-0004.jpg",
@@ -856,11 +855,6 @@ def update_plate_display(window):
     grid_width = width - margin_left - margin_right
     grid_height = height - margin_top - margin_bottom
 
-    # Print layout details for debugging
-    print(f"Layout Details:")
-    print(f"Rows: {window.layout_data['rows']}")
-    print(f"Columns: {window.layout_data['columns']}")
-    print(f"Strain Positions: {window.plate_layout['strain_positions']}")
 
     # Draw the plate
     try:
@@ -1257,11 +1251,6 @@ def assign_strain_to_columns(window, strain, start_col, end_col, position_idx):
     plate = window.plates[CURRENTPLATEINDEX]
     position_key = f"{start_col}-{end_col}"
     
-    # Check if columns are already assigned
-    # for existing_key in list(window.column_assignments.keys()):
-    #     existing_start, existing_end = map(int, existing_key.split('-'))
-    #     if (start_col <= existing_end and end_col >= existing_start):
-    #         return
             
     window.column_assignments[position_key] = {
         'strain': strain,
@@ -1362,8 +1351,6 @@ def rebuild_strain_list(window):
         # Create a Canvas for the "Assign" button
         assign_canvas = tk.Canvas(button_frame, bg=DARK, highlightthickness=0, width=70, height=30)  # Slightly smaller width
         assign_canvas.pack(side=tk.RIGHT , padx=2)  # Use RIGHT for tight placement
-
-   
         
         # Create the rounded "Assign" button
         create_rounded_button(
@@ -1467,8 +1454,6 @@ def delete_current_plate(window):
         # Reset column assignments
         window.column_assignments = {}
         
-        # Update display
-        # Update display
         if len(window.plates) == 0:
             window.plate_canvas.delete('all')
         else:    
@@ -1750,12 +1735,6 @@ def create_plate_controls(window):
         bold=False  # Unbolded text
         )
 
-
-        
-        
-
-
-
         management_button_canvas2 = tk.Canvas(window.canvas, bg=DARK, width=230, height=40, highlightthickness=0)
         management_button_canvas2.place(x=1100-257, y=178-y_offset_edit)
 
@@ -1816,12 +1795,6 @@ def setup_frames(window):
     create_plate_controls(window)
     create_strain_controls(window) 
     # create_navigation_controls(window)
-        # Add copy button directly in the control fram
-    
-
-    
-
-
 
     ####Create plate canvas:
     window.plate_canvas = tk.Canvas(
@@ -2250,20 +2223,7 @@ def upload_metadata_handler(window):
             
         # Update the global data structure
         window.all_plate_info = loaded_data
-        
-        # Print the loaded data in a formatted way
-        print("\nUploaded Metadata Contents:")
-        print("-" * 50)
-        
-        for idx, plate in enumerate(loaded_data, 1):
-            print(f"\nPlate {idx}:")
-            print("  Strains:", ", ".join(plate.get('strains', [])))
-            print("  Columns:", plate.get('column_indexes', []))
-            # print("  Dimensions:", f"{plate.get('rows', 0)} rows x {plate.get('cols', 0)} columns")
-            print("  Quantifications Available:", bool(plate.get('quantifications', [])))
-            
-        print("-" * 50)
-        print(f"Successfully loaded data from: {filename}")
+       
 
         return loaded_data
         
@@ -2389,9 +2349,7 @@ def process_image(window):
     window.binarized_image = final_binary
     window.debug_image = np.stack((final_binary,) * 3, axis=-1)
     
-    # only initialize history if it's empty, othewise its adding doubles
 
-    #create_editFrame(window)
     create_slidersFrame(window)
 
 
@@ -2454,16 +2412,8 @@ def load_current_image(window):
             messagebox.showerror("Error", f"Failed to load image: {window.image_path}")
             return
         window.current_image = window.original_image.copy()
-       
-        # # Update the current image info
-        # print("IS IT HERE??????")
-
-        # print("AFTER")
-
-        #TODO NEED TO FIX HERE TO LOAD THE INFO
         window.current_info = window.all_plate_info[window.current_image_index].copy()
-        # print(f"Debug: Loading image {window.current_image_index}")
-        # print(f"Debug: Current image info: {window.current_info}")
+
     else:
         messagebox.showerror("Error", "No image to load")
 
@@ -2651,17 +2601,6 @@ def create_cropFrame(window):
     canvas.bind("<B1-Motion>", lambda event: crop(event, window, canvas))
     canvas.bind("<ButtonRelease-1>", lambda event: end_crop(event, window, canvas))
 
-    # Progress bar setup
-    #progress bar was created with help from Chat GBT
-    # window.progress_frame = Frame(canvas, bg=LIGHT)
-    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-    #                                     length=150, mode="determinate", maximum=100, value=0)
-    # window.progress_bar.pack(side="left", padx=(0, 10))
-    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    # window.progress_label.pack(side="left")
-
-    # update_progress_bar(window)
 
 
 
@@ -2839,23 +2778,6 @@ def create_slidersFrame(window):
     ) 
 
 
-    # # Progress bar
-    # window.progress_frame = Frame(canvas, bg=LIGHT)
-    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    # window.progress_bar = ttk.Progressbar(
-    #     window.progress_frame, 
-    #     style="styled.Horizontal.TProgressbar", 
-    #     orient="horizontal",
-    #     length=150, 
-    #     mode="determinate", 
-    #     maximum=100, 
-    #     value=0
-    # )
-    # window.progress_bar.pack(side="left", padx=(0, 10))
-    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    # window.progress_label.pack(side="left")
-    # update_progress_bar(window)
-
     display_image(window)
     return canvas
 
@@ -2865,24 +2787,16 @@ def on_contrast_change(window, value, backToEdit = False):
     if (backToEdit2 == False):
         window.contrast_value = float(value)
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-        # cv2.imshow("grey", resize_for_display(window.gray_image))
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-        #save new iamges
         window.binarized_image = final_binary
         window.contour_img = contour_img
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
-        # print("SAVED")
-        #cannot use undo redo buttons to undo this
         display_image(window)
-        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
+
     else:
         backToEdit2 = False   
 
 
 def on_excludeSmallDots(window, value, backToEdit = False):
-    #print("on_excludeSmallDots")
     global backToEdit2
 
     if (backToEdit2 == False):
@@ -2892,10 +2806,7 @@ def on_excludeSmallDots(window, value, backToEdit = False):
         #save new images
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
-        # print("am i resetting here?")
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
         display_image(window)
-        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
     else:
         backToEdit2 = False
 
@@ -2910,13 +2821,10 @@ def on_block_size_change(window, value, backToEdit = False):
         else:   
             window.block_size = int(value) 
         binary_image, contour_img, final_binary, block_size = binarize(window.gray_image, window.original_image, contrast=window.contrast_value, excludeSmallDots=window.excludeSmallDots, block_size = window.block_size)
-        # window.all_plate_info[window.current_image_index]['IMGbinaryAutomatic'] = final_binary
-        #save new images
         window.binarized_image = final_binary
         window.debug_image = np.stack((final_binary,) * 3, axis=-1)
         display_image(window)
-        # print(f"contrast={window.contrast_value}, excludeSmallDots={window.excludeSmallDots}, block_size = {window.block_size}")
-        # cv2.imshow()
+
     else:
         backToEdit2 = False
 
@@ -3392,16 +3300,6 @@ def create_editFrame(window, backToEdit = False):
     # Set up zoom controls and bindings
     setup_zoom_controls(window)
 
-    # window.progress_frame = Frame(canvas, bg=LIGHT)
-    # window.progress_frame.place(x=PROGRESSX, y=PROGRESSY, width=200, height=50)
-    # window.progress_bar = ttk.Progressbar(window.progress_frame, style="styled.Horizontal.TProgressbar", orient="horizontal",
-    #                                     length=150, mode="determinate", maximum=100, value=0)
-    # window.progress_bar.pack(side="left", padx=(0, 10))
-    # window.progress_label = Label(window.progress_frame, text="", bg=LIGHT, font=(FONT, 12, 'bold'))
-    # window.progress_label.pack(side="left")
-    
-    # update_progress_bar(window)
-    # Display images
     display_images(window)
     
 
@@ -3476,13 +3374,7 @@ def display_images(window):
         if window.show_original:
             img_left = Image.fromarray(cv2.cvtColor(window.current_image, cv2.COLOR_BGR2RGB))
         else:
-            # img_np = window.debug_image
-            # # img_editing_resized = cv2.resize(np.array(img_editing), (img_np.shape[1], img_np.shape[0]))
-            # img_gray = cv2.cvtColor(img_editing_resized, cv2.COLOR_RGB2GRAY)
-            # contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            # contour_img = img_np.copy()
-            # for cntr in contours:
-            #     cv2.drawContours(contour_img, [cntr], 0, (0, 0, 255), 3)
+
             img_np = window.debug_image
             img_gray = cv2.cvtColor(img_np, cv2.COLOR_RGB2GRAY)
             contours, _ = cv2.findContours(img_gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -3988,9 +3880,7 @@ def open_grid_override(window):
     min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
-    # cv2.imshow("marked image1244443", resize_for_display(marked_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
+
     x_coords, y_coords, _ = findBlobs(binary_image, min_area, max_area)
     window.center_points = list(zip(x_coords, y_coords))
 
@@ -4120,11 +4010,8 @@ def recalculate_grid(window):
     #convert to numpy array so its the same type as the senterpoints
     window.clicked_pointsx = [point[0] for point in all_points]
     window.clicked_pointsy = [point[1] for point in all_points]
-    print("WINDOW>GEY SHAPE" + str(window.gray_image.shape))
     height, width = window.gray_image.shape
     square_grid =  window.all_plate_info[window.current_image_index]['layout']['square_grid']
-    print("square_grid")
-    print(square_grid)
     #new grid using user clicked AND previously detected
     columns = window.all_plate_info[window.current_image_index]['layout']['columns']
     rows = window.all_plate_info[window.current_image_index]['layout']['rows']
@@ -4301,10 +4188,6 @@ def restore_window_state(window, filename):
 
 
 
-
-
-
-
 def initialize_window_attributes(window):
     #progress bar style
     s = ttk.Style()
@@ -4375,7 +4258,6 @@ window.mainloop()
 # process_results(window)
 
 
-# FORREPORTMODEARrepeats2 - ONLY 1 ADDITIVE
 
 
 
