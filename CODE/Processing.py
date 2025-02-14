@@ -140,7 +140,7 @@ def stretch_and_gray(original_image, show_images=False):
  
 def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
     #make it into a binart image using adaptive thresholding  
-    c = max(-50, min(int(-contrast), -1))-5
+    c = max(-50, min(int(-contrast), -1))
     cv2.imwrite('gray_image.jpg', gray_image)
     binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
                                        cv2.THRESH_BINARY, block_size, c)  
