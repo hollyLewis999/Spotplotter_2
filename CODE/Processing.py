@@ -99,41 +99,21 @@ def stretch_and_gray(original_image, show_images=False):
     #streach the contrast differnet and make the image into greyscale
     lower_bound, upper_bound = analyze_tonal_range(original_image)
     stretched = skimage.exposure.rescale_intensity(original_image, in_range=(lower_bound, upper_bound), out_range=(0, 255)).astype(np.uint8)
+    
     #setting contrast as a function of the streach
     idealContrast = int(-0.1813*(upper_bound -lower_bound)+27.113)
-    print("Streach range diff: " + str(upper_bound - lower_bound))
-
-
-    print("________________________________")
-    print(idealContrast)
-    print("________________________________")
     idealContrast = max(idealContrast,2)
     idealContrast = min(idealContrast,20)
 
-
     height, width = original_image.shape[:2]
-    print(f"HEIGHT {height}, WIDTH {width}")
-    # Define a scaling factor for sigma, e.g., 1% of the image dimensions
-    sigma_scale = 0.0015  # Adjust this as needed
-
-    # Compute sigmaX and sigmaY as a function of the image size
+    sigma_scale = 0.0015  # Define a scaling factor for sigma, e.g., 1% of the image dimensions
     sigmaX = sigma_scale * width
     sigmaY = sigma_scale * height
     sigma = min(sigmaX,sigmaY)
 
     # Apply Gaussian blur with calculated sigma values
     blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=sigma, sigmaY=sigma)
-    # blurred = cv2.GaussianBlur(stretched, (0, 0), sigmaX=5, sigmaY=5)
     gray_image= cv2.cvtColor(blurred, cv2.COLOR_BGR2GRAY)
-    print(sigmaX, sigmaY)
-
-        #CONTOURS HERE FOR TESTING
-    # cv2.imshow('stretched', resize_for_display(stretched))
-    # cv2.imshow('blurred', resize_for_display(blurred))
-    # cv2.imshow('gray_image', resize_for_display(gray_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
-
 
     return stretched, blurred, gray_image, idealContrast
     
@@ -141,10 +121,8 @@ def stretch_and_gray(original_image, show_images=False):
 def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block_size=301, show_images=False):
     #make it into a binart image using adaptive thresholding  
     c = max(-50, min(int(-contrast), -1))
-    cv2.imwrite('gray_image.jpg', gray_image)
-    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,
-                                       cv2.THRESH_BINARY, block_size, c)  
-    cv2.imwrite('binary_image.jpg', binary_image)
+
+    binary_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C,cv2.THRESH_BINARY, block_size, c)  
     contour_img = original_image.copy()
     final_binary = np.zeros_like(binary_image)
     
@@ -153,8 +131,6 @@ def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block
    
     height, width = binary_image.shape
     image_area = height * width
-    
-    # Scale the exclude small dots
     excludeSmallDots = int((width*(excludeSmallDots/5000))**2)
     
     # Filter and draw inner contours
@@ -173,7 +149,6 @@ def binarize(gray_image, original_image, contrast=20, excludeSmallDots=15, block
         cv2.drawContours(contour_img, [cntr], 0, (255, 105, 65), 2)
         cv2.drawContours(final_binary, [cntr], 0, 255, -1)
     
-    cv2.imwrite('contour_img.jpg', gray_image)
     return binary_image, contour_img, final_binary, block_size
 
 
@@ -193,14 +168,8 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
 
     #find contours to look for blobs in
     contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
     #needs to be convered to colour so that it can be drawn on
     result_image = cv2.cvtColor(binary_image, cv2.COLOR_GRAY2BGR)
-
-    #CONTOURS HERE FOR TESTING
-    # cv2.imshow('contours', resize_for_display(result_image))
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
     x_coords =[]
     y_coords=[]
@@ -212,7 +181,7 @@ def findBlobs(binary_image, min_area, max_area, thickness=2):
             perimeter = cv2.arcLength(contour, True)
             circularity = 4 * np.pi * area / (perimeter * perimeter)
 
-            if circularity > 0.30:
+            if circularity > 0.40:
                 #find center using moments
                 M = cv2.moments(contour)
                 if M["m00"] != 0:
@@ -227,7 +196,7 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
     
     height, width = binary_image.shape
     max_radius = int(width/(columns*2)) #the biggest that a "good" circle would be is if all 12 in a line where fullly gorwn to te width of the image
-    min_radius = int(max_radius/6)
+    min_radius = int(max_radius/3)
     max_area = max_radius**2*(math.pi)
     min_area = min_radius**2*(math.pi)
 
@@ -263,7 +232,6 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
         return None, None
 
     counts, marked_image = quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows)
-    # cv2.imwrite('marked_image.jpg', gray_image)
     return counts, marked_image
 
 
@@ -276,12 +244,12 @@ def detect_and_draw_circles(binary_image, gray_image, noClusters, min_radius=50,
 # 
 
 def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_image, columns, rows, square_grid=True, debug=False):
-    start_time = time.time()
     def find_clusters(coords, min_count=2):
-        # [Previous find_clusters implementation remains unchanged]
+
         FONT = "Microsoft New Tai Lue"
         plt.rcParams['font.family'] = FONT
         sns.set_style("whitegrid")
+
         sorted_coords = np.sort(coords)
         diffs = np.diff(sorted_coords)
         filtered_diff = diffs[(diffs > 0) & (diffs < 50)]
@@ -319,25 +287,24 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         else:
             modal_diff = threshold
 
-        if True:    
-            combined_clusters = []
-            combined_indices = []
-            i = 0
-            while i < len(clusters):
-                current_combined = clusters[i]
-                combined_group = [i]
-                while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
-                    current_combined.extend(clusters[i+1])
-                    combined_group.append(i+1)
-                    i += 1
-                combined_clusters.append(current_combined)
-                if len(combined_group) > 1:
-                    combined_indices.append(combined_group)
+
+        combined_clusters = []
+        combined_indices = []
+        i = 0
+        while i < len(clusters):
+            current_combined = clusters[i]
+            combined_group = [i]
+            while i + 1 < len(clusters) and cluster_means[i+1] - cluster_means[i] < modal_diff / 2:
+                current_combined.extend(clusters[i+1])
+                combined_group.append(i+1)
                 i += 1
-            final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
-            return final_cluster_means
-        else:
-            return cluster_means
+            combined_clusters.append(current_combined)
+            if len(combined_group) > 1:
+                combined_indices.append(combined_group)
+            i += 1
+        final_cluster_means = [np.mean(cluster) for cluster in combined_clusters]
+        return final_cluster_means
+
 
     x_clusters = find_clusters(x_coords)
     y_clusters = find_clusters(y_coords)
@@ -375,9 +342,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         raise ValueError("Both x and y differences are invalid")
     
     if square_grid:
-        print("YES SQUARE GRID")
-        print(square_grid)
-        # Original behavior for square cells
         if median_x_diff is None:
             cell_size = median_y_diff
         elif median_y_diff is None:
@@ -387,8 +351,6 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         cell_width = cell_size
         cell_height = cell_size
     else:
-        print("NO SQUARE GRID")
-        print(square_grid)
         # Handle rectangular cells
         if median_x_diff is None:
             cell_width = width / columns  # fallback to even distribution
@@ -410,10 +372,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
         grid_start_x = width - grid_width
     if grid_start_y + grid_height > height:
         grid_start_y = height - grid_height
-        
-    end_time = time.time()
-    print(f"calculate_grid total execution time: {end_time - start_time:.4f} seconds")
-    
+            
     if square_grid:
         return grid_start_x, grid_start_y, cell_width, cell_width # maintains backward compatibility
     else:
@@ -423,25 +382,7 @@ def calculate_grid(x_coords, y_coords, width, height, binarized_image, gray_imag
 
 def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, cell_height, 
                   rows, columns, width, height):
-    """
-    Process a single label (spot) in the image
-    
-    Args:
-    - labeled_image: Image with labeled components
-    - label: Current label to process
-    - grid_start_x: Starting x coordinate of the grid
-    - grid_start_y: Starting y coordinate of the grid
-    - cell_width: Width of each grid cell
-    - cell_height: Height of each grid cell
-    - rows: Number of grid rows
-    - columns: Number of grid columns
-    - width: Image width
-    - height: Image height
-    
-    Returns:
-    - Tuple of (row, col, total_area, component) if the spot is successfully counted
-    - None if the spot is not counted
-    """
+
     component = (labeled_image == label)
     coords = np.column_stack(np.where(component))
     
@@ -484,21 +425,6 @@ def process_label(labeled_image, label, grid_start_x, grid_start_y, cell_width, 
     return None
 
 def quantify_grid(binary_image, marked_image, grid_start_x, grid_start_y, cell_width, cell_height, columns, rows):
-
-    """
-    Quantify spots in a grid and visualize results
-    
-    Args:
-    - binary_image: Binary image with spots
-    - marked_image: Image to draw results on
-    - grid_start_x: Starting x coordinate of the grid
-    - grid_start_y: Starting y coordinate of the grid
-    - cell_size: Cell size (if square_grid=True) or tuple of (cell_width, cell_height)
-    - columns: Number of grid columns
-    - rows: Number of grid rows
-    - square_grid: If True, cells are square and cell_size is a single value
-                  If False, cell_size should be a tuple of (cell_width, cell_height)
-    """
 
     height, width = binary_image.shape
     # Label the image
