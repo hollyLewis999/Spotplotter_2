@@ -323,6 +323,156 @@ def create_plate_display(plate_frame, window):
     window.plate_canvas.pack(expand=True, fill='both')
     update_plate_display_layout_designer(window)
 
+# def update_plate_display_layout_designer(window):
+#     try:
+#         # Check if plate canvas still exists
+#         if not hasattr(window, 'plate_canvas') or not window.plate_canvas.winfo_exists():
+#             return
+            
+#         window.plate_canvas.delete('all')
+        
+#         try:
+#             rows = min(max(0, window.plate_layout['rows'].get()),99)
+#             cols = min(max(0, window.plate_layout['columns'].get()),99)
+#             strains = max(1, window.plate_layout['strains'].get())
+#             x_dil = max(1, window.plate_layout['x_dilution'].get())
+#             y_dil = max(1, window.plate_layout['y_dilution'].get())
+#         except tk.TclError:
+#             # If variables are invalid or being destroyed, exit gracefully
+#             return
+            
+#         width = window.plate_canvas.winfo_width()
+#         height = window.plate_canvas.winfo_height()
+#         if width <= 1 or height <= 1:
+#             # Schedule another update when the canvas has actual dimensions
+#             if window.plate_canvas.winfo_exists():
+#                 window.plate_canvas.after(100, lambda: update_plate_display_layout_designer(window))
+#             return
+            
+#         margin = margin_sides = 50
+#         grid_width = width - 2 * margin
+#         grid_height = height - 2 * margin
+#         cols_per_strain = cols // strains
+#         total_cols = cols
+        
+#         try:
+#             if window.plate_layout['gap_between_strains'].get():
+#                 total_gaps = strains - 1
+#                 total_cols = cols + total_gaps
+#         except tk.TclError:
+#             # Handle case where variable is being destroyed
+#             return
+
+#         # Adjust cell dimensions based on the square grid setting
+
+#         cell_width = grid_width / total_cols
+#         cell_height = grid_height / rows
+
+
+#         try:
+#             if window.plate_layout['square_grid'].get():
+#                 # Enforce square cells considering gaps
+#                 total_width_with_gaps = total_cols
+#                 cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
+#                 cell_width = cell_height = cell_size
+#                 margin_sides = (width - (cell_width * total_cols))/2
+#         except tk.TclError:
+#             # Handle case where variable is being destroyed
+#             return
+
+#         # Update strain positions
+#         current_col = 0
+#         window.plate_layout['strain_positions'] = {}
+        
+#         for strain in range(strains):
+#             start_col = current_col
+#             end_col = start_col + cols_per_strain - 1
+#             window.plate_layout['strain_positions'][strain] = (start_col, end_col)
+#             current_col = end_col + 1
+#             if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
+#                 current_col += 1
+
+#         draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows,cols )
+        
+#     except tk.TclError as e:
+#         # Handle any other Tcl errors that might occur during update
+#         print(f"TclError during plate display update: {e}")
+#         return
+
+# def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows, cols):
+#     try:
+#         if not window.plate_canvas.winfo_exists():
+#             return
+        
+#         # Keep track of which columns have been filled
+#         filled_columns = set()
+        
+#         # Draw colored spots for strains
+#         for strain in range(strains):
+#             start_col, end_col = window.plate_layout['strain_positions'][strain]
+#             for col_offset in range(end_col - start_col + 1):
+#                 actual_col = start_col + col_offset
+#                 filled_columns.add(actual_col)
+#                 x_value = x_dil ** col_offset
+#                 x_pos = margin_sides + actual_col * cell_width + cell_width/2
+                
+#                 # Draw x-dilution labels
+#                 if window.current_mode == 'A':
+#                     window.plate_canvas.create_text(
+#                         x_pos,
+#                         margin - 20,
+#                         text=x_value,
+#                         fill=LIGHT,
+#                         font=(FONT, 8)
+#                     )
+                
+#                 # Draw colored spots
+#                 for row in range(rows):
+#                     pos_key = f"{row}-{actual_col}"
+#                     x = margin_sides + actual_col * cell_width + cell_width/2
+#                     y = margin + row * cell_height + cell_height/2
+#                     color = COLORS[strain % len(COLORS)]
+                    
+#                     window.plate_canvas.create_oval(
+#                         x-10, y-10, x+10, y+10,
+#                         fill=color,
+#                         outline=color,
+#                         tags=(pos_key, "spot", f"strain_{strain}")
+#                     )
+                
+#                 # Add y-dilution labels (only once for the first strain)
+#                 if strain == 0:
+#                     for row in range(rows):
+#                         y_value = y_dil ** row
+#                         y_pos = margin + row * cell_height + cell_height/2
+#                         if window.current_mode == 'A':
+#                             window.plate_canvas.create_text(
+#                                 margin_sides - 20,
+#                                 y_pos,
+#                                 text=y_value,
+#                                 fill=LIGHT,
+#                                 font=(FONT, 8)
+#                             )
+        
+#         # Fill remaining columns with gray spots
+#         for col in range(cols):
+#             if col not in filled_columns:
+#                 for row in range(rows):
+#                     pos_key = f"{row}-{col}"
+#                     x = margin_sides + col * cell_width + cell_width/2
+#                     y = margin + row * cell_height + cell_height/2
+                    
+#                     window.plate_canvas.create_oval(
+#                         x-10, y-10, x+10, y+10,
+#                         fill=GRAY,
+#                         outline=GRAY,
+#                         tags=(pos_key, "spot", "empty")
+#                     )
+                    
+#     except tk.TclError as e:
+#         print(f"TclError during spot drawing: {e}")
+#         return
+
 def update_plate_display_layout_designer(window):
     try:
         # Check if plate canvas still exists
@@ -352,28 +502,36 @@ def update_plate_display_layout_designer(window):
         margin = margin_sides = 50
         grid_width = width - 2 * margin
         grid_height = height - 2 * margin
-        cols_per_strain = cols // strains
-        total_cols = cols
         
+        # Each strain gets the same number of columns
+        cols_per_strain = cols // strains
+        leftover_cols = cols % strains
+        
+        # Store leftover column info in plate_layout for validation
+        window.plate_layout['leftover_cols'] = leftover_cols
+        
+        # Calculate total columns including gaps
         try:
-            if window.plate_layout['gap_between_strains'].get():
+            use_gaps = window.plate_layout['gap_between_strains'].get()
+            if use_gaps:
                 total_gaps = strains - 1
-                total_cols = cols + total_gaps
+                total_cols = (cols_per_strain * strains) + total_gaps + leftover_cols
+            else:
+                total_cols = cols
         except tk.TclError:
             # Handle case where variable is being destroyed
+            use_gaps = False
+            total_cols = cols
             return
 
         # Adjust cell dimensions based on the square grid setting
-
         cell_width = grid_width / total_cols
         cell_height = grid_height / rows
-
 
         try:
             if window.plate_layout['square_grid'].get():
                 # Enforce square cells considering gaps
-                total_width_with_gaps = total_cols
-                cell_size = min(grid_width / total_width_with_gaps, grid_height / rows)
+                cell_size = min(grid_width / total_cols, grid_height / rows)
                 cell_width = cell_height = cell_size
                 margin_sides = (width - (cell_width * total_cols))/2
         except tk.TclError:
@@ -389,17 +547,25 @@ def update_plate_display_layout_designer(window):
             end_col = start_col + cols_per_strain - 1
             window.plate_layout['strain_positions'][strain] = (start_col, end_col)
             current_col = end_col + 1
-            if window.plate_layout['gap_between_strains'].get() and strain < strains - 1:
+            
+            # Add a gap after each strain except the last one
+            if use_gaps and strain < strains - 1:
                 current_col += 1
 
-        draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows,cols )
-        
+        # Calculate where leftover columns start
+        window.plate_layout['leftover_start'] = current_col
+        window.plate_layout['leftover_end'] = current_col + leftover_cols - 1
+
+        draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows, cols, total_cols)
+            
     except tk.TclError as e:
         # Handle any other Tcl errors that might occur during update
         print(f"TclError during plate display update: {e}")
         return
 
-def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows, cols):
+
+
+def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x_dil, y_dil, rows, cols, total_cols):
     try:
         if not window.plate_canvas.winfo_exists():
             return
@@ -454,8 +620,8 @@ def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x
                                 font=(FONT, 8)
                             )
         
-        # Fill remaining columns with gray spots
-        for col in range(cols):
+        # Fill remaining columns with gray spots (gaps and leftover columns at the end)
+        for col in range(total_cols):
             if col not in filled_columns:
                 for row in range(rows):
                     pos_key = f"{row}-{col}"
@@ -472,6 +638,25 @@ def draw_spots(window, strains, margin_sides, margin, cell_width, cell_height, x
     except tk.TclError as e:
         print(f"TclError during spot drawing: {e}")
         return
+def on_next_button_click(window):
+    if window.current_mode == 'A' and not validate_plate_layout(window):
+        return 
+    go_to_assignment_screen(window)    
+
+def validate_plate_layout(window):
+    """
+    Validates that there are no leftover columns in the plate layout.
+    Returns True if valid, False otherwise.
+    """
+    if 'leftover_cols' in window.plate_layout and window.plate_layout['leftover_cols'] > 0:
+        tk.messagebox.showerror(
+            "Invalid Layout", 
+            f"There are {window.plate_layout['leftover_cols']} leftover columns.\n"
+            f"Please adjust the number of columns or strains so that columns are evenly divisible by strains."
+        )
+        return False
+    return True
+
 def go_to_assignment_screen(window):
     valid_positions = {}
     for strain, (start_col, end_col) in window.plate_layout['strain_positions'].items():
@@ -590,7 +775,7 @@ def create_plate_designer(window, mode="A"):
     create_rounded_button(
         canvas=canvas,
         text="Next",
-        command=lambda: go_to_assignment_screen(window),
+        command=lambda: on_next_button_click(window) ,
         x=buttonPosX,
         y=buttonPosY
     )
@@ -889,7 +1074,7 @@ def draw_plate_grid(window, width, height, margin_left, margin_right, margin_top
     window.plate_canvas.create_text(
         width // 2,
         20,
-        text=f"Current Plate: {CURRENTPLATEINDEX + 1} - {plate['name']}{additive_display}",
+        text=f"Plate: {CURRENTPLATEINDEX + 1} - {plate['name']}{additive_display}",
         fill=LIGHT,
         font=(FONT, 16, 'bold')
     )
