@@ -1,5 +1,5 @@
 matplotlib==3.9.2
-numpy
+numpy<2.0
 openpyxl==3.1.5
 pandas==2.2.3
 Pillow==11.0.0
@@ -8,5 +8,3 @@ scipy==1.14.1
 seaborn==0.13.2
 scikit-image
 opencv-python
-
-

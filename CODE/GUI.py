@@ -131,8 +131,8 @@ def open_help_manual(window, page_number):
         2: "help_images/AllHelpScreens_page-0002.jpg",
         3: "help_images/AllHelpScreens_page-0003.jpg",
         4: "help_images/AllHelpScreens_page-0004.jpg",
-        5: "help_images/AllHelpScreens_page-0005.jpg",
-        6: "help_images/AllHelpScreens_page-0006.jpg"
+        5: "help_images/AllHelpScreens_page-0006.jpg",
+        6: "help_images/AllHelpScreens_page-0007.jpg"
     }
     
     # Get the image path for the specified page
