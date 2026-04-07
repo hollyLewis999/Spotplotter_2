@@ -1367,7 +1367,6 @@ def create_plate_info(window, plate, rows, cols, unordered_quantifications,
     image = Image.open(io.BytesIO(image_bytes))
 
     # Show the image in the default viewer
-    image.show()
     return {
         'mode': window.current_mode,
         'filename': plate['name'],
@@ -1620,6 +1619,7 @@ def add_plate(window):
         window.column_assignments = window.plates[CURRENTPLATEINDEX]['column_assignments']
         CURRENTPLATEINDEX = (len(window.plates) - 1)
         update_plate_display(window)
+        window.plate_entry.delete(0, tk.END)
         print(f"Plate added. Total plates: {len(window.plates)}")
 
 def delete_current_plate(window):
@@ -1776,6 +1776,7 @@ def prev_plate(window):
         window.plate_canvas.focus_set()
     else:
         print("Cannot go to previous plate")
+        messagebox.showinfo("Info", "No previous plates available")
 
 def next_plate(window):
     global CURRENTPLATEINDEX
@@ -1803,6 +1804,7 @@ def next_plate(window):
         window.plate_canvas.focus_set()
     else:
         print("Cannot go to next plate")
+        messagebox.showinfo("Info", "No future plates available")
 
 def create_plate_controls(window):
     # Main controls container at the top
@@ -2102,10 +2104,47 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
                 outline=color
             )
     
+    # def draw_text(x, y, text, font_size=25, anchor='s'):
+    #     if is_image:
+    #         font = ImageFont.truetype("arial.ttf", font_size+10)
+    #         # Center text horizontally
+    #         text_width = surface.textlength(text, font=font)
+    #         surface.text(
+    #             (int(x - text_width/2), int(y)),
+    #             text,
+    #             font=font,
+    #             fill=DARK
+    #         )
+    #     else:
+    #         surface.create_text(
+    #             x, y,
+    #             text=text,
+    #             font=(FONT, 10, 'bold'),
+    #             fill=DARK,
+    #             anchor=anchor
+    #         )
+    
+
     def draw_text(x, y, text, font_size=25, anchor='s'):
         if is_image:
-            font = ImageFont.truetype("arial.ttf", font_size+10)
-            # Center text horizontally
+            import os
+            font = None
+            font_paths = [
+                "/Library/Fonts/Arial.ttf",
+                "/System/Library/Fonts/Helvetica.ttc",
+                "/System/Library/Fonts/SFNSText.ttf",
+                "arial.ttf"
+            ]
+            for path in font_paths:
+                if os.path.exists(path):
+                    try:
+                        font = ImageFont.truetype(path, font_size + 10)
+                        break
+                    except:
+                        continue
+            if font is None:
+                font = ImageFont.load_default()
+            
             text_width = surface.textlength(text, font=font)
             surface.text(
                 (int(x - text_width/2), int(y)),
@@ -2114,6 +2153,7 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
                 fill=DARK
             )
         else:
+            # THIS ELSE BRANCH WAS MISSING from your paste
             surface.create_text(
                 x, y,
                 text=text,
@@ -2121,7 +2161,7 @@ def draw_unified_plate_preview(window, surface, plate, is_image=False, image_siz
                 fill=DARK,
                 anchor=anchor
             )
-    
+
     # Draw header and additive text for image
     if is_image:
         # Draw plate name
